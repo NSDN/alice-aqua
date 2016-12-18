@@ -1,39 +1,67 @@
 import {
   Mesh,
-  Material,
-  Color3,
-  Texture,
-  Vector2,
-  Vector3,
   Scene,
+  Texture,
+  StandardMaterial,
+  Color3,
   AbstractMesh,
-  PhysicsImpostor,
+  VertexData,
+  Material,
 } from '../babylon'
 
 import {
   VERTEX_PLANE,
-  VERTEX_SPHERE,
-  VERTEX_BOX,
+  getPlaneVertexDataWithUV,
+} from '../utils/babylon'
+
+import {
+  ArrayHash
 } from '../utils'
 
+const meshCache = new ArrayHash<Material, { [key: string]: Mesh }>()
+
 export default class Sprite extends Mesh {
-  constructor(name, scene: Scene, size: Vector2, opts?: {
-    ext?: any,
-    shadowRenderList?: AbstractMesh[],
+  readonly spriteBody: AbstractMesh
+
+  get spriteHeight() {
+    return this.spriteBody.scaling.y
+  }
+
+  set spriteHeight(height: number) {
+    this.spriteBody.position.copyFromFloats(0, height / 2, 0)
+    const width = height / this.opts.height * this.opts.width
+    this.spriteBody.scaling.copyFromFloats(width, height, width)
+  }
+
+  constructor(name: string, scene: Scene, readonly opts: {
+    material: Material
+    texSize: number
+    offsetX: number
+    offsetY: number
+    width: number
+    height: number
   }) {
     super(name, scene)
 
-    VERTEX_PLANE.applyToMesh(this)
-    this.billboardMode = Mesh.BILLBOARDMODE_Y
-    this.position.copyFromFloats(0, size.y / 2, 0)
-    this.scaling.copyFromFloats(size.x, size.y, size.x)
+    const { material, texSize, offsetX, offsetY, width, height } = opts,
+      cache = meshCache.get(material) || meshCache.set(material, { }),
+      key = ['sprite', texSize, offsetX, offsetY].join('/')
 
-    if (opts && opts.ext) {
-      Object.assign(this, opts.ext)
+    if (!cache[key]) {
+      const sprite = cache[key] = new Mesh(key + '/cache', scene),
+        u0 = offsetX / texSize,
+        v0 = 1 - (offsetY + height) / texSize,
+        u1 = u0 + width / texSize,
+        v1 = v0 + height / texSize,
+        vd = Object.assign(new VertexData(), getPlaneVertexDataWithUV(u0, u1, v0, v1))
+      vd.applyToMesh(sprite)
+
+      sprite.material = material
+      sprite.isVisible = false
     }
 
-    if (opts && opts.shadowRenderList) {
-      opts.shadowRenderList.push(this);
-    }
+    const sprite = this.spriteBody = cache[key].createInstance(name + '/sprite')
+    sprite.billboardMode = Mesh.BILLBOARDMODE_Y
+    sprite.parent = this
   }
 }

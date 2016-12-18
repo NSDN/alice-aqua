@@ -2,12 +2,171 @@
 <html>
 <head>
   <title></title>
-  <link rel="stylesheet" href="assets/index.css">
+  <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
+  <style>
+    html, body, .full-size {
+      overflow: hidden;
+      width: 100%;
+      height: 100%;
+      padding: 0;
+      margin: 0;
+    }
+    body {
+      font-size: small;
+    }
+    .hidden {
+      display: none;
+    }
+    .clear-both {
+      width: 100%;
+      clear: both;
+    }
+
+    .show-debug-layer {
+      cursor: pointer;
+      float: right;
+    }
+    .object-toolbar {
+      position: absolute;
+      background-color: rgba(255, 255, 255, 0.5);
+      padding: 5px;
+      display: none;
+      user-select: none;
+    }
+    .object-toolbar .move-object {
+      cursor: -webkit-grab;
+    }
+    .object-toolbar .focus-object,
+    .object-toolbar .remove-object,
+    .object-toolbar .cancel-select {
+      cursor: pointer;
+    }
+    .object-toolbar .cancel-select {
+      float: right;
+    }
+    .object-toolbar .config-item {
+      height: 2em;
+      display: flex;
+      align-items: center;
+    }
+
+    .ui-toolbar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 120px;
+      padding-top: 2em;
+      background-color: rgba(255, 255, 255, 0.3);
+      overflow: hidden;
+      user-select: none;
+    }
+    .ui-panels {
+      height: 100%;
+      overflow: auto;
+      padding: 10px;
+      padding-top: 2px;
+    }
+    .ui-list-item {
+      float: left;
+      padding: 2px;
+    }
+    .ui-list-item > * {
+      display: block;
+      cursor: default;
+    }
+    .ui-list-item span {
+      width: 32px;
+      height: 32px;
+      line-height: 32px;
+      background: #ccc;
+      text-align: center;
+    }
+    .ui-list-item.selected {
+      background: white;
+    }
+    .on-panel-play .ui-toolbar {
+      display: none;
+    }
+    .ui-head {
+      position: absolute;
+      width: 100%;
+      height: 2em;
+      line-height: 2em;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .ui-top {
+      padding: 0 10px;
+      color: #eee;
+    }
+  </style>
 </head>
 <body>
+  <div class="ui-toolbar">
+    <div class="ui-panels">
+      <div class="ui-panel panel-brushes">
+        <div class="ui-brushes">
+          <div class="ui-list-item" index="-1">
+            <span title="use tile from start"><i class="fa fa-question"></i></span>
+          </div>
+          <div class="ui-list-item" index="">
+            <span title="don't update tiles"><i class="fa fa-ban"></i></span>
+          </div>
+        </div>
+      </div>
+      <div class="ui-panel panel-objects">
+        <div class="ui-classes"></div>
+      </div>
+      <div class="ui-panel panel-config">
+        <p>
+          <button id="configDownloadMap">download map</button>
+          <input id="configUploadMap" type="file" value="upload" />
+        </p>
+        <p>
+          <label>
+            <input type="checkbox" id="configRotateCamera" /> rotate camera
+          </label>
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="ui-head">
+    <div class="ui-top">
+      <select class="ui-panel-selector">
+        <option>objects</option>
+        <option>brushes</option>
+        <option>config</option>
+        <option>play</option>
+      </select>
+      <span class="ui-panel panel-brushes">
+        <select class="ui-brush-height">
+          <option value="">--</option>
+          <option value="0">flatten</option>
+          <option value="+1">shift up</option>
+          <option value="-1">shift down</option>
+        </select>
+        ctrl &amp; drag to draw, shift &amp; drag to fill
+      </span>
+      <span class="ui-panel panel-objects">
+        ctrl &amp; click to put, shift &amp; drag to select
+      </span>
+      <label class="show-debug-layer">
+        <input type="checkbox" id="showDebugLayer" /> debug layer
+      </label>
+    </div>
+  </div>
+  <div id="objectToolbar" class="object-toolbar">
+    <i class="move-object fa fa-arrows" title="drag to move"></i>
+    <i class="focus-object fa fa-crosshairs" title="look at this"></i>
+    <i class="remove-object fa fa-trash" title="remove"></i>
+    <i class="cancel-select fa fa-close" title="cancel"></i>
+    <div class="object-config"></div>
+  </div>
   <script src="node_modules/cannon/build/cannon.js"></script>
   <script src="node_modules/babylonjs/babylon.max.js"></script>
   <script src="//localhost:8080/webpack-dev-server.js"></script>
+  <script src="assets/babylon.waterMaterial.js"></script>
   <script src="build/bundle.js"></script>
 </body>
 </html>
