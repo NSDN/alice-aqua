@@ -37,7 +37,7 @@ export default class ObjectGenerator extends InstancedMesh {
     const box = cache.createInstance(this.name + '/box')
     box.position.copyFrom(this.position.add(new Vector3(0, 2, 0)))
 
-    const opts = { mass: 2, friction: 0 },
+    const opts = { mass: 5, friction: 0 },
       impostor = box.physicsImpostor = new PhysicsImpostor(box, PhysicsImpostor.BoxImpostor, opts)
     impostor.registerBeforePhysicsStep(impostor => {
       impostor.setLinearVelocity(impostor.getLinearVelocity().multiplyByFloats(0.95, 0.95, 0.95))

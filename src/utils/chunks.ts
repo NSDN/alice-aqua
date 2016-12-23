@@ -76,23 +76,6 @@ export default class Chunks extends EventEmitter<Events> {
   private readonly sideMaterial: StandardMaterial
   private data: { [key: string]: ChunkData } = { }
 
-  private _waterMesh: Mesh
-  private getWaterMesh(id: string) {
-    const { chunkSize, scene } = this
-    if (!this._waterMesh) {
-      // TODO: 
-      const mesh = this._waterMesh = new Mesh('cache/chunk/water', scene)
-      VERTEX_GROUND.applyToMesh(mesh)
-      mesh.scaling.copyFromFloats(chunkSize, 1, chunkSize)
-      mesh.visibility = 0.8
-      mesh.isVisible = false
-      const material = mesh.material = new StandardMaterial('water', scene)
-      material.emissiveColor = new Color3(91/255, 176/255, 226/255)
-      this._waterMesh
-    }
-    return this._waterMesh.createInstance(id)
-  }
-
   constructor(readonly scene: Scene,
     readonly tiles: TileDefine[],
     readonly saveData = { } as { [key: string]: SaveData },
@@ -123,21 +106,21 @@ export default class Chunks extends EventEmitter<Events> {
         tiles    = json.tiles       || (json.tiles = Array(chunkGrids * chunkGrids).fill(0)),
         heights  = json.heights     || (json.heights = tiles.map(t => 0))
 
-      const top = new Mesh('ground/top/' + k, scene)
+      const top = new Mesh('chunk/top/' + k, scene)
       top.position.copyFromFloats(i * chunkSize, 0, j * chunkSize)
 
-      const side = new Mesh('ground/side/' + k, scene)
+      const side = new Mesh('chunk/side/' + k, scene)
       side.material = this.sideMaterial
       side.parent = top
 
       const blocks = { }
 
-      const material = top.material = new StandardMaterial('ground/mat/' + k, scene)
+      const material = top.material = new StandardMaterial('chunk/mat/' + k, scene)
       material.disableLighting = true
       material.emissiveColor = new Color3(1, 1, 1)
 
       const texture = material.diffuseTexture =
-        new DynamicTexture('ground/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
+        new DynamicTexture('chunk/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
 
       this.data[k] = { top, side, blocks, texture, i, j, k }
 
@@ -219,7 +202,7 @@ export default class Chunks extends EventEmitter<Events> {
 
     const keepInBlocks = { } as { [id: string]: boolean }
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
-      const id = ['ground', 'block', u0, u1, v0, v1, h0, h1].join('/')
+      const id = ['chunk', 'block', u0, u1, v0, v1, h0, h1].join('/')
       if (!blocks[id]) {
         const p0 = new Vector3(u0, h0, v0).add(top.position),
           p1 = new Vector3(u1, h1, v1).add(top.position),
@@ -231,9 +214,23 @@ export default class Chunks extends EventEmitter<Events> {
     })
 
     if (Math.min.apply(Math, heights) < 0) {
-      const id = ['ground', 'water', k].join('/')
+      const id = ['chunk', 'water', k].join('/')
       if (!blocks[id]) {
-        const water = blocks[id] = this.getWaterMesh(id)
+        const cacheId = 'cache/chunk/water'
+
+        let cache = scene.getMeshByName(cacheId) as Mesh
+        if (!cache) {
+          // TODO: 
+          const mesh = cache = new Mesh(cacheId, scene)
+          VERTEX_GROUND.applyToMesh(mesh)
+          mesh.scaling.copyFromFloats(chunkSize, 1, chunkSize)
+          mesh.visibility = 0.8
+          mesh.isVisible = false
+          const material = mesh.material = new StandardMaterial('water', scene)
+          material.emissiveColor = new Color3(91/255, 176/255, 226/255)
+        }
+
+        const water = cache.createInstance(id)
         water.position.copyFrom(top.position.add(new Vector3(chunkSize / 2, -0.2, chunkSize / 2)))
       }
       keepInBlocks[id] = true

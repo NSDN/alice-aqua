@@ -66,13 +66,13 @@ function equal<T>(a: T, b: T) {
 
 export function watch<T>(test: (...args: any[]) => T,
     update: (newVal?: T, oldVal?: T) => void, oldVal?: T) {
-  return ((...args: any[]) => {
+  return (...args: any[]) => {
     const newVal = test.apply(null, args)
     if (!equal(newVal, oldVal)) {
       update(newVal, oldVal)
       oldVal = newVal
     }
-  }) as typeof test
+  }
 }
 
 type N = number
