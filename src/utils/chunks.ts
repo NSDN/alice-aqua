@@ -13,6 +13,7 @@ import {
   PhysicsImpostor,
   VertexData,
   AbstractMesh,
+  Quaternion,
 } from '../babylon'
 
 import {
@@ -25,6 +26,8 @@ import {
   getGroundVertexDataWithUV,
   getSideVertexData,
   VERTEX_DUMMY,
+  VERTEX_GROUND,
+  StaticBoxImpostor,
 } from './babylon'
 
 import {
@@ -37,7 +40,7 @@ import {
 export interface ChunkData {
   top: Mesh
   side: Mesh
-  blocks: { [id: string]: AbstractMesh }
+  blocks: { [id: string]: PhysicsImpostor | Mesh | AbstractMesh }
   texture: DynamicTexture
   i: number
   j: number
@@ -73,37 +76,21 @@ export default class Chunks extends EventEmitter<Events> {
   private readonly sideMaterial: StandardMaterial
   private data: { [key: string]: ChunkData } = { }
 
-  private _blockMesh: Mesh
-
   private _waterMesh: Mesh
   private getWaterMesh(id: string) {
     const { chunkSize, scene } = this
     if (!this._waterMesh) {
-      let material
-
-      const WaterMaterial = (BABYLON as any)['WaterMaterial']
-      if (WaterMaterial) {
-        material = new WaterMaterial('water', scene);
-        material.bumpTexture = new Texture('assets/waterbump.png', scene);
-        material.windForce = -5;
-        material.waveHeight = 0.02;
-        material.bumpHeight = 0.02;
-        material.waterColor = new Color3(108/255, 209/255, 239/255);
-        material.colorBlendFactor = 0.5;
-      }
-      else {
-        console.warn('add babylon.waterMaterial.js to enable water material')
-        material = new StandardMaterial('water', scene)
-        material.diffuseColor = new Color3(0.047, 0.23, 0.015)
-      }
-
-      const mesh = this._waterMesh = Mesh.CreateGround(id, chunkSize, chunkSize, 16, scene)
-      mesh.material = material
-      return this._waterMesh
+      // TODO: 
+      const mesh = this._waterMesh = new Mesh('cache/chunk/water', scene)
+      VERTEX_GROUND.applyToMesh(mesh)
+      mesh.scaling.copyFromFloats(chunkSize, 1, chunkSize)
+      mesh.visibility = 0.8
+      mesh.isVisible = false
+      const material = mesh.material = new StandardMaterial('water', scene)
+      material.emissiveColor = new Color3(91/255, 176/255, 226/255)
+      this._waterMesh
     }
-    else {
-      return this._waterMesh.createInstance(id)
-    }
+    return this._waterMesh.createInstance(id)
   }
 
   constructor(readonly scene: Scene,
@@ -234,17 +221,11 @@ export default class Chunks extends EventEmitter<Events> {
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
       const id = ['ground', 'block', u0, u1, v0, v1, h0, h1].join('/')
       if (!blocks[id]) {
-        if (!this._blockMesh) {
-          this._blockMesh = new Mesh('chunks/block/cache', scene)
-          VERTEX_DUMMY.applyToMesh(this._blockMesh)
-        }
-        const mesh = blocks[id] = this._blockMesh.createInstance(id),
-          p0 = new Vector3(u0, h0, v0).add(top.position),
-          p1 = new Vector3(u1, h1, v1).add(top.position)
-        mesh.isVisible = false
-        mesh.position.copyFrom(p0.add(p1).scale(0.5))
-        mesh.scaling.copyFrom(p1.subtract(p0))
-        mesh.physicsImpostor = new PhysicsImpostor(mesh, PhysicsImpostor.BoxImpostor)
+        const p0 = new Vector3(u0, h0, v0).add(top.position),
+          p1 = new Vector3(u1, h1, v1).add(top.position),
+          position = p0.add(p1).scale(0.5),
+          scaling = p1.subtract(p0)
+        blocks[id] = new StaticBoxImpostor({ position, scaling }, scene)
       }
       keepInBlocks[id] = true
     })
@@ -254,7 +235,6 @@ export default class Chunks extends EventEmitter<Events> {
       if (!blocks[id]) {
         const water = blocks[id] = this.getWaterMesh(id)
         water.position.copyFrom(top.position.add(new Vector3(chunkSize / 2, -0.2, chunkSize / 2)))
-        ;(water.material as any).addToRenderList(top)
       }
       keepInBlocks[id] = true
     }

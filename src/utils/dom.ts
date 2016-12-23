@@ -9,16 +9,15 @@ export function appendElement(tag: string, attrs = { } as any, parent = document
 }
 
 export function attachDragable(
-  elem: HTMLElement,
+  elemOrFilter: HTMLElement | ((evt: MouseEvent) => boolean),
   onDown:  (evt: MouseEvent) => void,
   onMove?: (evt: MouseEvent) => void,
-  onUp?:   (evt: MouseEvent) => void,
-  filter?: (evt: MouseEvent) => boolean) {
+  onUp?:   (evt: MouseEvent) => void) {
   
   function handleMouseDown(evt: MouseEvent) {
     window.removeEventListener('mousemove', handleMouseMove)
     window.removeEventListener('mouseup', handleMouseUp)
-    if (!filter || filter(evt)) {
+    if (typeof elemOrFilter !== 'function' || elemOrFilter(evt)) {
       onDown(evt)
       window.addEventListener('mousemove', handleMouseMove)
       window.addEventListener('mouseup', handleMouseUp)
@@ -35,6 +34,7 @@ export function attachDragable(
     onUp && onUp(evt)
   }
 
+  const elem = typeof elemOrFilter !== 'function' ? elemOrFilter : window
   elem.addEventListener('mousedown', handleMouseDown)
   return () => {
     elem.removeEventListener('mousedown', handleMouseDown)

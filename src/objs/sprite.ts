@@ -7,6 +7,7 @@ import {
   AbstractMesh,
   VertexData,
   Material,
+  InstancedMesh,
 } from '../babylon'
 
 import {
@@ -18,9 +19,7 @@ import {
   ArrayHash
 } from '../utils'
 
-const meshCache = new ArrayHash<Material, { [key: string]: Mesh }>()
-
-export default class Sprite extends Mesh {
+export default class Sprite extends InstancedMesh {
   readonly spriteBody: AbstractMesh
 
   get spriteHeight() {
@@ -33,7 +32,7 @@ export default class Sprite extends Mesh {
     this.spriteBody.scaling.copyFromFloats(width, height, width)
   }
 
-  constructor(name: string, scene: Scene, readonly opts: {
+  constructor(name: string, source: Mesh, readonly opts: {
     material: Material
     texSize: number
     offsetX: number
@@ -41,14 +40,15 @@ export default class Sprite extends Mesh {
     width: number
     height: number
   }) {
-    super(name, scene)
+    super(name, source)
 
     const { material, texSize, offsetX, offsetY, width, height } = opts,
-      cache = meshCache.get(material) || meshCache.set(material, { }),
-      key = ['sprite', texSize, offsetX, offsetY].join('/')
+      cacheId = ['cache/sprite', texSize, offsetX, offsetY].join('/'),
+      scene = source.getScene()
 
-    if (!cache[key]) {
-      const sprite = cache[key] = new Mesh(key + '/cache', scene),
+    let cache = scene.getMeshByName(cacheId) as Mesh
+    if (!cache) {
+      const sprite = cache = new Mesh(cacheId, scene),
         u0 = offsetX / texSize,
         v0 = 1 - (offsetY + height) / texSize,
         u1 = u0 + width / texSize,
@@ -60,7 +60,7 @@ export default class Sprite extends Mesh {
       sprite.isVisible = false
     }
 
-    const sprite = this.spriteBody = cache[key].createInstance(name + '/sprite')
+    const sprite = this.spriteBody = cache.createInstance(name + '/sprite')
     sprite.billboardMode = Mesh.BILLBOARDMODE_Y
     sprite.parent = this
   }

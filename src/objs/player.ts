@@ -68,7 +68,6 @@ export default class Player extends Mesh {
       minimumY: -10,
     }, opts)
 
-    // physics
     this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.ParticleImpostor, {
       mass: opts.mass,
       friction: opts.friction,

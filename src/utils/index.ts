@@ -55,15 +55,24 @@ export function memo<F extends Function>(fn: F) {
   } as any as F
 }
 
+function equal<T>(a: T, b: T) {
+  if (Array.isArray(a) && Array.isArray(b)) {
+    return a.every((_, i) => a[i] === b[i])
+  }
+  else {
+    return a === b
+  }
+}
+
 export function watch<T>(test: (...args: any[]) => T,
     update: (newVal?: T, oldVal?: T) => void, oldVal?: T) {
-  return (...args: any[]) => {
+  return ((...args: any[]) => {
     const newVal = test.apply(null, args)
-    if (newVal !== oldVal) {
+    if (!equal(newVal, oldVal)) {
       update(newVal, oldVal)
       oldVal = newVal
     }
-  }
+  }) as typeof test
 }
 
 type N = number

@@ -5,6 +5,7 @@ import {
   Mesh,
   Color3,
   StandardMaterial,
+  PhysicsImpostor,
 } from '../babylon'
 
 import {
@@ -174,5 +175,14 @@ export class WireframeNoLightingMaterial extends StandardMaterial {
     this.emissiveColor = color || new Color3(1, 1, 1)
     this.wireframe = true
     this.disableLighting = true
+  }
+}
+
+export class StaticBoxImpostor extends PhysicsImpostor {
+  constructor(opts: { position: Vector3, scaling: Vector3, rotation?: Vector3 }, scene: Scene) {
+    // https://github.com/BabylonJS/Babylon.js/blob/master/src/Physics/babylon.physicsImpostor.ts#L174
+    PhysicsImpostor.DEFAULT_OBJECT_SIZE.copyFrom(opts.scaling)
+    // https://github.com/BabylonJS/Babylon.js/blob/master/src/Physics/babylon.physicsImpostor.ts#L70
+    super(opts as any, PhysicsImpostor.BoxImpostor, { mass: 0 }, scene)
   }
 }

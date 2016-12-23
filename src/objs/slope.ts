@@ -5,12 +5,14 @@ import {
   StandardMaterial,
   Color3,
   Vector3,
+  Quaternion,
   AbstractMesh,
   VertexData,
   Material,
   Tags,
   Ray,
   PhysicsImpostor,
+  InstancedMesh,
 } from '../babylon'
 
 import {
@@ -20,82 +22,79 @@ import {
   VERTEX_DUMMY,
   VERTEX_BOX,
   WireframeNoLightingMaterial,
+  StaticBoxImpostor,
 } from '../utils/babylon'
 
 import {
   ArrayHash,
   debounce,
+  watch,
 } from '../utils'
 
-const groundCache = new ArrayHash<Scene, Mesh>()
-
-export default class Slope extends Mesh {
+export default class Slope extends InstancedMesh {
   static readonly TARGET_TAG = 'slope-target'
-  static readonly BLOCK_TAG = 'slope-block'
+  static readonly GROUND_TAG = 'slope-ground'
+  static readonly CACHE_ID = 'cache/slope/ground'
 
   private groundMesh: AbstractMesh
-  private targetMesh: AbstractMesh
-  private blockMesh: Mesh
+  private groundImpostor: PhysicsImpostor
 
-  get targetName() {
-    if (this.targetMesh) {
-      return this.targetMesh.name
+  public direction: 'x' | 'z' = 'x'
+  public targetName: string = ''
+
+  private createGroundMesh() {
+    const scene = this.getScene(),
+      cacheId = 'cache/slope/ground'
+
+    let cache = scene.getMeshByName(cacheId) as Mesh
+    if (!cache) {
+      const ground = new Mesh(cacheId, scene)
+      VERTEX_BOX.applyToMesh(ground)
+      ground.isVisible = false
+      const material = ground.material = new StandardMaterial(cacheId + '/mat', scene)
+      material.disableLighting = true
+      material.emissiveColor = new Color3(0.8, 0.8, 0.8)
+      cache = ground
     }
+
+    const groundMesh = cache.createInstance(this.name + '/ground')
+    groundMesh.parent = this
+
+    Tags.AddTagsTo(groundMesh, Slope.GROUND_TAG)
+
+    return groundMesh
   }
 
-  set targetName(val: string) {
-    this.targetMesh = val && this.scene.getMeshByName(val) as Mesh
+  private clearGroundAndImpostor() {
+    this.groundMesh && this.groundMesh.dispose()
+    this.groundImpostor && this.groundImpostor.dispose()
+    this.groundMesh = this.groundImpostor = null
+  }
 
-    const material = this.material as WireframeNoLightingMaterial
-    material.emissiveColor = this.targetMesh ? new Color3(0.8, 0.8, 0.8) : Color3.Black()
-
-    this.groundMesh.isVisible = !!this.targetMesh
-    if (this.blockMesh && !this.targetMesh) {
-      this.blockMesh.dispose()
-      this.blockMesh = null
+  private updateGroundImpostor = debounce(() => {
+    this.groundImpostor && this.groundImpostor.dispose()
+    this.groundImpostor = null
+    if (this.groundMesh) {
+      const position = this.groundMesh.getAbsolutePosition().clone(),
+        rotation = this.groundMesh.rotation.clone(),
+        scaling = this.groundMesh.scaling.clone()
+      this.groundImpostor = new StaticBoxImpostor({ position, rotation, scaling }, this.getScene())
     }
-  }
-
-  getGroundMesh() {
-    return this.groundMesh
-  }
-
-  private getDirection() {
-    const dx = this.targetMesh.position.x - this.position.x,
-      origin = this.position.add(new Vector3(dx / 2, 0.1, 0)),
-      ray = new Ray(origin, new Vector3(0, -1, 0)),
-      pick = this.scene.pickWithRay(ray, mesh => true, false)
-    return pick.hit && pick.pickedPoint.y === this.position.y ? 'z' : 'x'
-  }
-
-  private updateBlockMesh = debounce(() => {
-    this.blockMesh && this.blockMesh.dispose()
-    const block = this.blockMesh = new Mesh(this.name + '/box', this.scene)
-    VERTEX_DUMMY.applyToMesh(block)
-    block.isVisible = false
-    block.position.copyFrom(this.groundMesh.getAbsolutePosition())
-    block.scaling.copyFrom(this.groundMesh.scaling)
-    block.rotation.copyFrom(this.groundMesh.rotation)
-    block.physicsImpostor = new PhysicsImpostor(block, PhysicsImpostor.BoxImpostor)
-    block.physicsImpostor.registerAfterPhysicsStep(impostor => {
-      this.isDisposed() && setImmediate(() => block.dispose())
-    })
-    Tags.AddTagsTo(block, Slope.BLOCK_TAG)
   }, 500)
 
-  private updateGroundMesh() {
-    const ground = this.groundMesh,
-      p0 = Vector3Map(this.position, Math.floor),
-      p1 = Vector3Map(this.targetMesh.position, Math.floor),
+  private updateGroundMesh(target: AbstractMesh) {
+    const p0 = Vector3Map(this.position, Math.floor),
+      p1 = Vector3Map(target.position, Math.floor),
       min = Vector3.Minimize(p0, p1),
       max = Vector3.Maximize(p0, p1).add(new Vector3(1, 0, 1)),
       delta = max.subtract(min),
       center = max.add(min).scale(0.5),
-      [dir, axis] = this.getDirection() === 'z' ? 'zx' : 'xz'
+      [dir, axis] = this.direction === 'z' ? 'zx' : 'xz'
     if (delta[dir] > 2) {
       const dist = delta[dir] - 2,
         thickness = 1,
-        angle = Math.atan2(delta.y, dist)
+        angle = Math.atan2(delta.y, dist),
+        ground = this.groundMesh || (this.groundMesh = this.createGroundMesh())
       ground.position.copyFrom(center.subtract(this.position))
       ground.position.y -= 0.5 * thickness / Math.cos(angle)
       ground.rotation[dir] = 0
@@ -104,44 +103,43 @@ export default class Slope extends Mesh {
       ground.scaling[axis] = delta[axis]
       ground.scaling.y = Math.sqrt(dist * dist + delta.y * delta.y)
       ground.scaling.y += thickness * delta.y / dist
-      this.updateBlockMesh()
+      this.updateGroundImpostor()
     }
     else {
-      ground.scaling.copyFromFloats(0, 0, 0)
+      this.clearGroundAndImpostor()
     }
   }
 
-  constructor(name: string, readonly scene: Scene) {
-    super(name, scene)
-    VERTEX_GROUND.applyToMesh(this)
-    this.material = new WireframeNoLightingMaterial(name + '/mat', scene, Color3.Black())
+  constructor(name: string, source: Mesh) {
+    super(name, source)
 
-    let groundCached = groundCache.get(scene)
-    if (!groundCached) {
-      const ground = new Mesh('slope/ground/cache', scene)
-      ground.isVisible = false
-      VERTEX_BOX.applyToMesh(ground)
-      const material = ground.material = new StandardMaterial('slope/ground/mat', scene)
-      material.disableLighting = true
-      material.emissiveColor = new Color3(0.8, 0.8, 0.8)
-      groundCached = groundCache.set(scene, ground)
-    }
-    this.groundMesh = groundCached.createInstance(name + '/ground')
-    this.groundMesh.isVisible = false
-    this.groundMesh.scaling.copyFromFloats(0, 0, 0)
-    this.groundMesh.parent = this
+    const scene = source.getScene()
 
-    let lastPositions: string
-    this.registerBeforeRender(mesh => {
-      if (this.targetMesh) {
-        const p0 = Vector3Map(this.position, Math.floor),
-          p1 = Vector3Map(this.targetMesh.position, Math.floor),
-          positions = [p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, this.targetMesh.name].join('/')
-        if (positions !== lastPositions && (lastPositions = positions)) {
-          this.updateGroundMesh()
-        }
+    const watchTargetMeshChange = watch((targetMesh: AbstractMesh) => {
+      const p0 = Vector3Map(this.position, Math.floor),
+        p1 = Vector3Map(targetMesh.position, Math.floor)
+      return [p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, this.direction]
+    }, () => {
+      this.updateGroundMesh(targetMesh)
+    })
+
+    let targetMesh: AbstractMesh, listener: () => void
+    scene.registerBeforeRender(listener = () => {
+      if (!targetMesh || targetMesh.name !== this.targetName) {
+        targetMesh = this.targetName && scene.getMeshByName(this.targetName)
+      }
+      if (targetMesh) {
+        watchTargetMeshChange(targetMesh)
+      }
+      else if (this.groundMesh || this.groundImpostor) {
+        this.clearGroundAndImpostor()
       }
     })
+
+    this.onDispose = () => {
+      scene.unregisterBeforeRender(listener)
+      this.clearGroundAndImpostor()
+    }
 
     Tags.AddTagsTo(this, Slope.TARGET_TAG)
   }

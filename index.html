@@ -21,6 +21,9 @@
       width: 100%;
       clear: both;
     }
+    .float-right {
+      float: right;
+    }
 
     .show-debug-layer {
       cursor: pointer;
@@ -105,7 +108,7 @@
 <body>
   <div class="ui-toolbar">
     <div class="ui-panels">
-      <div class="ui-panel panel-brushes">
+      <div class="hidden ui-panel panel-brushes">
         <div class="ui-brushes">
           <div class="ui-list-item" index="-1">
             <span title="use tile from start"><i class="fa fa-question"></i></span>
@@ -115,19 +118,17 @@
           </div>
         </div>
       </div>
-      <div class="ui-panel panel-objects">
+      <div class="hidden ui-panel panel-objects">
         <div class="ui-classes"></div>
       </div>
-      <div class="ui-panel panel-config">
-        <p>
-          <button id="configDownloadMap">download map</button>
-          <input id="configUploadMap" type="file" value="upload" />
-        </p>
-        <p>
-          <label>
-            <input type="checkbox" id="configRotateCamera" /> rotate camera
-          </label>
-        </p>
+      <div class="hidden ui-panel panel-config">
+        <button id="configDownloadMap">download map</button>
+        <button id="configUploadMap">upload map</button>
+        <button id="configResetMap">reset map</button>
+        <br />
+        <label>
+          <input type="checkbox" id="configRotateCamera" /> rotate camera
+        </label>
       </div>
     </div>
   </div>
@@ -139,7 +140,7 @@
         <option>config</option>
         <option>play</option>
       </select>
-      <span class="ui-panel panel-brushes">
+      <span class="hidden ui-panel panel-brushes">
         <select class="ui-brush-height">
           <option value="">--</option>
           <option value="0">flatten</option>
@@ -148,12 +149,15 @@
         </select>
         ctrl &amp; drag to draw, shift &amp; drag to fill
       </span>
-      <span class="ui-panel panel-objects">
+      <span class="hidden ui-panel panel-objects">
         ctrl &amp; click to put, shift &amp; drag to select
       </span>
-      <label class="show-debug-layer">
-        <input type="checkbox" id="showDebugLayer" /> debug layer
-      </label>
+      <div class="float-right">
+        <span id="fpsCounterText"></span> /
+        <label>
+          <input type="checkbox" id="showDebugLayer" /> debug layer
+        </label>
+      </div>
     </div>
   </div>
   <div id="objectToolbar" class="object-toolbar">

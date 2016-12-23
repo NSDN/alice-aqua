@@ -19,7 +19,9 @@ export interface ClassDefine {
   height: number
 }
 
-export class UI extends EventEmitter<'tile-selected' | 'panel-changed'> {
+type Events = 'tile-selected' | 'panel-changed'
+
+export class UI extends EventEmitter<Events> {
   constructor(tiles: TileDefine[], classes: ClassDefine[],
       private panel = document.querySelector('.ui-panel-selector') as HTMLSelectElement,
       private brushHeight = document.querySelector('.ui-brush-height') as HTMLSelectElement) {
