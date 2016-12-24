@@ -13,7 +13,7 @@ export function attachDragable(
   onDown:  (evt: MouseEvent) => void,
   onMove?: (evt: MouseEvent) => void,
   onUp?:   (evt: MouseEvent) => void) {
-  
+
   function handleMouseDown(evt: MouseEvent) {
     window.removeEventListener('mousemove', handleMouseMove)
     window.removeEventListener('mouseup', handleMouseUp)

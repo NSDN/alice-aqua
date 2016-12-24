@@ -5,7 +5,6 @@ import ObjectGenerator from './objs/object-generator'
 import {
   Engine,
   Scene,
-  ScreenSpaceCanvas2D,
   Vector3,
   ArcRotateCamera,
   SSAORenderingPipeline,
@@ -27,7 +26,6 @@ import {
 } from './utils/dom'
 
 import Chunks, {
-  ChunkData,
   SaveData as ChunkSaveData
 } from './utils/chunks'
 
@@ -67,7 +65,7 @@ const OBJECT_BINDER = {
     const attrs = { type: 'range', min: 1, max: sprite.opts.height / 32 * 4, step: 1 },
       range = appendConfigItem('height: ', 'input', attrs, container) as HTMLInputElement
     range.value = sprite.spriteHeight as any
-    range.addEventListener('change', evt => save({ spriteHeight: parseFloat(range.value) }))
+    range.addEventListener('change', _ => save({ spriteHeight: parseFloat(range.value) }))
   },
   slope(container: HTMLElement, slope: Slope, save: (args: Partial<Slope>) => void) {
     const tarSel = appendConfigItem('target: ', 'select', { }, container) as HTMLSelectElement
@@ -77,13 +75,13 @@ const OBJECT_BINDER = {
         appendElement('option', { innerHTML: mesh.name }, tarSel)
     })
     tarSel.value = slope.targetName
-    tarSel.addEventListener('change', evt => save({ targetName: tarSel.value }))
-    
+    tarSel.addEventListener('change', _ => save({ targetName: tarSel.value }))
+
     const dirSel = appendConfigItem('direction: ', 'select', { }, container) as HTMLSelectElement
     appendElement('option', { innerHTML: 'x', value: 'x' }, dirSel)
     appendElement('option', { innerHTML: 'z', value: 'z' }, dirSel)
     dirSel.value = slope.direction
-    dirSel.addEventListener('change', evt => save({ direction: dirSel.value as any }))
+    dirSel.addEventListener('change', _ => save({ direction: dirSel.value as any }))
   },
 }
 
@@ -196,8 +194,7 @@ export function createScene() {
   const attrs = { className: 'full-size', tabIndex: -1 },
     elem = appendElement('canvas', attrs) as HTMLCanvasElement,
     engine = new Engine(elem, true),
-    scene = new Scene(engine),
-    canvas = new ScreenSpaceCanvas2D(scene, { id: 'canvas' })
+    scene = new Scene(engine)
 
   scene.enablePhysics(new Vector3(0, -3, 0))
   scene.workerCollisions = true
@@ -215,7 +212,7 @@ export function createScene() {
   camera.lowerBetaLimit = Math.PI * 0.15
   camera.upperBetaLimit = Math.PI * 0.45
 
-  const ssao = new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
+  new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
 
   return { scene, camera }
 }
@@ -228,7 +225,7 @@ export function createKeyStates() {
   const nameOfKeyCode = { } as any
   for (const key in KEY_MAP) {
     const val = KEY_MAP[key],
-      name = typeof val === 'string' ? val.charCodeAt(0): val
+      name = typeof val === 'string' ? val.charCodeAt(0) : val
     nameOfKeyCode[name] = key
   }
 
@@ -302,7 +299,7 @@ export async function loadSavedMap() {
     const chunksData = chunks.serialize(),
       objectsData = { } as typeof objectsToSave
     chunks.scene.getMeshesByTags(TAGS.object).forEach(obj => {
-      const { clsId, args } = objectsToSave[obj.name],  
+      const { clsId, args } = objectsToSave[obj.name],
         { x, y, z } = obj.position
       objectsData[obj.name] = { args, clsId, x, y, z }
     })

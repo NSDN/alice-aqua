@@ -7,7 +7,6 @@ import {
 } from './utils/chunks'
 
 import {
-  ArrayHash,
   EventEmitter,
 } from './utils'
 
@@ -27,7 +26,7 @@ export class UI extends EventEmitter<Events> {
       private brushHeight = document.querySelector('.ui-brush-height') as HTMLSelectElement) {
     super()
 
-    this.panel.addEventListener('change', evt => {
+    this.panel.addEventListener('change', _ => {
       for (const elem of document.querySelectorAll('.ui-panel')) {
         elem.classList.add('hidden')
       }
@@ -66,7 +65,7 @@ export class UI extends EventEmitter<Events> {
       canvas.getContext('2d').drawImage(src, offsetX, offsetY, width, height, 0, 0, width, height)
     })
 
-    ;[tileList, clsList].forEach(elem => {
+    ; [tileList, clsList].forEach(elem => {
       if (!elem.querySelector('.ui-list-item.selected')) {
         const item = elem.querySelector('.ui-list-item')
         item && item.classList.add('selected')
@@ -74,7 +73,7 @@ export class UI extends EventEmitter<Events> {
     })
 
     for (const elem of document.querySelectorAll('.ui-list-item')) {
-      elem.addEventListener('click', evt => {
+      elem.addEventListener('click', _ => {
         for (const selected of elem.parentElement.querySelectorAll('.ui-list-item.selected')) {
           selected.classList.remove('selected')
         }

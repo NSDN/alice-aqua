@@ -1,32 +1,21 @@
 import {
   Mesh,
-  Scene,
-  Texture,
   StandardMaterial,
   Color3,
   Vector3,
-  Quaternion,
   AbstractMesh,
-  VertexData,
-  Material,
   Tags,
-  Ray,
   PhysicsImpostor,
   InstancedMesh,
 } from '../babylon'
 
 import {
   Vector3Map,
-  getSideVertexData,
-  VERTEX_GROUND,
-  VERTEX_DUMMY,
   VERTEX_BOX,
-  WireframeNoLightingMaterial,
   StaticBoxImpostor,
 } from '../utils/babylon'
 
 import {
-  ArrayHash,
   debounce,
   watch,
 } from '../utils'

@@ -2,16 +2,10 @@ import {
   VertexData,
   Scene,
   Vector3,
-  Mesh,
   Color3,
   StandardMaterial,
   PhysicsImpostor,
 } from '../babylon'
-
-import {
-  ArrayHash,
-  throttle,
-} from './'
 
 export function Vector3Map(vec: Vector3, fn: (x: number) => number) {
   return new Vector3(fn(vec.x), fn(vec.y), fn(vec.z))
@@ -122,19 +116,19 @@ const SIDE_IDX = [
   7, 1, 0, 7, 0, 6,
 ]
 
-export function getSideVertexData(u0: N, u1: N, v0: N, v1: N, h0: N, h1: N, sides: string) {
+export function getSideVertexData(_u0: N, _u1: N, _v0: N, _v1: N, _h0: N, _h1: N, sides: string) {
   const [vs, fs] = SIDE_VERTEX_MAP[sides],
     positions = [ ] as N[],
     normals = [ ] as N[],
     indices = [ ] as N[]
   vs.forEach(i => {
-    for (var n = i * 3, j = n; j < n + 3; j ++) {
+    for (let n = i * 3, j = n; j < n + 3; j ++) {
       positions.push(arguments[ SIDE_POS[j] ])
       normals.push(SIDE_NORM[j])
     }
   })
   fs.forEach(i => {
-    for (var n = i * 6, j = n; j < n + 6; j ++) {
+    for (let n = i * 6, j = n; j < n + 6; j ++) {
       indices.push(SIDE_IDX[j])
     }
   })

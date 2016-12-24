@@ -1,19 +1,14 @@
 import {
   Scene,
   Mesh,
-  MeshBuilder,
   Texture,
   DynamicTexture,
   StandardMaterial,
-  Vector2,
   Vector3,
-  Vector4,
   Color3,
-  Color4,
   PhysicsImpostor,
   VertexData,
   AbstractMesh,
-  Quaternion,
 } from '../babylon'
 
 import {
@@ -22,10 +17,8 @@ import {
 } from './tiles'
 
 import {
-  WireframeNoLightingMaterial,
   getGroundVertexDataWithUV,
   getSideVertexData,
-  VERTEX_DUMMY,
   VERTEX_GROUND,
   StaticBoxImpostor,
 } from './babylon'
@@ -40,14 +33,14 @@ import {
 export interface ChunkData {
   top: Mesh
   side: Mesh
-  blocks: { [id: string]: PhysicsImpostor | Mesh | AbstractMesh }
+  blocks: { [id: string]: PhysicsImpostor | AbstractMesh }
   texture: DynamicTexture
   i: number
   j: number
   k: string
 }
 
-export interface SaveData{
+export interface SaveData {
   tiles: number[],
   heights: number[]
 }
@@ -93,7 +86,7 @@ export default class Chunks extends EventEmitter<Events> {
   }
 
   private getChunkData(m: number, n: number) {
-    const { chunkSize, chunkGrids, gridSize, scene, textureSize, texturePixel } = this,
+    const { chunkSize, chunkGrids, scene, textureSize } = this,
       i = Math.floor(m / chunkGrids),
       j = Math.floor(n / chunkGrids),
       k = [i, j].join('/'),
@@ -102,9 +95,9 @@ export default class Chunks extends EventEmitter<Events> {
       c = u * chunkGrids + v
 
     if (!this.data[k]) {
-      const json = this.saveData[k] || (this.saveData[k] = { } as SaveData),
-        tiles    = json.tiles       || (json.tiles = Array(chunkGrids * chunkGrids).fill(0)),
-        heights  = json.heights     || (json.heights = tiles.map(t => 0))
+      const json = this.saveData[k] || (this.saveData[k] = { } as SaveData)
+      json.tiles   || (json.tiles = Array(chunkGrids * chunkGrids).fill(0)),
+      json.heights || (json.heights = json.tiles.map(_ => 0))
 
       const top = new Mesh('chunk/top/' + k, scene)
       top.position.copyFromFloats(i * chunkSize, 0, j * chunkSize)
@@ -126,7 +119,7 @@ export default class Chunks extends EventEmitter<Events> {
 
       setImmediate(() => {
         for (let u = 0; u < chunkGrids; u ++) {
-          for (let v = 0; v < chunkGrids;v ++) {
+          for (let v = 0; v < chunkGrids; v ++) {
             this.updateTexture(i * chunkGrids + u, j * chunkGrids + v)
           }
         }
@@ -143,13 +136,13 @@ export default class Chunks extends EventEmitter<Events> {
   }
 
   private updateTexture(m: number, n: number) {
-    const { texture, i, j, u, v, t, h } = this.getChunkData(m, n),
+    const { texture, u, v, t, h } = this.getChunkData(m, n),
       { texturePixel, textureSize } = this,
       dc = texture.getContext(),
       dx = u * texturePixel,
       dy = textureSize - (v + 1) * texturePixel
 
-    const { src, offsetX, offsetY, size, isAutoTile } = this.tiles[0]
+    const { src, offsetX, offsetY, size } = this.tiles[0]
     dc.drawImage(src, offsetX, offsetY, size, size, dx, dy, size, size)
 
     if (this.tiles[t]) {
@@ -173,7 +166,7 @@ export default class Chunks extends EventEmitter<Events> {
       blks = getBlocksFromHeightMap(heights, chunkGrids)
 
     const gvd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] }
-    blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
+    blks.forEach(([u0, u1, v0, v1, _, h1]) => {
       const i0 = gvd.positions.length / 3,
         vd = getGroundVertexDataWithUVMemo(u0, u1, v0, v1, h1)
       push.apply(gvd.positions, vd.positions.map(p => p * gridSize))
@@ -187,10 +180,10 @@ export default class Chunks extends EventEmitter<Events> {
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
       const g = chunkGrids,
         sides = [
-          v1 === g || range(u0, u1).some(u => heights[u * g + v1]     < h1) ? 1: 0,
-          u0 === 0 || range(v0, v1).some(v => heights[(u0-1) * g + v] < h1) ? 1: 0,
-          v0 === 0 || range(u0, u1).some(u => heights[u * g + (v0-1)] < h1) ? 1: 0,
-          u1 === g || range(v0, v1).some(v => heights[u1 * g + v]     < h1) ? 1: 0,
+          v1 === g || range(u0, u1).some(u => heights[u * g + v1]       < h1) ? 1 : 0,
+          u0 === 0 || range(v0, v1).some(v => heights[(u0 - 1) * g + v] < h1) ? 1 : 0,
+          v0 === 0 || range(u0, u1).some(u => heights[u * g + (v0 - 1)] < h1) ? 1 : 0,
+          u1 === g || range(v0, v1).some(v => heights[u1 * g + v]       < h1) ? 1 : 0,
         ].join(''),
         i0 = svd.positions.length / 3,
         vd = getSideVertexDataMemo(u0, u1, v0, v1, h0, h1, sides)
@@ -227,7 +220,7 @@ export default class Chunks extends EventEmitter<Events> {
           mesh.visibility = 0.8
           mesh.isVisible = false
           const material = mesh.material = new StandardMaterial('water', scene)
-          material.emissiveColor = new Color3(91/255, 176/255, 226/255)
+          material.emissiveColor = new Color3(91 / 255, 176 / 255, 226 / 255)
         }
 
         const water = cache.createInstance(id)
@@ -309,7 +302,7 @@ export default class Chunks extends EventEmitter<Events> {
 
   getPixel(m: number, n: number) {
     [m, n] = [Math.floor(m / this.gridSize), Math.floor(n / this.gridSize)]
-    const { k, c, t, h } = this.getChunkData(m, n)
+    const { t, h } = this.getChunkData(m, n)
     return { t, h }
   }
 

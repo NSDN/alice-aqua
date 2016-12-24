@@ -1,9 +1,5 @@
 import {
   Mesh,
-  Scene,
-  Texture,
-  StandardMaterial,
-  Color3,
   AbstractMesh,
   VertexData,
   Material,
@@ -11,13 +7,8 @@ import {
 } from '../babylon'
 
 import {
-  VERTEX_PLANE,
   getPlaneVertexDataWithUV,
 } from '../utils/babylon'
-
-import {
-  ArrayHash
-} from '../utils'
 
 export default class Sprite extends InstancedMesh {
   readonly spriteBody: AbstractMesh

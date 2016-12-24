@@ -1,14 +1,14 @@
 export class ArrayHash<K, V> {
   data = [ ] as [K, V][]
   get(key: K) {
-    const find = this.data.filter(([k, v]) => k === key).pop()
+    const find = this.data.filter(([k]) => k === key).pop()
     return find && find[1]
   }
   del(key: K) {
-    this.data = this.data.filter(([k, v]) => k !== key)
+    this.data = this.data.filter(([k]) => k !== key)
   }
   set(key: K, val: V) {
-    const find = this.data.filter(([k, v]) => k === key).pop()
+    const find = this.data.filter(([k]) => k === key).pop()
     if (find) {
       find[1] = val
     }
@@ -110,10 +110,10 @@ export function getBlocksFromHeightMap(heights: number[], n: number) {
     while (i1 < n && !find2(a, b, n, i1, i1 + 1, j0, j0 + 1, isNotFlat)) i1 ++
     while (j1 < n && !find2(a, b, n, i0, i1,     j1, j1 + 1, isNotFlat)) j1 ++
 
-    let h1 = 1/0
-    each2(a, b, n, i0, i1, j0, j1, (a, _, c) => h1 = Math.min(h1, a))
-    each2(a, b, n, i0, i1, j0, j1, (a, _, c) => b[c] = h1)
-    
+    let h1 = 1 / 0
+    each2(a, b, n, i0, i1, j0, j1, (a, _) => h1 = Math.min(h1, a))
+    each2(a, b, n, i0, i1, j0, j1, (_, __, c) => b[c] = h1)
+
     blocks.push([i0, i1, j0, j1, h0, h1])
     f = find2(a, b, n, 0, n, 0, n, (a, b) => a > b)
   }

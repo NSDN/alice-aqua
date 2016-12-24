@@ -3,6 +3,8 @@
         "module": "commonjs",
         "target": "es6",
         "noImplicitAny": false,
+        "noUnusedParameters": true,
+        "noUnusedLocals": true,
         "sourceMap": true
     },
     "include": [

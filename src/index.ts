@@ -1,10 +1,9 @@
 import Player from './objs/player'
-import Sprite from './objs/sprite'
 import Cursor from './objs/cursor'
 import Slope from './objs/slope'
 import ObjectGenerator from './objs/object-generator'
 
-import Chunks, { ChunkData, SaveData as ChunkSaveData } from './utils/chunks'
+import Chunks, { ChunkData } from './utils/chunks'
 
 import {
   Mesh,
@@ -34,7 +33,6 @@ import {
 
 import {
   watch,
-  debounce,
 } from './utils'
 
 import {
@@ -43,13 +41,7 @@ import {
   LocationSearch,
 } from './utils/dom'
 
-import {
-  WireframeNoLightingMaterial,
-  getBoundingVertexData,
-  VERTEX_GROUND,
-} from './utils/babylon'
-
-;(async function() {
+; (async function() {
   const { scene, camera } = createScene(),
     { keys } = createKeyStates(),
     map = await loadSavedMap(),
@@ -64,7 +56,7 @@ import {
   // use shift to draw rectangles
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'brushes' && !keys.ctrlKey && keys.shiftKey
-  }, evt => {
+  }, _ => {
     const { t, h } = ui.selectedTilePixel,
       { x, z } = cursor.hover
     selectedPixel = {
@@ -74,13 +66,13 @@ import {
 
     lastSelection.scaling.copyFromFloats(1, 1, 1)
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
-  }, evt => {
+  }, _ => {
     const { minimum, maximum } = cursor
     lastSelection.position.copyFrom(maximum.add(minimum).scale(0.5))
     lastSelection.scaling.copyFrom(maximum.subtract(minimum))
-  }, evt => {
+  }, _ => {
     const { minimum, maximum } = cursor,
-      { t, h } = ui.selectedTilePixel,
+      { h } = ui.selectedTilePixel,
       pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) }
     for (let m = minimum.x; m < maximum.x; m ++) {
       for (let n = minimum.z; n < maximum.z; n ++) {
@@ -93,7 +85,7 @@ import {
   // use ctrl key to draw pixels
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'brushes' && keys.ctrlKey && !keys.shiftKey
-  }, evt => {
+  }, _ => {
     const { t, h } = ui.selectedTilePixel,
       { x, z } = cursor.hover
     selectedPixel = {
@@ -104,23 +96,23 @@ import {
 
     lastSelection.scaling.copyFromFloats(1, 1, 1)
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
-  }, evt => {
+  }, _ => {
     const { x, z } = cursor.hover
     chunks.setPixel(x, z, selectedPixel)
 
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
-  }, evt => {
+  }, _ => {
   })
 
   let selectedObject: AbstractMesh
   // use shift key to select objects
-  attachDragable(evt => {
+  attachDragable(_ => {
     return ui.activePanel === 'objects' && !keys.ctrlKey && keys.shiftKey
-  }, evt => {
+  }, _ => {
     // mouse down
-  }, evt => {
+  }, _ => {
     // mouse move
-  }, evt => {
+  }, _ => {
     const box = new BoundingBox(cursor.minimum, cursor.maximum),
       objs = scene.getMeshesByTags(TAGS.object)
     selectedObject = objs.find(mesh => box.intersectsPoint(mesh.position))
@@ -129,7 +121,7 @@ import {
   // use ctrl key to create objects
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'objects' && keys.ctrlKey && !keys.shiftKey
-  }, evt => {
+  }, _ => {
     const box = new BoundingBox(cursor.minimum, cursor.maximum),
       objs = scene.getMeshesByTags(TAGS.object)
     selectedObject = objs.find(mesh => box.intersectsPoint(mesh.position))
@@ -147,9 +139,9 @@ import {
 
       selectedObject = object
     }
-  }, evt => {
+  }, _ => {
     selectedObject.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0, 0.5)))
-  }, evt => {
+  }, _ => {
     map.saveDebounced(chunks, objectsToSave)
   })
 
@@ -160,10 +152,11 @@ import {
     scene.getMeshesByTags(TAGS.object).forEach(mesh => {
       const { x, y, z } = mesh.position
       if (box.intersectsPoint(new Vector3(x, pos.y, z))) {
-        const origin = new Vector3(x, y + 0.1, z),
+        const height = chunks.getPixel(x, z).h,
+          origin = new Vector3(x, Math.max(y, height) + 0.1, z),
           direction = new Vector3(0, -1, 0),
           picked = scene.pickWithRay(new Ray(origin, direction), cursor.pickFilter)
-        mesh.position.y = picked.hit ? picked.pickedPoint.y : chunks.getPixel(x, z).h
+        mesh.position.y = picked.hit ? picked.pickedPoint.y : height
       }
     })
     map.saveDebounced(chunks, objectsToSave)
@@ -207,8 +200,8 @@ import {
           chunks.setPixel(m, n, pixel)
         }
       }
+      cameraTarget.copyFrom(lastSelection.position)
     }
-    cameraTarget.copyFrom(lastSelection.position)
     canvas.focus()
   })
 
@@ -216,13 +209,13 @@ import {
   ui.addEventListener('panel-changed', (oldPanel: string) => {
     const removeObjTag = 'remove-exit-play-mode'
     if (ui.activePanel === 'play') {
-      scene.getMeshesByTags(TAGS.object, mesh => mesh.isVisible = false)
+      scene.getMeshesByTags(TAGS.object).forEach(mesh => mesh.isVisible = false)
 
       const { x, z } = camera.target,
         { h } = chunks.getPixel(x, z)
       playerObject = new Player('remilia', scene, keys)
       playerObject.position.copyFromFloats(x, h + 2, z)
-      playerObject.spriteBody.registerBeforeRender(mesh => {
+      playerObject.spriteBody.registerBeforeRender(_ => {
         playerObject.updateForward(cameraDirection)
         cameraTarget.copyFrom(playerObject.position)
       })
@@ -235,26 +228,28 @@ import {
       })
     }
     if (oldPanel === 'play') {
-      scene.getMeshesByTags(TAGS.object, mesh => mesh.isVisible = true)
-      scene.getMeshesByTags(removeObjTag, mesh => mesh.dispose())
+      scene.getMeshesByTags(removeObjTag).forEach(mesh => mesh.dispose())
+      scene.getMeshesByTags(TAGS.object).forEach( mesh => mesh.isVisible = true)
     }
+
+    lastSelection.isVisible = ui.activePanel === 'brushes'
     frame.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
     canvas.focus()
   })
 
   const showDebugLayer = document.getElementById('showDebugLayer') as HTMLInputElement
-  showDebugLayer && showDebugLayer.addEventListener('click', evt => {
+  showDebugLayer && showDebugLayer.addEventListener('click', _ => {
     showDebugLayer.checked ? scene.debugLayer.show() : scene.debugLayer.hide()
   })
 
   const objectToolbar = document.getElementById('objectToolbar')
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'objects' && !keys.ctrlKey && !keys.shiftKey
-  }, evt => {
+  }, _ => {
     objectToolbar.style.display = 'none'
-  }, evt => {
+  }, _ => {
     // mouse move
-  }, evt => {
+  }, _ => {
     objectToolbar.style.display = selectedObject ? 'block' : 'none'
   })
 
@@ -267,25 +262,25 @@ import {
     selectedObject.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0, 0.5)))
     objectToolbar.style.left = (evt.clientX + cursor.offset.x) + 'px'
     objectToolbar.style.top = (evt.clientY + cursor.offset.y) + 'px'
-  }, evt => {
+  }, _ => {
     cursor.offset.x = toolbarDragStarted.x
     cursor.offset.y = toolbarDragStarted.y
     toolbarDragStarted = null
     map.saveDebounced(chunks, objectsToSave)
   })
-  objectToolbar.querySelector('.focus-object').addEventListener('click', evt => {
+  objectToolbar.querySelector('.focus-object').addEventListener('click', _ => {
     if (selectedObject) {
       cameraTarget.copyFrom(selectedObject.position)
     }
   })
-  objectToolbar.querySelector('.remove-object').addEventListener('click', evt => {
+  objectToolbar.querySelector('.remove-object').addEventListener('click', _ => {
     delete objectsToSave[selectedObject.name]
     map.saveDebounced(chunks, objectsToSave)
 
     selectedObject.dispose()
     selectedObject = null
   })
-  objectToolbar.querySelector('.cancel-select').addEventListener('click', evt => {
+  objectToolbar.querySelector('.cancel-select').addEventListener('click', _ => {
     selectedObject = null
   })
 
@@ -296,7 +291,7 @@ import {
       setTimeout(tick, 20)
     }
   })
-  document.getElementById('configDownloadMap').addEventListener('click', evt => {
+  document.getElementById('configDownloadMap').addEventListener('click', _ => {
     const s = map.toJSON(chunks, objectsToSave)
     const a = appendElement('a', {
       href: 'data:text/json;charset=utf-8,' + encodeURIComponent(s),
@@ -306,18 +301,18 @@ import {
     a.click()
     a.parentNode.removeChild(a)
   })
-  document.getElementById('configUploadMap').addEventListener('click', evt => {
+  document.getElementById('configUploadMap').addEventListener('click', _ => {
     const f = appendElement('input', { type: 'file', className: 'hidden' }) as HTMLInputElement
-    f.addEventListener('change', evt => {
+    f.addEventListener('change', _ => {
       const r = new FileReader(),
         u = location.href.split(location.host).pop()
-      r.onload = evt => LocationSearch.set({ projSavedMap: r.result, projRestoreURL: u })
+      r.onload = _ => LocationSearch.set({ projSavedMap: r.result, projRestoreURL: u })
       r.readAsText(f.files[0])
     })
     f.click()
     f.parentNode.removeChild(f)
   })
-  document.getElementById('configResetMap').addEventListener('click', evt => {
+  document.getElementById('configResetMap').addEventListener('click', _ => {
     map.reset()
     location.reload()
   })
@@ -344,9 +339,8 @@ import {
           container = objectToolbar.querySelector('.object-config')
         container.innerHTML = ''
 
-        const head = appendElement('div', { innerHTML: newObject.name }, container),
-          content = appendElement('div', { }, container)
-        binder && binder(content, newObject as InstancedMesh, ret => {
+        appendElement('div', { innerHTML: newObject.name }, container)
+        binder && binder(appendElement('div', { }, container), newObject, ret => {
           Object.assign(args, ret)
           Object.assign(newObject, ret)
           map.saveDebounced(chunks, objectsToSave)

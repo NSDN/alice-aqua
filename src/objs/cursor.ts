@@ -10,12 +10,12 @@ import {
 } from '../utils/babylon'
 
 const CURSOR_NORMALS = [
-  new Vector3( 1, 0, 0),
-  new Vector3(-1, 0, 0),
-  new Vector3( 0, 1, 0),
-  new Vector3( 0,-1, 0),
-  new Vector3( 0, 0, 1),
-  new Vector3( 0, 0,-1),
+  new Vector3( 1,  0,  0),
+  new Vector3(-1,  0,  0),
+  new Vector3( 0,  1,  0),
+  new Vector3( 0, -1,  0),
+  new Vector3( 0,  0,  1),
+  new Vector3( 0,  0, -1),
 ]
 
 export function getMousePickOnMesh(scene: Scene, px: number, py: number, filter: (mesh: Mesh) => boolean) {
@@ -44,12 +44,12 @@ const VECTOR_ONE = new Vector3(1, 1, 1),
   VECTOR_HALF = new Vector3(0.5, 0.5, 0.5),
   DIRECTIONS = {
     // rotation/Math.PI*2, delta, axis, xyz
-    '1/0/0' : [new Vector3(0, 0, -1), new Vector3( 1, 1, 1), 'x', 'yxz'],
-    '-1/0/0': [new Vector3(0, 0,  1), new Vector3(-1, 1, 1), 'x', 'yxz'],
-    '0/1/0' : [new Vector3(0, 0,  0), new Vector3( 1, 1, 1), 'y', 'xyz'],
-    '0/-1/0': [new Vector3(0, 0, -2), new Vector3( 1,-1, 1), 'y', 'xyz'],
-    '0/0/1' : [new Vector3( 1, 0, 0), new Vector3( 1, 1, 1), 'z', 'xzy'],
-    '0/0/-1': [new Vector3(-1, 0, 0), new Vector3( 1, 1,-1), 'z', 'xzy'],
+    '1/0/0' : [new Vector3(  0, 0, -1), new Vector3(  1,  1,  1), 'x', 'yxz'],
+    '-1/0/0': [new Vector3(  0, 0,  1), new Vector3( -1,  1,  1), 'x', 'yxz'],
+    '0/1/0' : [new Vector3(  0, 0,  0), new Vector3(  1,  1,  1), 'y', 'xyz'],
+    '0/-1/0': [new Vector3(  0, 0, -2), new Vector3(  1, -1,  1), 'y', 'xyz'],
+    '0/0/1' : [new Vector3(  1, 0,  0), new Vector3(  1,  1,  1), 'z', 'xzy'],
+    '0/0/-1': [new Vector3( -1, 0,  0), new Vector3(  1,  1, -1), 'z', 'xzy'],
   } as  {
     [dir: string]: [Vector3, Vector3, 'x' | 'y' | 'z', string]
   }
@@ -76,7 +76,7 @@ export default class Cursor extends LinesMesh {
 
     getBoundingVertexData(0.3, 0.3, 0.3, true).applyToMesh(this)
     this.position.copyFrom(VECTOR_HALF)
-    
+
     scene.getEngine().getRenderingCanvas().addEventListener('mousedown', evt => {
       this.updateFromPickTarget(evt)
       this._isKeyDown = true
@@ -88,7 +88,7 @@ export default class Cursor extends LinesMesh {
         this.updateFromPickTarget(evt)
     })
 
-    window.addEventListener('mouseup', evt => {
+    window.addEventListener('mouseup', _ => {
       this._isKeyDown = false
     })
   }
@@ -112,7 +112,7 @@ export default class Cursor extends LinesMesh {
   }
 
   private updateWithMouseDown(evt: MouseEvent) {
-    const [rot, delta, axis, [i, j, k]] = DIRECTIONS[this._direction],
+    const [, , axis, [i, j, k]] = DIRECTIONS[this._direction],
       { position } = getMousePickOnPlane(this.scene,
         evt.clientX + this.offset.x, evt.clientY + this.offset.y, axis, this.start[axis])
     this.hover.copyFrom(position)

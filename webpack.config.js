@@ -12,12 +12,18 @@ module.exports = {
     extensions: ['', '.js', '.ts']
   },
   module: {
+    preLoaders: [
+      {
+        test: /\.ts$/,
+        loader: 'tslint-loader'
+      }
+    ],
     loaders: [
       {
         test: /\.ts$/,
         loaders: isProd ? ['babel-loader', 'ts-loader'] : ['ts-loader'],
       }
-    ]
+    ],
   },
   plugins: isProd ? [new webpack.optimize.UglifyJsPlugin()] : [ ]
 }

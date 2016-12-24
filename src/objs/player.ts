@@ -6,9 +6,7 @@ import {
   Color3,
   Vector3,
   Vector2,
-  ArcRotateCamera,
   Scene,
-  AbstractMesh,
   Ray,
   Quaternion,
 } from '../babylon'
@@ -84,7 +82,7 @@ export default class Player extends Mesh {
 
     // TODO: remove these magics
     const size = new Vector2(opts.height / 26 * 24, opts.height / 26 * 32)
-    const texture = 
+    const texture =
       new Texture('assets/' + name + '.png', scene, false, true, Texture.NEAREST_SAMPLINGMODE)
     texture.hasAlpha = true
     texture.uScale = 24 / 256
@@ -104,8 +102,8 @@ export default class Player extends Mesh {
     sprite.material = material
     sprite.parent = this
 
-    var frameIndex = 0
-    sprite.registerBeforeRender(mesh => {
+    let frameIndex = 0
+    sprite.registerBeforeRender(_ => {
       const texture = material.diffuseTexture as Texture,
         delta = this.position.subtract(scene.activeCamera.position),
         offset = this.rotationQuaternion.toEulerAngles().y,
@@ -176,7 +174,7 @@ export default class Player extends Mesh {
       fx = dx || dz ? mf * Math.sin(ay) : 0,
       fz = dx || dz ? mf * Math.cos(ay) : 0
 
-    var fy = 0
+    let fy = 0
     if (keys.jump) {
       const pick = this.pickFromBottom()
       if (pick.hit && pick.pickedMesh && pick.distance < 0.2) {

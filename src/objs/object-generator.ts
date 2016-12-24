@@ -23,7 +23,7 @@ export default class ObjectGenerator extends InstancedMesh {
 
     let cache = this.getScene().getMeshByName(id) as Mesh
     if (!cache) {
-      const { material, texSize } = this.opts,
+      const { texSize } = this.opts,
         [offsetX, offsetY, width, height] = [512, 256, 64, 64],
         uv = new Vector4(offsetX / texSize, 1 - (offsetY + height) / texSize,
           (offsetX + width) / texSize, 1 - offsetY / texSize),
