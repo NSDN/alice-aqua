@@ -9,38 +9,69 @@ import {
   Scene,
   Ray,
   Quaternion,
+  Tags,
+  AbstractMesh,
 } from '../babylon'
+
+import {
+  ObjectPlayListener,
+  ObjectUsable,
+} from './object-base'
 
 import {
   VERTEX_DUMMY,
   VERTEX_PLANE,
   VERTEX_GROUND,
+  VERTEX_SPHERE,
+  FollowCamera,
 } from '../utils/babylon'
 
+import Sprite from './sprite'
+
 export default class Player extends Mesh {
+  static readonly PLAYER_TAG = 'player-tag'
+  static readonly PLAYER_BODY_TAG = 'player-body'
+
   readonly spriteBody: Mesh
   readonly playerBody: Mesh
   readonly playerHead: Mesh
   readonly shadow: Mesh
   readonly lastShadowDropPosition = Vector3.Zero()
 
-  private isAnimating = false
+  private isPlayerAnimating = false
+  private isActivePlayer = false
   private forwardDirection = new Vector3(0, 0, 1)
+
+  private meshToUse: AbstractMesh
 
   private pickFromBottom(dist = 0.1) {
     const origin = this.position.add(new Vector3(0, dist, 0)),
       ray = new Ray(origin, new Vector3(0, -1, 0)),
-      filter = (mesh: Mesh) => mesh.isVisible && mesh.parent !== this,
-      pick = this.scene.pickWithRay(ray, filter, false)
+      filter = (mesh: Mesh) => mesh.isVisible && mesh.parent !== this && mesh !== this.shadow,
+      pick = this.getScene().pickWithRay(ray, filter, false)
     return pick
   }
 
-  constructor(name: string, private scene: Scene, public keyStates: {
+  private canPickMeshAsUsable(mesh: Mesh) {
+    const usable = mesh as any as ObjectUsable
+    return mesh.isVisible && usable.canBeUsedBy && usable.canBeUsedBy(this)
+  }
+
+  private pickUsableFromCenter() {
+    const origin = new Vector3(0, this.opts.height / 2, 0),
+      ray = Ray.Transform(new Ray(origin, new Vector3(0, 0, 1), this.opts.width * 0.6), this.worldMatrixFromCache),
+      pick = this.getScene().pickWithRay(ray, mesh => this.canPickMeshAsUsable(mesh), false)
+    return pick
+  }
+
+  constructor(name: string, scene: Scene, public keyStates: {
     moveLeft: boolean
     moveRight: boolean
     moveForward: boolean
     moveBack: boolean
     jump: boolean
+    switch: boolean
+    use: boolean
   }, private opts = { } as {
     width?: number
     height?: number
@@ -77,7 +108,24 @@ export default class Player extends Mesh {
     this.physicsImpostor.registerBeforePhysicsStep(impostor => {
       impostor.setAngularVelocity(impostor.getAngularVelocity().multiply(angularDamping))
       impostor.setLinearVelocity(impostor.getLinearVelocity().multiply(linearDamping))
-      setImmediate(_ => this.update())
+      if (this.position.y < this.opts.minimumY) setImmediate(() => {
+        this.position.copyFrom(this.lastShadowDropPosition)
+        this.position.y += 2
+        this.physicsImpostor.setLinearVelocity(Vector3.Zero())
+      })
+      if (this.isActivePlayer) setImmediate(_ => {
+        const camera = scene.activeCamera as FollowCamera
+        if (camera && camera.target) {
+          this.forwardDirection.copyFrom(camera.target.subtract(camera.position))
+          camera.followTarget.copyFrom(this.position)
+        }
+        this.update()
+      })
+    })
+    this.physicsImpostor.registerAfterPhysicsStep(impostor => {
+      if (this.isDisposed()) {
+        setImmediate(() => impostor.dispose())
+      }
     })
 
     // TODO: remove these magics
@@ -110,25 +158,38 @@ export default class Player extends Mesh {
         angle = Math.PI * 4 - Math.atan2(delta.z, delta.x) - offset,
         vIndex = Math.floor(angle / (Math.PI * 2 / 8) + 0.5) + 1
       texture.vOffset = vIndex % 8 * 32 / 256
-      if (this.isAnimating) {
+      if (this.isPlayerAnimating) {
         const uIndex = Math.floor(frameIndex ++ / 10)
         texture.uOffset = uIndex % 4 * 24 / 256
       }
-      const pick = this.pickFromBottom(),
-        posY = pick.hit ? pick.pickedPoint.y + 0.001 : -1000
-      shadow.position.copyFromFloats(0, posY - this.position.y, 0)
-      if (pick.hit && pick.pickedPoint.y > this.opts.minimumY) {
-        this.lastShadowDropPosition.copyFrom(pick.pickedPoint)
+
+      const pickBottom = this.pickFromBottom(),
+        posY = pickBottom.hit ? pickBottom.pickedPoint.y + 1e-4 : -1000
+      this.shadow.position.copyFromFloats(this.position.x, posY, this.position.z)
+      if (pickBottom.hit && pickBottom.pickedPoint.y > this.opts.minimumY) {
+        this.lastShadowDropPosition.copyFrom(pickBottom.pickedPoint)
+      }
+
+      const pickUsable = this.pickUsableFromCenter(),
+        meshToUse = pickUsable.hit && pickUsable.pickedMesh
+      if (meshToUse !== this.meshToUse) {
+        if (this.meshToUse) {
+          this.meshToUse.showBoundingBox = false
+        }
+        if (this.meshToUse = meshToUse) {
+          this.meshToUse.showBoundingBox = true
+        }
       }
     })
 
     const body = this.playerBody = new Mesh(name + '/body', scene)
-    VERTEX_DUMMY.applyToMesh(body)
+    VERTEX_SPHERE.applyToMesh(body)
     body.position.copyFromFloats(0, opts.width / 2 + 1e-4, 0)
     body.scaling.copyFromFloats(opts.width, opts.width, opts.width)
     body.isVisible = false
     body.parent = this
     body.physicsImpostor = new PhysicsImpostor(body, PhysicsImpostor.SphereImpostor)
+    Tags.AddTagsTo(body, Player.PLAYER_BODY_TAG)
 
     const head = this.playerHead = new Mesh(name + '/head', scene)
     VERTEX_DUMMY.applyToMesh(head)
@@ -138,6 +199,8 @@ export default class Player extends Mesh {
     head.parent = this
     head.physicsImpostor = new PhysicsImpostor(head, PhysicsImpostor.SphereImpostor)
 
+    this.physicsImpostor.forceUpdate()
+
     const shadow = this.shadow = new Mesh(name + '/shadow', scene)
     VERTEX_GROUND.applyToMesh(shadow)
     const shadowMaterial = shadow.material = new StandardMaterial(name + '/shadow/mat', scene)
@@ -146,22 +209,46 @@ export default class Player extends Mesh {
     shadowMaterial.emissiveColor = Color3.White()
     const shadowTexture = shadowMaterial.diffuseTexture = new Texture('assets/shadow.png', scene)
     shadowTexture.hasAlpha = true
-    shadow.parent = this
 
-    this.physicsImpostor.forceUpdate()
+    // FIXME: babylonjs issue
+    // shadow.parent = this
+    shadow.registerAfterRender(_ => {
+      if (this.isDisposed()) {
+        if (this.meshToUse) {
+          this.meshToUse.showBoundingBox = false
+        }
+        shadow.dispose()
+      }
+    })
+
+    const allPlayers = scene.getMeshesByTags(Player.PLAYER_TAG)
+    allPlayers.forEach(mesh => (mesh as Player).isActivePlayer = false)
+    Tags.AddTagsTo(this, Player.PLAYER_TAG)
+    this.isActivePlayer = true
   }
 
-  private update() {
-    if (this.position.y < this.opts.minimumY) {
-      this.position.copyFrom(this.lastShadowDropPosition)
-      this.position.y += 2
-      this.physicsImpostor.setLinearVelocity(Vector3.Zero())
+  protected update() {
+    const keys = this.keyStates
+
+    if (keys.use) {
+      if (this.meshToUse) {
+        const usable = this.meshToUse as any as ObjectUsable
+        usable.useFrom && usable.useFrom(this)
+      }
+      keys.use = false
     }
 
-    const keys = this.keyStates
-    this.isAnimating = keys.moveLeft || keys.moveRight ||
-      keys.moveForward || keys.moveBack || keys.jump
-    if (!this.keyStates || !this.forwardDirection || !this.isAnimating) {
+    if (keys.switch) {
+      const allPlayers = this.getScene().getMeshesByTags(Player.PLAYER_TAG)
+      allPlayers.forEach(mesh => (mesh as Player).isActivePlayer = false)
+      const nextPlayer = allPlayers[(allPlayers.indexOf(this) + 1) % allPlayers.length] as Player
+      nextPlayer.isActivePlayer = true
+      keys.switch = false
+    }
+
+    this.isPlayerAnimating = this.isActivePlayer &&
+      (keys.moveLeft || keys.moveRight || keys.moveForward || keys.moveBack || keys.jump)
+    if (!this.isPlayerAnimating) {
       return
     }
 
@@ -172,12 +259,15 @@ export default class Player extends Mesh {
       dx = keys.moveLeft ? -1 : keys.moveRight ? 1 : 0,
       ay = Math.atan2(dx, dz) + Math.atan2(vc.x, vc.z),
       fx = dx || dz ? mf * Math.sin(ay) : 0,
-      fz = dx || dz ? mf * Math.cos(ay) : 0
+      fz = dx || dz ? mf * Math.cos(ay) : 0,
+      im = this.physicsImpostor
 
     let fy = 0
     if (keys.jump) {
       const pick = this.pickFromBottom()
-      if (pick.hit && pick.pickedMesh && pick.distance < 0.2) {
+      if (pick.hit && pick.pickedMesh &&
+          pick.distance < 0.2 && im.getLinearVelocity().y < 0.01) {
+        im.setLinearVelocity(im.getLinearVelocity().multiplyByFloats(1, 0, 1))
         fy = this.opts.jumpForce,
         keys.jump = false
       }
@@ -193,8 +283,38 @@ export default class Player extends Mesh {
       this.rotationQuaternion = Quaternion.Slerp(this.rotationQuaternion, qc, 0.1)
     }
   }
+}
 
-  public updateForward(forwordDirection: Vector3) {
-    this.forwardDirection.copyFrom(forwordDirection)
+export class PlayerGenerator extends Sprite implements ObjectPlayListener {
+  static readonly PLAYER_GENERATOR_TAG = 'player-generator'
+
+  constructor(name, scene, opts) {
+    super(name, scene, opts)
+    Tags.AddTagsTo(this, PlayerGenerator.PLAYER_GENERATOR_TAG)
+  }
+
+  private activePlayer = null as Player
+  startPlaying() {
+    if (this.activePlayer) {
+      this.activePlayer.dispose()
+    }
+    this.activePlayer = new Player(this._playerName, this.getScene(), this.opts.keys)
+    this.activePlayer.position.copyFrom(this.position.add(new Vector3(0, 2, 0)))
+    this.spriteBody.isVisible = false
+  }
+  stopPlaying() {
+    this.activePlayer.dispose()
+    this.activePlayer = null
+    this.spriteBody.isVisible = true
+  }
+
+  private _playerName = ''
+  set playerName(val: string) {
+    this._playerName = val
+
+    const uniqueTag = 'player-' + val,
+      generators = this.getScene().getMeshesByTags(uniqueTag)
+    generators.forEach(mesh => mesh.dispose())
+    Tags.AddTagsTo(this, uniqueTag)
   }
 }

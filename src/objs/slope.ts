@@ -6,7 +6,6 @@ import {
   AbstractMesh,
   Tags,
   PhysicsImpostor,
-  InstancedMesh,
 } from '../babylon'
 
 import {
@@ -20,7 +19,14 @@ import {
   watch,
 } from '../utils'
 
-export default class Slope extends InstancedMesh {
+import ObjectBase, {
+  ObjectElementBinder,
+  ObjectOptions,
+  appendElement,
+  appendConfigItem,
+} from './object-base'
+
+export default class Slope extends ObjectBase implements ObjectElementBinder {
   static readonly TARGET_TAG = 'slope-target'
   static readonly GROUND_TAG = 'slope-ground'
   static readonly CACHE_ID = 'cache/slope/ground'
@@ -29,26 +35,26 @@ export default class Slope extends InstancedMesh {
   private groundImpostor: PhysicsImpostor
 
   public direction: 'x' | 'z' = 'x'
-  public targetName: string = ''
+  public targetName = ''
+
+  private createGroundCache(cacheId: string) {
+    const ground = new Mesh(cacheId, this.getScene())
+    VERTEX_BOX.applyToMesh(ground)
+    ground.isVisible = false
+
+    const material = ground.material = new StandardMaterial(cacheId + '/mat', this.getScene())
+    material.disableLighting = true
+    material.emissiveColor = new Color3(0.8, 0.8, 0.8)
+
+    return ground
+  }
 
   private createGroundMesh() {
-    const scene = this.getScene(),
-      cacheId = 'cache/slope/ground'
+    const cacheId = 'cache/slope/ground',
+      cache = (this.getScene().getMeshByName(cacheId) as Mesh) || this.createGroundCache(cacheId),
+      groundMesh = cache.createInstance(this.name + '/ground')
 
-    let cache = scene.getMeshByName(cacheId) as Mesh
-    if (!cache) {
-      const ground = new Mesh(cacheId, scene)
-      VERTEX_BOX.applyToMesh(ground)
-      ground.isVisible = false
-      const material = ground.material = new StandardMaterial(cacheId + '/mat', scene)
-      material.disableLighting = true
-      material.emissiveColor = new Color3(0.8, 0.8, 0.8)
-      cache = ground
-    }
-
-    const groundMesh = cache.createInstance(this.name + '/ground')
     groundMesh.parent = this
-
     Tags.AddTagsTo(groundMesh, Slope.GROUND_TAG)
 
     return groundMesh
@@ -81,8 +87,8 @@ export default class Slope extends InstancedMesh {
       [dir, axis] = this.direction === 'z' ? 'zx' : 'xz'
     if (delta[dir] > 2) {
       const dist = delta[dir] - 2,
-        thickness = 1,
         angle = Math.atan2(delta.y, dist),
+        thickness = Math.cos(angle),
         ground = this.groundMesh || (this.groundMesh = this.createGroundMesh())
       ground.position.copyFrom(center.subtract(this.position))
       ground.position.y -= 0.5 * thickness / Math.cos(angle)
@@ -99,8 +105,8 @@ export default class Slope extends InstancedMesh {
     }
   }
 
-  constructor(name: string, source: Mesh) {
-    super(name, source)
+  constructor(name: string, source: Mesh, opts: ObjectOptions) {
+    super(name, source, opts)
 
     const scene = source.getScene()
 
@@ -131,5 +137,26 @@ export default class Slope extends InstancedMesh {
     }
 
     Tags.AddTagsTo(this, Slope.TARGET_TAG)
+  }
+
+  bindToElement(container: HTMLElement, save: (args: Partial<Slope>) => void) {
+    {
+      const select = appendConfigItem('target: ', 'select', { }, container) as HTMLSelectElement
+      appendElement('option', { innerHTML: '--', value: '' }, select)
+      this.getScene().getMeshesByTags(Slope.TARGET_TAG, (mesh: Slope) => {
+        if (mesh !== this && mesh.targetName !== this.name) {
+          appendElement('option', { innerHTML: mesh.name }, select)
+        }
+      })
+      select.value = this.targetName
+      select.addEventListener('change', _ => save({ targetName: select.value }))
+    }
+    {
+      const select = appendConfigItem('direction: ', 'select', { }, container) as HTMLSelectElement
+      appendElement('option', { innerHTML: 'x', value: 'x' }, select)
+      appendElement('option', { innerHTML: 'z', value: 'z' }, select)
+      select.value = this.direction
+      select.addEventListener('change', _ => save({ direction: select.value as any }))
+    }
   }
 }

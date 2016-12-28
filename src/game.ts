@@ -1,12 +1,14 @@
 import Sprite from './objs/sprite'
 import Slope from './objs/slope'
-import ObjectGenerator from './objs/object-generator'
+import Gate from './objs/gate'
+import Trigger from './objs/trigger'
+import { BoxGenerator } from './objs/box'
+import { PlayerGenerator } from './objs/player'
 
 import {
   Engine,
   Scene,
   Vector3,
-  ArcRotateCamera,
   SSAORenderingPipeline,
   LinesMesh,
   Color3,
@@ -14,6 +16,7 @@ import {
   Material,
   Texture,
   StandardMaterial,
+  DynamicTexture,
 } from './babylon'
 
 import {
@@ -32,8 +35,10 @@ import Chunks, {
 import {
   getBoundingVertexData,
   VERTEX_GROUND,
-  WireframeNoLightingMaterial,
+  FollowCamera,
 } from './utils/babylon'
+
+import ObjectBase from './objs/object-base'
 
 export interface ObjectSaveData {
   x: number,
@@ -51,38 +56,10 @@ export interface SavedMap {
 const OBJECT_CLASSES = {
   sprite: Sprite,
   slope: Slope,
-  boxGen: ObjectGenerator,
-}
-
-function appendConfigItem(label: string, tag: string, attrs: any, container: HTMLElement) {
-  const item = appendElement('div', { className: 'config-item' }, container)
-  appendElement('label', { innerText: label }, item)
-  return appendElement(tag, attrs, item)
-}
-
-const OBJECT_BINDER = {
-  sprite(container: HTMLElement, sprite: Sprite, save: (args: Partial<Sprite>) => void) {
-    const attrs = { type: 'range', min: 1, max: sprite.opts.height / 32 * 4, step: 1 },
-      range = appendConfigItem('height: ', 'input', attrs, container) as HTMLInputElement
-    range.value = sprite.spriteHeight as any
-    range.addEventListener('change', _ => save({ spriteHeight: parseFloat(range.value) }))
-  },
-  slope(container: HTMLElement, slope: Slope, save: (args: Partial<Slope>) => void) {
-    const tarSel = appendConfigItem('target: ', 'select', { }, container) as HTMLSelectElement
-    appendElement('option', { innerHTML: '--', value: '' }, tarSel)
-    slope.getScene().getMeshesByTags(Slope.TARGET_TAG, mesh => {
-      mesh !== slope && (mesh as Slope).targetName !== slope.name &&
-        appendElement('option', { innerHTML: mesh.name }, tarSel)
-    })
-    tarSel.value = slope.targetName
-    tarSel.addEventListener('change', _ => save({ targetName: tarSel.value }))
-
-    const dirSel = appendConfigItem('direction: ', 'select', { }, container) as HTMLSelectElement
-    appendElement('option', { innerHTML: 'x', value: 'x' }, dirSel)
-    appendElement('option', { innerHTML: 'z', value: 'z' }, dirSel)
-    dirSel.value = slope.direction
-    dirSel.addEventListener('change', _ => save({ direction: dirSel.value as any }))
-  },
+  gate: Gate,
+  box: BoxGenerator,
+  trigger: Trigger,
+  player: PlayerGenerator,
 }
 
 export const TAGS = {
@@ -90,11 +67,12 @@ export const TAGS = {
   block: 'tag-block',
 }
 
-export const ASSET_IMAGES: { [id: string]: string } = {
-  imAssetTile1: 'assets/rpg_maker_vx_rtp_tileset_by_telles0808.png'
+export const ASSET_IMAGES = {
+  imAssetTile1: 'assets/rpg_maker_vx_rtp_tileset_by_telles0808.png',
+  objectIcons1: 'assets/object_icons.png',
 }
 
-export const ASSET_TILES: [string, number, number, number, boolean][] = [
+export const ASSET_TILES: [keyof typeof ASSET_IMAGES, number, number, number, boolean][] = [
   ['imAssetTile1',   16,  624, 32, false],
   ['imAssetTile1',    0,  480, 32, true],
   ['imAssetTile1',    0,  576, 32, true],
@@ -128,17 +106,14 @@ export const ASSET_TILES: [string, number, number, number, boolean][] = [
   ['imAssetTile1',  832,  320, 32, true],
   ['imAssetTile1',  896,  320, 32, true],
   ['imAssetTile1',  960,  320, 32, true],
-  ['imAssetTile1',  256, 1440, 32, true],
-  ['imAssetTile1',  320, 1440, 32, true],
-  ['imAssetTile1',  384, 1440, 32, true],
-  ['imAssetTile1',  448, 1440, 32, true],
 ]
 
-export const ASSET_CLASSES: [string, number, number, number, number, keyof typeof OBJECT_CLASSES, any][] = [
+export const ASSET_CLASSES: [keyof typeof ASSET_IMAGES, number, number, number, number, keyof typeof OBJECT_CLASSES, any][] = [
   ['imAssetTile1',  96, 1632, 64, 96, 'sprite', { spriteHeight: 4 }],
   ['imAssetTile1',   0, 1440, 64, 64, 'sprite', { spriteHeight: 4 }],
   ['imAssetTile1',   0, 1504, 64, 64, 'sprite', { spriteHeight: 4 }],
   ['imAssetTile1', 192, 1344, 64, 64, 'sprite', { spriteHeight: 4 }],
+  ['imAssetTile1', 512,  256, 64, 64, 'box',    { spriteHeight: 2 }],
   ['imAssetTile1', 160, 1024, 32, 64, 'sprite', { spriteHeight: 4 }],
   ['imAssetTile1', 128, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
   ['imAssetTile1',   0, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
@@ -162,8 +137,11 @@ export const ASSET_CLASSES: [string, number, number, number, number, keyof typeo
   ['imAssetTile1', 224, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
   ['imAssetTile1', 160, 1664, 32, 32, 'sprite', { spriteHeight: 1 }],
   ['imAssetTile1', 160, 1696, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',   0,   32, 32, 32, 'slope', { }],
-  ['imAssetTile1',   0,   32, 32, 32, 'boxGen', { }],
+  ['imAssetTile1',   0,   32, 32, 32, 'gate',    { }],
+  ['imAssetTile1',   0,   32, 32, 32, 'slope',   { }],
+  ['objectIcons1',  64,    0, 32, 32, 'trigger', { }],
+  ['objectIcons1',   0,    0, 32, 32, 'player',  { playerName: 'remilia' }],
+  ['objectIcons1',  32,    0, 32, 32, 'player',  { playerName: 'flandre' }],
 ]
 
 export const KEY_MAP = {
@@ -177,6 +155,8 @@ export const KEY_MAP = {
   moveRight: 'D',
   jump: ' ',
   crunch: 'C',
+  switch: 'Q',
+  use: 'E'
 }
 
 export function createFpsCounter(n = 30) {
@@ -206,7 +186,7 @@ export function createScene() {
     engine.resize()
   })
 
-  const camera = scene.activeCamera = new ArcRotateCamera('camera', 0, 0, 50, null, scene)
+  const camera = scene.activeCamera = new FollowCamera('camera', 0, 0, 50, Vector3.Zero(), scene)
   camera.lowerRadiusLimit = 20
   camera.upperRadiusLimit = 100
   camera.lowerBetaLimit = Math.PI * 0.15
@@ -244,6 +224,7 @@ export function createSelectionBox(scene: Scene) {
   box.scaling.copyFromFloats(0, 0, 0)
   getBoundingVertexData(0.3, 0.3, 0.3, false).applyToMesh(box)
   box.color = new Color3(1, 0.5, 0.5)
+  box.renderingGroupId = 1
   return box
 }
 
@@ -251,8 +232,45 @@ export function createObjectFrame(scene: Scene) {
   const frame = new Mesh('cache/object/frame', scene)
   frame.isVisible = false
   VERTEX_GROUND.applyToMesh(frame)
-  frame.material = new WireframeNoLightingMaterial('frame', scene, new Color3(1, 0.5, 0.5))
+  const material = frame.material = new StandardMaterial('frame', scene)
+  material.emissiveColor = new Color3(1, 0.5, 0.5)
+  material.wireframe = true
+  material.disableLighting = true
   return frame
+}
+
+export function createGridPlane(scene: Scene, count: number) {
+  const pixel = 32, size = count * pixel, repeat = 2,
+    texture = new DynamicTexture('grid', size, scene, true),
+    dc = texture.getContext()
+  dc.strokeStyle = '#aaaaaa'
+  dc.lineWidth = 3
+  dc.strokeRect(0, 0, size, size)
+  dc.strokeStyle = '#666666'
+  dc.lineWidth = 1
+  for (let v = 0; v < size; v += pixel) {
+    dc.moveTo(0, v)
+    dc.lineTo(size, v)
+    dc.stroke()
+    dc.moveTo(v, 0)
+    dc.lineTo(v, size)
+    dc.stroke()
+  }
+  texture.hasAlpha = true
+  texture.uScale = texture.vScale = repeat
+  texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
+  texture.update()
+
+  const grid = new Mesh('grid', scene)
+  VERTEX_GROUND.applyToMesh(grid)
+  grid.scaling.copyFromFloats(count * repeat, 1, count * repeat)
+
+  const material = grid.material = new StandardMaterial('grid', scene)
+  material.disableLighting = true
+  material.emissiveColor = Color3.White()
+  material.diffuseTexture = texture
+
+  return grid
 }
 
 export async function loadAssets(scene: Scene) {
@@ -277,18 +295,19 @@ export async function loadAssets(scene: Scene) {
     material.diffuseTexture = texture
     materials[id] = { material, texSize }
   }
+
   const tiles = ASSET_TILES.map(([srcId, offsetX, offsetY, size, isAutoTile]) => {
     const src = document.getElementById(srcId as string) as HTMLImageElement
     return { src, offsetX, offsetY, size, isAutoTile }
   })
+
   const classes = ASSET_CLASSES.map(([srcId, offsetX, offsetY, width, height, clsName, args]) => {
     const src = document.getElementById(srcId as string) as HTMLImageElement,
-      cls = OBJECT_CLASSES[clsName],
-      binder = OBJECT_BINDER[clsName],
+      cls = OBJECT_CLASSES[clsName] as typeof ObjectBase,
       { material, texSize } = materials[srcId],
       opts = { clsName, src, material, offsetX, offsetY, width, height, texSize },
-      clsId = [clsName, srcId, offsetX, offsetY].join('/')
-    return { clsName, clsId, args, opts, cls, binder }
+      clsId = JSON.stringify([clsName, srcId, offsetX, offsetY, args])
+    return { clsName, clsId, args, opts, cls }
   })
 
   return { tiles, classes }

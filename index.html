@@ -121,11 +121,12 @@
       <div class="hidden ui-panel panel-objects">
         <div class="ui-classes"></div>
       </div>
-      <div class="hidden ui-panel panel-config">
+      <div class="hidden ui-panel panel-game">
+        <p>map</p>
         <button id="configDownloadMap">download map</button>
         <button id="configUploadMap">upload map</button>
         <button id="configResetMap">reset map</button>
-        <br />
+        <p>tool</p>
         <label>
           <input type="checkbox" id="configRotateCamera" /> rotate camera
         </label>
@@ -137,15 +138,15 @@
       <select class="ui-panel-selector">
         <option>objects</option>
         <option>brushes</option>
-        <option>config</option>
+        <option>game</option>
         <option>play</option>
       </select>
       <span class="hidden ui-panel panel-brushes">
         <select class="ui-brush-height">
-          <option value="">--</option>
           <option value="0">flatten</option>
           <option value="+1">shift up</option>
           <option value="-1">shift down</option>
+          <option value="">keep</option>
         </select>
         ctrl &amp; drag to draw, shift &amp; drag to fill
       </span>
@@ -165,12 +166,11 @@
     <i class="focus-object fa fa-crosshairs" title="look at this"></i>
     <i class="remove-object fa fa-trash" title="remove"></i>
     <i class="cancel-select fa fa-close" title="cancel"></i>
-    <div class="object-config"></div>
+    <div class="object-settings"></div>
   </div>
+  <script src="//localhost:8080/webpack-dev-server.js"></script>
   <script src="node_modules/cannon/build/cannon.js"></script>
   <script src="node_modules/babylonjs/babylon.max.js"></script>
-  <script src="//localhost:8080/webpack-dev-server.js"></script>
-  <script src="assets/babylon.waterMaterial.js"></script>
   <script src="build/bundle.js"></script>
 </body>
 </html>

@@ -1,8 +1,6 @@
-import Player from './objs/player'
+import { ObjectElementBinder, ObjectPlayListener } from './objs/object-base'
+import Player, { PlayerGenerator } from './objs/player'
 import Cursor from './objs/cursor'
-import Slope from './objs/slope'
-import ObjectGenerator from './objs/object-generator'
-
 import Chunks, { ChunkData } from './utils/chunks'
 
 import {
@@ -12,7 +10,6 @@ import {
   BoundingBox,
   Tags,
   Matrix,
-  InstancedMesh,
   AbstractMesh,
 } from './babylon'
 
@@ -26,6 +23,7 @@ import {
   createKeyStates,
   createObjectFrame,
   createSelectionBox,
+  createGridPlane,
   loadAssets,
   loadSavedMap,
   TAGS,
@@ -44,14 +42,27 @@ import {
 ; (async function() {
   const { scene, camera } = createScene(),
     { keys } = createKeyStates(),
-    map = await loadSavedMap(),
-    assets = await loadAssets(scene),
-    frame = createObjectFrame(scene),
-    lastSelection = createSelectionBox(scene),
-    canvas = scene.getEngine().getRenderingCanvas()
+    canvas = scene.getEngine().getRenderingCanvas(),
 
-  const tags = [TAGS.block, Slope.GROUND_TAG].join(' || '),
-    cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, tags))
+    map = await loadSavedMap(),
+    objectsToRestore = { ...map.objectsData },
+    objectsToSave = { ...map.objectsData },
+
+    assets = await loadAssets(scene),
+
+    frame = createObjectFrame(scene),
+
+    cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
+    lastSelection = createSelectionBox(scene),
+
+    chunks = new Chunks(scene, assets.tiles, map.chunksData),
+    grid = createGridPlane(scene, chunks.chunkSize),
+
+    ui = new UI(assets.tiles, assets.classes.map(cls => cls.opts))
+
+  let selectedPixel: { t: number, h: number },
+    selectedObject: AbstractMesh,
+    toolbarDragStarted: { x: number, y: number }
 
   // use shift to draw rectangles
   attachDragable(evt => {
@@ -81,7 +92,6 @@ import {
     }
   })
 
-  let selectedPixel: { t: number, h: number }
   // use ctrl key to draw pixels
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'brushes' && keys.ctrlKey && !keys.shiftKey
@@ -104,7 +114,6 @@ import {
   }, _ => {
   })
 
-  let selectedObject: AbstractMesh
   // use shift key to select objects
   attachDragable(_ => {
     return ui.activePanel === 'objects' && !keys.ctrlKey && keys.shiftKey
@@ -130,7 +139,7 @@ import {
         { clsId, clsName, args, opts, cls } = assets.classes[index],
         rnd = Math.floor(Math.random() * 0xffffffff + 0x100000000).toString(16).slice(1),
         id = ['object', clsName, rnd].join('/'),
-        object = new (cls as any)(id, frame, opts) as InstancedMesh
+        object = new cls(id, frame, { ...opts, keys })
       object.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0, 0.5)))
       Object.assign(object, args)
       objectsToSave[id] = JSON.parse(JSON.stringify({ clsId, args }))
@@ -145,7 +154,6 @@ import {
     map.saveDebounced(chunks, objectsToSave)
   })
 
-  const chunks = new Chunks(scene, assets.tiles, map.chunksData)
   chunks.addEventListener('height-updated', (chunk: ChunkData) => {
     const pos = chunk.top.position, size = chunks.chunkSize,
       box = new BoundingBox(pos, pos.add(new Vector3(size, 0, size)))
@@ -156,7 +164,7 @@ import {
           origin = new Vector3(x, Math.max(y, height) + 0.1, z),
           direction = new Vector3(0, -1, 0),
           picked = scene.pickWithRay(new Ray(origin, direction), cursor.pickFilter)
-        mesh.position.y = picked.hit ? picked.pickedPoint.y : height
+        mesh.position.y = picked.hit && picked.getNormal().y > 0.9 ? picked.pickedPoint.y : height
       }
     })
     map.saveDebounced(chunks, objectsToSave)
@@ -165,8 +173,6 @@ import {
     map.saveDebounced(chunks, objectsToSave)
   })
 
-  const objectsToRestore = { ...map.objectsData },
-    objectsToSave = { ...map.objectsData }
   chunks.addEventListener('chunk-loaded', (chunk: ChunkData) => {
     Tags.AddTagsTo(chunk.top, TAGS.block)
     Tags.AddTagsTo(chunk.side, TAGS.block)
@@ -174,21 +180,24 @@ import {
     const pos = chunk.top.position, size = chunks.chunkSize,
       box = new BoundingBox(pos, pos.add(new Vector3(size, 0, size)))
     Object.keys(objectsToRestore).forEach(id => {
-      const { x, y, z, clsId, args } = objectsToRestore[id],
-        { opts, cls } = assets.classes.find(s => s.clsId === clsId)
+      const { x, y, z, clsId, args } = objectsToRestore[id]
       if (box.intersectsPoint(new Vector3(x, pos.y, z))) {
-        const object = new (cls as any)(id, frame, opts) as InstancedMesh
-        object.position.copyFromFloats(x, y, z)
-        Object.assign(object, args)
-
-        Tags.AddTagsTo(object, TAGS.object)
-
+        const clsFound = assets.classes.find(s => s.clsId === clsId)
+        if (clsFound) {
+          const { opts, cls } = clsFound,
+            object = new cls(id, frame, { ...opts, keys })
+          object.position.copyFromFloats(x, y, z)
+          Object.assign(object, args)
+          Tags.AddTagsTo(object, TAGS.object)
+        }
+        else {
+          console.warn('class ' + clsId + ' is not found! Ignoring object #' + id)
+        }
         delete objectsToRestore[id]
       }
     })
   })
 
-  const ui = new UI(assets.tiles, assets.classes.map(cls => cls.opts))
   ui.addEventListener('tile-selected', () => {
     if (keys.ctrlKey || keys.shiftKey) {
       const { position, scaling } = lastSelection,
@@ -200,38 +209,38 @@ import {
           chunks.setPixel(m, n, pixel)
         }
       }
-      cameraTarget.copyFrom(lastSelection.position)
     }
     canvas.focus()
   })
 
-  let playerObject: Player
   ui.addEventListener('panel-changed', (oldPanel: string) => {
-    const removeObjTag = 'remove-exit-play-mode'
     if (ui.activePanel === 'play') {
-      scene.getMeshesByTags(TAGS.object).forEach(mesh => mesh.isVisible = false)
-
-      const { x, z } = camera.target,
-        { h } = chunks.getPixel(x, z)
-      playerObject = new Player('remilia', scene, keys)
-      playerObject.position.copyFromFloats(x, h + 2, z)
-      playerObject.spriteBody.registerBeforeRender(_ => {
-        playerObject.updateForward(cameraDirection)
-        cameraTarget.copyFrom(playerObject.position)
-      })
-      Tags.AddTagsTo(playerObject, removeObjTag)
-
+      if (scene.getMeshesByTags(PlayerGenerator.PLAYER_GENERATOR_TAG).length === 0) {
+        const { x, z } = camera.target,
+          { h } = chunks.getPixel(x, z),
+          player = new Player('remilia', scene, keys)
+        player.position.copyFromFloats(x, h + 2, z)
+        Tags.AddTagsTo(player, 'auto-generated-player')
+        console.warn('creating player from camera position...')
+      }
       scene.getMeshesByTags(TAGS.object).forEach(mesh => {
-        if (mesh instanceof ObjectGenerator) {
-          mesh.createMeshObjects().forEach(object => Tags.AddTagsTo(object, removeObjTag))
-        }
+        mesh.isVisible = false
+        const listener = mesh as any as ObjectPlayListener
+        listener.startPlaying && listener.startPlaying()
       })
     }
     if (oldPanel === 'play') {
-      scene.getMeshesByTags(removeObjTag).forEach(mesh => mesh.dispose())
-      scene.getMeshesByTags(TAGS.object).forEach( mesh => mesh.isVisible = true)
+      scene.getMeshesByTags('auto-generated-player').forEach(mesh => {
+        mesh.dispose()
+      })
+      scene.getMeshesByTags(TAGS.object).forEach(mesh => {
+        mesh.isVisible = true
+        const listener = mesh as any as ObjectPlayListener
+        listener.stopPlaying && listener.stopPlaying()
+      })
     }
 
+    grid.isVisible = ui.activePanel !== 'play'
     lastSelection.isVisible = ui.activePanel === 'brushes'
     frame.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
     canvas.focus()
@@ -253,7 +262,6 @@ import {
     objectToolbar.style.display = selectedObject ? 'block' : 'none'
   })
 
-  let toolbarDragStarted = null as { x: number, y: number }
   attachDragable(objectToolbar.querySelector('.move-object') as HTMLElement, evt => {
     toolbarDragStarted = { ...cursor.offset }
     cursor.offset.x = parseFloat(objectToolbar.style.left) - evt.clientX
@@ -270,7 +278,7 @@ import {
   })
   objectToolbar.querySelector('.focus-object').addEventListener('click', _ => {
     if (selectedObject) {
-      cameraTarget.copyFrom(selectedObject.position)
+      camera.followTarget.copyFrom(selectedObject.position)
     }
   })
   objectToolbar.querySelector('.remove-object').addEventListener('click', _ => {
@@ -329,18 +337,20 @@ import {
     }, (newObject, oldObject) => {
       objectToolbar.style.display = newObject ? 'block' : 'none'
       if (oldObject) {
+        oldObject.showBoundingBox = false
         oldObject.getChildMeshes().forEach(child => child.showBoundingBox = false)
       }
       if (newObject) {
+        newObject.showBoundingBox = true
         newObject.getChildMeshes().forEach(child => child.showBoundingBox = true)
 
-        const { clsId, args } = objectsToSave[newObject.name],
-          { binder } = assets.classes.find(c => c.clsId === clsId),
-          container = objectToolbar.querySelector('.object-config')
-        container.innerHTML = ''
+        const { args } = objectsToSave[newObject.name],
+          container = objectToolbar.querySelector('.object-settings')
+        container.innerHTML = '<div>' + newObject.name + '</div>'
 
-        appendElement('div', { innerHTML: newObject.name }, container)
-        binder && binder(appendElement('div', { }, container), newObject, ret => {
+        const binder = newObject as any as ObjectElementBinder,
+          elem = appendElement('div', { }, container)
+        binder.bindToElement && binder.bindToElement(elem, ret => {
           Object.assign(args, ret)
           Object.assign(newObject, ret)
           map.saveDebounced(chunks, objectsToSave)
@@ -375,20 +385,22 @@ import {
     ]
   }
 
-  const cameraTarget = Vector3.Zero(),
-    cameraDirection = Vector3.Zero(),
-    fpsCounterText = document.getElementById('fpsCounterText'),
+  const fpsCounterText = document.getElementById('fpsCounterText'),
     computeFps = createFpsCounter()
   scene.registerBeforeRender(() => {
-    cameraDirection.copyFrom(camera.target.subtract(camera.position))
-    camera.setTarget(Vector3.Lerp(camera.target, cameraTarget, 0.1))
-    camera.setPosition(camera.target.subtract(cameraDirection))
-
     renderListeners.forEach(poll => poll())
+
     const cbs = panelListeners[ui.activePanel]
     cbs && cbs.forEach(poll => poll())
 
     fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
+
+    const { x, z } = camera.target, g = chunks.chunkSize,
+      p = grid.position, s = grid.scaling
+    if (x < p.x - s.x / 2) grid.position.x -= g
+    if (x > p.x + s.x / 2) grid.position.x += g
+    if (z < p.z - s.z / 2) grid.position.z -= g
+    if (z > p.z + s.z / 2) grid.position.z += g
   })
 
   setImmediate(() => {

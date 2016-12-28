@@ -17,8 +17,8 @@ import {
 } from './tiles'
 
 import {
-  getGroundVertexDataWithUV,
-  getSideVertexData,
+  getChunkGroundVertexData,
+  getChunkSideVertexData,
   VERTEX_GROUND,
   StaticBoxImpostor,
 } from './babylon'
@@ -58,8 +58,8 @@ function range(begin: number, end: number) {
 }
 
 const push = [ ].push,
-  getGroundVertexDataWithUVMemo = memo(getGroundVertexDataWithUV),
-  getSideVertexDataMemo = memo(getSideVertexData)
+  getGroundVertexDataWithUVMemo = memo(getChunkGroundVertexData),
+  getSideVertexDataMemo = memo(getChunkSideVertexData)
 
 type Events = 'height-updated' | 'tile-updated' | 'chunk-loaded'
 
@@ -179,12 +179,11 @@ export default class Chunks extends EventEmitter<Events> {
     const svd = { positions: [ ], normals: [ ], indices: [ ] }
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
       const g = chunkGrids,
-        sides = [
-          v1 === g || range(u0, u1).some(u => heights[u * g + v1]       < h1) ? 1 : 0,
-          u0 === 0 || range(v0, v1).some(v => heights[(u0 - 1) * g + v] < h1) ? 1 : 0,
-          v0 === 0 || range(u0, u1).some(u => heights[u * g + (v0 - 1)] < h1) ? 1 : 0,
-          u1 === g || range(v0, v1).some(v => heights[u1 * g + v]       < h1) ? 1 : 0,
-        ].join(''),
+        sides =
+          (v1 === g || range(u0, u1).some(u => heights[u * g + v1]       < h1) ? 8 : 0) +
+          (u0 === 0 || range(v0, v1).some(v => heights[(u0 - 1) * g + v] < h1) ? 4 : 0) +
+          (v0 === 0 || range(u0, u1).some(u => heights[u * g + (v0 - 1)] < h1) ? 2 : 0) +
+          (u1 === g || range(v0, v1).some(v => heights[u1 * g + v]       < h1) ? 1 : 0),
         i0 = svd.positions.length / 3,
         vd = getSideVertexDataMemo(u0, u1, v0, v1, h0, h1, sides)
       push.apply(svd.positions, vd.positions.map(p => p * gridSize))
@@ -293,7 +292,7 @@ export default class Chunks extends EventEmitter<Events> {
       p.h = h + parseFloat(p.h)
     }
     if (+p.h === p.h && h !== p.h) {
-      heights[c] = Math.max(p.h, -1)
+      heights[c] = Math.max(p.h, 0)
       this.addHeightToUpdate(m, n, k)
       this.addTextureToUpdate(m, n, t, t)
     }

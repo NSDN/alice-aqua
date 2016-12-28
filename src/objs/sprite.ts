@@ -1,16 +1,19 @@
 import {
   Mesh,
   AbstractMesh,
-  VertexData,
-  Material,
-  InstancedMesh,
 } from '../babylon'
 
 import {
-  getPlaneVertexDataWithUV,
+  getPlaneVertexDataFromRegion,
 } from '../utils/babylon'
 
-export default class Sprite extends InstancedMesh {
+import ObjectBase, {
+  ObjectOptions,
+  ObjectElementBinder,
+  appendConfigItem,
+} from './object-base'
+
+export default class Sprite extends ObjectBase implements ObjectElementBinder {
   readonly spriteBody: AbstractMesh
 
   get spriteHeight() {
@@ -23,36 +26,33 @@ export default class Sprite extends InstancedMesh {
     this.spriteBody.scaling.copyFromFloats(width, height, width)
   }
 
-  constructor(name: string, source: Mesh, readonly opts: {
-    material: Material
-    texSize: number
-    offsetX: number
-    offsetY: number
-    width: number
-    height: number
-  }) {
-    super(name, source)
+  private createSpriteCache(cacheId: string) {
+    const { material, texSize } = this.opts,
+      sprite = new Mesh(cacheId, this.getScene())
 
-    const { material, texSize, offsetX, offsetY, width, height } = opts,
+    getPlaneVertexDataFromRegion(texSize, this.opts).applyToMesh(sprite)
+    sprite.position.y = 0.5
+    sprite.material = material
+    sprite.isVisible = false
+
+    return sprite
+  }
+
+  constructor(name: string, source: Mesh, opts: ObjectOptions) {
+    super(name, source, opts)
+
+    const { texSize, offsetX, offsetY } = opts,
       cacheId = ['cache/sprite', texSize, offsetX, offsetY].join('/'),
-      scene = source.getScene()
-
-    let cache = scene.getMeshByName(cacheId) as Mesh
-    if (!cache) {
-      const sprite = cache = new Mesh(cacheId, scene),
-        u0 = offsetX / texSize,
-        v0 = 1 - (offsetY + height) / texSize,
-        u1 = u0 + width / texSize,
-        v1 = v0 + height / texSize,
-        vd = Object.assign(new VertexData(), getPlaneVertexDataWithUV(u0, u1, v0, v1))
-      vd.applyToMesh(sprite)
-
-      sprite.material = material
-      sprite.isVisible = false
-    }
-
-    const sprite = this.spriteBody = cache.createInstance(name + '/sprite')
+      cache = (this.getScene().getMeshByName(cacheId) as Mesh) || this.createSpriteCache(cacheId),
+      sprite = this.spriteBody = cache.createInstance(name + '/sprite')
     sprite.billboardMode = Mesh.BILLBOARDMODE_Y
     sprite.parent = this
+  }
+
+  bindToElement(container: HTMLElement, save: (args: Partial<Sprite>) => void) {
+    const attrs = { type: 'range', min: 1, max: this.opts.height / 32 * 4, step: 1 },
+      range = appendConfigItem('height: ', 'input', attrs, container) as HTMLInputElement
+    range.value = this.spriteHeight as any
+    range.addEventListener('change', _ => save({ spriteHeight: parseFloat(range.value) }))
   }
 }

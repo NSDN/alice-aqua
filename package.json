@@ -27,7 +27,7 @@
     "webpack-dev-server": "^1.16.2"
   },
   "dependencies": {
-    "babylonjs": "^2.4.1",
+    "babylonjs": "^2.5.0",
     "cannon": "github:schteppe/cannon.js",
     "font-awesome": "^4.6.3"
   }
