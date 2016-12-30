@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "webpack-dev-server",
-    "build": "NODE_ENV=production webpack"
+    "deploy": "webpack && ./tools/deploy.sh"
   },
   "keywords": [],
   "author": "",
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "babylonjs": "^2.5.0",
-    "cannon": "github:schteppe/cannon.js",
+    "cannon": "^0.6.2",
     "font-awesome": "^4.6.3"
   }
 }

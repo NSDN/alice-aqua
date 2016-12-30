@@ -110,10 +110,10 @@
     <div class="ui-panels">
       <div class="hidden ui-panel panel-brushes">
         <div class="ui-brushes">
-          <div class="ui-list-item" index="-1">
+          <div class="ui-list-item" tid="?">
             <span title="use tile from start"><i class="fa fa-question"></i></span>
           </div>
-          <div class="ui-list-item" index="">
+          <div class="ui-list-item" tid="">
             <span title="don't update tiles"><i class="fa fa-ban"></i></span>
           </div>
         </div>
@@ -136,16 +136,16 @@
   <div class="ui-head">
     <div class="ui-top">
       <select class="ui-panel-selector">
-        <option>objects</option>
         <option>brushes</option>
+        <option>objects</option>
         <option>game</option>
         <option>play</option>
       </select>
       <span class="hidden ui-panel panel-brushes">
         <select class="ui-brush-height">
-          <option value="0">flatten</option>
           <option value="+1">shift up</option>
           <option value="-1">shift down</option>
+          <option value="0">flatten</option>
           <option value="">keep</option>
         </select>
         ctrl &amp; drag to draw, shift &amp; drag to fill

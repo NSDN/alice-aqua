@@ -44,7 +44,7 @@ export interface ObjectSaveData {
   x: number,
   y: number,
   z: number,
-  clsId: string,
+  clsId: number,
   args: any,
 }
 
@@ -72,76 +72,75 @@ export const ASSET_IMAGES = {
   objectIcons1: 'assets/object_icons.png',
 }
 
-export const ASSET_TILES: [keyof typeof ASSET_IMAGES, number, number, number, boolean][] = [
-  ['imAssetTile1',   16,  624, 32, false],
-  ['imAssetTile1',    0,  480, 32, true],
-  ['imAssetTile1',    0,  576, 32, true],
-  ['imAssetTile1',   64,  480, 32, true],
-  ['imAssetTile1',   64,  576, 32, true],
-  ['imAssetTile1',  256, 1088, 32, true],
-  ['imAssetTile1',  384, 1088, 32, true],
-  ['imAssetTile1',  256, 1184, 32, true],
-  ['imAssetTile1',  384, 1184, 32, true],
-  ['imAssetTile1',  512,    0, 32, true],
-  ['imAssetTile1',  576,    0, 32, true],
-  ['imAssetTile1',  640,    0, 32, true],
-  ['imAssetTile1',  704,    0, 32, true],
-  ['imAssetTile1',  768,    0, 32, true],
-  ['imAssetTile1',  832,    0, 32, true],
-  ['imAssetTile1',  896,    0, 32, true],
-  ['imAssetTile1',  960,    0, 32, true],
-  ['imAssetTile1',  512,  160, 32, true],
-  ['imAssetTile1',  576,  160, 32, true],
-  ['imAssetTile1',  640,  160, 32, true],
-  ['imAssetTile1',  704,  160, 32, true],
-  ['imAssetTile1',  768,  160, 32, true],
-  ['imAssetTile1',  832,  160, 32, true],
-  ['imAssetTile1',  896,  160, 32, true],
-  ['imAssetTile1',  960,  160, 32, true],
-  ['imAssetTile1',  512,  320, 32, true],
-  ['imAssetTile1',  576,  320, 32, true],
-  ['imAssetTile1',  640,  320, 32, true],
-  ['imAssetTile1',  704,  320, 32, true],
-  ['imAssetTile1',  768,  320, 32, true],
-  ['imAssetTile1',  832,  320, 32, true],
-  ['imAssetTile1',  896,  320, 32, true],
-  ['imAssetTile1',  960,  320, 32, true],
+export const ASSET_TILES: [number, keyof typeof ASSET_IMAGES, number, number, number, boolean][] = [
+  [ 2, 'imAssetTile1',    0,  576, 32, true],
+  [ 3, 'imAssetTile1',    0,  480, 32, true],
+  [ 4, 'imAssetTile1',   64,  480, 32, true],
+  [ 5, 'imAssetTile1',   64,  576, 32, true],
+  [ 6, 'imAssetTile1',  256, 1088, 32, true],
+  [ 7, 'imAssetTile1',  384, 1088, 32, true],
+  [ 8, 'imAssetTile1',  256, 1184, 32, true],
+  [ 9, 'imAssetTile1',  384, 1184, 32, true],
+  [10, 'imAssetTile1',  512,    0, 32, true],
+  [11, 'imAssetTile1',  576,    0, 32, true],
+  [12, 'imAssetTile1',  640,    0, 32, true],
+  [13, 'imAssetTile1',  704,    0, 32, true],
+  [14, 'imAssetTile1',  768,    0, 32, true],
+  [15, 'imAssetTile1',  832,    0, 32, true],
+  [16, 'imAssetTile1',  896,    0, 32, true],
+  [17, 'imAssetTile1',  960,    0, 32, true],
+  [18, 'imAssetTile1',  512,  160, 32, true],
+  [19, 'imAssetTile1',  576,  160, 32, true],
+  [20, 'imAssetTile1',  640,  160, 32, true],
+  [21, 'imAssetTile1',  704,  160, 32, true],
+  [22, 'imAssetTile1',  768,  160, 32, true],
+  [23, 'imAssetTile1',  832,  160, 32, true],
+  [24, 'imAssetTile1',  896,  160, 32, true],
+  [25, 'imAssetTile1',  960,  160, 32, true],
+  [26, 'imAssetTile1',  512,  320, 32, true],
+  [27, 'imAssetTile1',  576,  320, 32, true],
+  [28, 'imAssetTile1',  640,  320, 32, true],
+  [29, 'imAssetTile1',  704,  320, 32, true],
+  [30, 'imAssetTile1',  768,  320, 32, true],
+  [31, 'imAssetTile1',  832,  320, 32, true],
+  [32, 'imAssetTile1',  896,  320, 32, true],
+  [33, 'imAssetTile1',  960,  320, 32, true],
 ]
 
-export const ASSET_CLASSES: [keyof typeof ASSET_IMAGES, number, number, number, number, keyof typeof OBJECT_CLASSES, any][] = [
-  ['imAssetTile1',  96, 1632, 64, 96, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1',   0, 1440, 64, 64, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1',   0, 1504, 64, 64, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1', 192, 1344, 64, 64, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1', 512,  256, 64, 64, 'box',    { spriteHeight: 2 }],
-  ['imAssetTile1', 160, 1024, 32, 64, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1', 128, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1',   0, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1', 160, 1408, 32, 64, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1',  64, 1408, 32, 64, 'sprite', { spriteHeight: 4 }],
-  ['imAssetTile1',   0, 1376, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',  32, 1376, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',   0, 1408, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',   0,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',  32,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 288,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 320,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',   0, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',  32, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',  64, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',  96, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 128, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 160, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 160, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 192, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 224, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 160, 1664, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1', 160, 1696, 32, 32, 'sprite', { spriteHeight: 1 }],
-  ['imAssetTile1',   0,   32, 32, 32, 'gate',    { }],
-  ['imAssetTile1',   0,   32, 32, 32, 'slope',   { }],
-  ['objectIcons1',  64,    0, 32, 32, 'trigger', { }],
-  ['objectIcons1',   0,    0, 32, 32, 'player',  { playerName: 'remilia' }],
-  ['objectIcons1',  32,    0, 32, 32, 'player',  { playerName: 'flandre' }],
+export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, number, number, keyof typeof OBJECT_CLASSES, any][] = [
+  [ 0, 'imAssetTile1',  96, 1632, 64, 96, 'sprite', { spriteHeight: 4 }],
+  [ 1, 'imAssetTile1',   0, 1440, 64, 64, 'sprite', { spriteHeight: 4 }],
+  [ 2, 'imAssetTile1',   0, 1504, 64, 64, 'sprite', { spriteHeight: 4 }],
+  [ 3, 'imAssetTile1', 192, 1344, 64, 64, 'sprite', { spriteHeight: 4 }],
+  [ 4, 'imAssetTile1', 512,  256, 64, 64, 'box',    { spriteHeight: 2 }],
+  [ 5, 'imAssetTile1', 160, 1024, 32, 64, 'sprite', { spriteHeight: 4 }],
+  [ 6, 'imAssetTile1', 128, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
+  [ 7, 'imAssetTile1',   0, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
+  [ 8, 'imAssetTile1', 160, 1408, 32, 64, 'sprite', { spriteHeight: 4 }],
+  [ 9, 'imAssetTile1',  64, 1408, 32, 64, 'sprite', { spriteHeight: 4 }],
+  [10, 'imAssetTile1',   0, 1376, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [11, 'imAssetTile1',  32, 1376, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [12, 'imAssetTile1',   0, 1408, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [13, 'imAssetTile1',   0,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [14, 'imAssetTile1',  32,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [15, 'imAssetTile1', 288,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [16, 'imAssetTile1', 320,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [17, 'imAssetTile1',   0, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [18, 'imAssetTile1',  32, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [19, 'imAssetTile1',  64, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [20, 'imAssetTile1',  96, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [21, 'imAssetTile1', 128, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [22, 'imAssetTile1', 160, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [23, 'imAssetTile1', 160, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [24, 'imAssetTile1', 192, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [25, 'imAssetTile1', 224, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [26, 'imAssetTile1', 160, 1664, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [27, 'imAssetTile1', 160, 1696, 32, 32, 'sprite', { spriteHeight: 1 }],
+  [28, 'imAssetTile1',   0,   32, 32, 32, 'gate',    { }],
+  [29, 'imAssetTile1',   0,   32, 32, 32, 'slope',   { }],
+  [30, 'objectIcons1',  64,    0, 32, 32, 'trigger', { }],
+  [31, 'objectIcons1',   0,    0, 32, 32, 'player',  { playerName: 'remilia' }],
+  [32, 'objectIcons1',  32,    0, 32, 32, 'player',  { playerName: 'flandre' }],
 ]
 
 export const KEY_MAP = {
@@ -149,6 +148,9 @@ export const KEY_MAP = {
   shiftKey: 16,
   ctrlKey: 17,
   delKey: 46,
+
+  focus: 'F',
+
   moveForward: 'W',
   moveBack: 'S',
   moveLeft: 'A',
@@ -296,17 +298,16 @@ export async function loadAssets(scene: Scene) {
     materials[id] = { material, texSize }
   }
 
-  const tiles = ASSET_TILES.map(([srcId, offsetX, offsetY, size, isAutoTile]) => {
-    const src = document.getElementById(srcId as string) as HTMLImageElement
-    return { src, offsetX, offsetY, size, isAutoTile }
+  const tiles = ASSET_TILES.map(([tileId, srcId, offsetX, offsetY, size, isAutoTile]) => {
+    const src = document.getElementById(srcId) as HTMLImageElement
+    return { tileId, src, offsetX, offsetY, size, isAutoTile }
   })
 
-  const classes = ASSET_CLASSES.map(([srcId, offsetX, offsetY, width, height, clsName, args]) => {
-    const src = document.getElementById(srcId as string) as HTMLImageElement,
+  const classes = ASSET_CLASSES.map(([clsId, srcId, offsetX, offsetY, width, height, clsName, args]) => {
+    const src = document.getElementById(srcId) as HTMLImageElement,
       cls = OBJECT_CLASSES[clsName] as typeof ObjectBase,
       { material, texSize } = materials[srcId],
-      opts = { clsName, src, material, offsetX, offsetY, width, height, texSize },
-      clsId = JSON.stringify([clsName, srcId, offsetX, offsetY, args])
+      opts = { clsId, clsName, src, material, offsetX, offsetY, width, height, texSize }
     return { clsName, clsId, args, opts, cls }
   })
 

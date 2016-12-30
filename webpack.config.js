@@ -1,10 +1,10 @@
 const webpack = require("webpack"),
-  isProd = process.env.NODE_ENV === 'production'
+  isDevServer = process.argv.find(v => v.includes('webpack-dev-server'))
 
 module.exports = {
   debug: true,
-  entry: isProd ? ['babel-polyfill', './src/index.ts'] : ['./src/index.ts'],
-  devtool: 'source-map',
+  entry: isDevServer ? ['./src'] : ['babel-polyfill', './src'],
+  devtool: isDevServer && 'source-map',
   output: {
     filename: 'build/bundle.js'
   },
@@ -21,9 +21,11 @@ module.exports = {
     loaders: [
       {
         test: /\.ts$/,
-        loaders: isProd ? ['babel-loader', 'ts-loader'] : ['ts-loader'],
+        loaders: isDevServer ? ['ts-loader'] : ['babel-loader', 'ts-loader'],
       }
     ],
   },
-  plugins: isProd ? [new webpack.optimize.UglifyJsPlugin()] : [ ]
+  plugins: isDevServer ? [ ] : [
+    new webpack.optimize.UglifyJsPlugin()
+  ]
 }

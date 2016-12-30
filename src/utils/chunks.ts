@@ -46,6 +46,7 @@ export interface SaveData {
 }
 
 export interface TileDefine {
+  tileId: number
   src: HTMLImageElement
   offsetX: number
   offsetY: number
@@ -67,15 +68,19 @@ export default class Chunks extends EventEmitter<Events> {
   private readonly chunkGrids: number
   private readonly texturePixel: number
   private readonly sideMaterial: StandardMaterial
+  private readonly tiles: { [id: number]: TileDefine }
   private data: { [key: string]: ChunkData } = { }
 
   constructor(readonly scene: Scene,
-    readonly tiles: TileDefine[],
+    tiles: TileDefine[],
     readonly saveData = { } as { [key: string]: SaveData },
     readonly gridSize = 1,
     readonly chunkSize = 16,
     readonly textureSize = 16 * 32) {
     super()
+
+    this.tiles = { }
+    tiles.forEach(tile => this.tiles[tile.tileId] = tile)
 
     this.chunkGrids = Math.floor(chunkSize / gridSize)
     this.texturePixel = Math.floor(textureSize / this.chunkGrids)
@@ -142,9 +147,6 @@ export default class Chunks extends EventEmitter<Events> {
       dx = u * texturePixel,
       dy = textureSize - (v + 1) * texturePixel
 
-    const { src, offsetX, offsetY, size } = this.tiles[0]
-    dc.drawImage(src, offsetX, offsetY, size, size, dx, dy, size, size)
-
     if (this.tiles[t]) {
       const { src, offsetX, offsetY, size, isAutoTile } = this.tiles[t]
       if (isAutoTile) {
@@ -175,6 +177,8 @@ export default class Chunks extends EventEmitter<Events> {
       push.apply(gvd.uvs,       vd.uvs.map(v => v / chunkGrids))
     })
     Object.assign(new VertexData(), gvd).applyToMesh(top)
+    // FIXME: babylonjs
+    if (!gvd.indices.length) top.releaseSubMeshes()
 
     const svd = { positions: [ ], normals: [ ], indices: [ ] }
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
@@ -191,6 +195,8 @@ export default class Chunks extends EventEmitter<Events> {
       push.apply(svd.indices,   vd.indices.map(i => i + i0))
     })
     Object.assign(new VertexData(), svd).applyToMesh(side)
+    // FIXME: babylonjs
+    if (!svd.indices.length) side.releaseSubMeshes()
 
     const keepInBlocks = { } as { [id: string]: boolean }
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {

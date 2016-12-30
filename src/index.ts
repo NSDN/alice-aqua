@@ -68,12 +68,8 @@ import {
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'brushes' && !keys.ctrlKey && keys.shiftKey
   }, _ => {
-    const { t, h } = ui.selectedTilePixel,
-      { x, z } = cursor.hover
-    selectedPixel = {
-      t: t < 0 ? chunks.getPixel(x, z).t : t,
-      h: h && cursor.hover.y + parseInt(h)
-    }
+    const { t } = ui.selectedTilePixel, { x, z } = cursor.hover
+    selectedPixel = { t: t === '?' ? chunks.getPixel(x, z).t : t && parseInt(t), h: 0 }
 
     lastSelection.scaling.copyFromFloats(1, 1, 1)
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
@@ -82,8 +78,7 @@ import {
     lastSelection.position.copyFrom(maximum.add(minimum).scale(0.5))
     lastSelection.scaling.copyFrom(maximum.subtract(minimum))
   }, _ => {
-    const { minimum, maximum } = cursor,
-      { h } = ui.selectedTilePixel,
+    const { minimum, maximum } = cursor, { h } = ui.selectedTilePixel,
       pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) }
     for (let m = minimum.x; m < maximum.x; m ++) {
       for (let n = minimum.z; n < maximum.z; n ++) {
@@ -96,10 +91,9 @@ import {
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'brushes' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
-    const { t, h } = ui.selectedTilePixel,
-      { x, z } = cursor.hover
+    const { t, h } = ui.selectedTilePixel, { x, z } = cursor.hover
     selectedPixel = {
-      t: t < 0 ? chunks.getPixel(x, z).t : t,
+      t: t === '?' ? chunks.getPixel(x, z).t : t && parseInt(t),
       h: h && cursor.hover.y + parseInt(h)
     }
     chunks.setPixel(x, z, selectedPixel)
@@ -206,7 +200,7 @@ import {
         pixel = ui.selectedTilePixel
       for (let m = minimum.x; m < maximum.x; m ++) {
         for (let n = minimum.z; n < maximum.z; n ++) {
-          chunks.setPixel(m, n, pixel)
+          chunks.setPixel(m, n, pixel as any)
         }
       }
     }
@@ -332,6 +326,11 @@ import {
       cursor.isVisible = shouldDetachCamera
       shouldDetachCamera ? camera.detachControl(canvas) : camera.attachControl(canvas)
     }, true),
+    watch(() => {
+      return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.shiftKey && keys.focus
+    }, focusCameraToCursor => {
+      focusCameraToCursor && camera.followTarget.copyFrom(cursor.hover)
+    }, false),
     watch(() => {
       return ui.activePanel === 'objects' && selectedObject
     }, (newObject, oldObject) => {

@@ -9,10 +9,6 @@ import {
   appendElement,
 } from '../utils/dom'
 
-import {
-  getPlaneVertexDataFromRegion,
-} from '../utils/babylon'
-
 export interface ObjectOptions {
   clsName: string
   material: Material
@@ -60,19 +56,5 @@ export interface ObjectPlayListener {
 export default class ObjectBase extends InstancedMesh {
   constructor(name: string, source: Mesh, readonly opts: ObjectOptions) {
     super(name, source)
-  }
-
-  getIconMeshCache() {
-    const { material, texSize, offsetX, offsetY } = this.opts,
-      cacheId = [material.name, offsetX, offsetY].join('/')
-    let cache = this.getScene().getMeshByName(cacheId) as Mesh
-    if (!cache) {
-      cache = new Mesh(cacheId, this.getScene())
-      getPlaneVertexDataFromRegion(texSize, this.opts).applyToMesh(cache)
-      cache.material = material
-      cache.rotation.x = Math.PI / 2
-      cache.position.y = 0.1
-    }
-    return cache
   }
 }

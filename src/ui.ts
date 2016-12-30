@@ -11,6 +11,7 @@ import {
 } from './utils'
 
 export interface ClassDefine {
+  clsId: number,
   clsName: string,
   src: HTMLImageElement
   offsetX: number
@@ -48,9 +49,9 @@ export class UI extends EventEmitter<Events> {
     setTimeout(_ => this.panel.dispatchEvent(new Event('change')), 100)
 
     const tileList = document.querySelector('.ui-brushes')
-    tiles.forEach((tile, index) => {
-      const { src, offsetX, offsetY, size } = tile,
-        attrs = { className: 'ui-list-item', attributesToSet: { index } },
+    tiles.forEach(tile => {
+      const { tileId, src, offsetX, offsetY, size } = tile,
+        attrs = { className: 'ui-list-item', attributesToSet: { tid: tileId } },
         div = appendElement('div', attrs, tileList) as HTMLDivElement,
         [width, height] = [32, 32],
         canvas = appendElement('canvas', { width, height }, div) as HTMLCanvasElement
@@ -58,9 +59,9 @@ export class UI extends EventEmitter<Events> {
     })
 
     const clsList = document.querySelector('.ui-classes')
-    classes.forEach((cls, index) => {
-      const { src, offsetX, offsetY, width, height, clsName } = cls,
-        attrs = { className: 'ui-list-item', attributesToSet: { index }, title: clsName },
+    classes.forEach(cls => {
+      const { clsId, src, offsetX, offsetY, width, height, clsName } = cls,
+        attrs = { className: 'ui-list-item', attributesToSet: { cid: clsId }, title: clsName },
         div = appendElement('div', attrs, clsList) as HTMLDivElement,
         canvas = appendElement('canvas', { width, height }, div) as HTMLCanvasElement
       canvas.getContext('2d').drawImage(src, offsetX, offsetY, width, height, 0, 0, width, height)
@@ -95,12 +96,11 @@ export class UI extends EventEmitter<Events> {
 
   get selectedTilePixel() {
     const div = document.querySelector('.ui-brushes .ui-list-item.selected')
-    return { t: parseInt(div.getAttribute('index')), h: this.brushHeight.value }
+    return { t: div.getAttribute('tid'), h: this.brushHeight.value }
   }
 
   get selectedClassIndex() {
-    const div = document.querySelector('.ui-classes .ui-list-item.selected'),
-      index = div && div.getAttribute('index')
-    return index && parseInt(index)
+    const div = document.querySelector('.ui-classes .ui-list-item.selected')
+    return div.getAttribute('cid')
   }
 }

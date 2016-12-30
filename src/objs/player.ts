@@ -93,7 +93,7 @@ export default class Player extends Mesh {
       friction: 0,
       restitution: 0,
       moveForce: 0.5,
-      jumpForce: 2.5,
+      jumpForce: 4,
       minimumY: -10,
     }, opts)
 

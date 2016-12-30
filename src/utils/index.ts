@@ -99,8 +99,7 @@ function each2(a: N[], b: N[], n: N,
 export function getBlocksFromHeightMap(heights: number[], n: number) {
   const blocks = [ ] as number[][],
     hMin = Math.min.apply(Math, heights),
-    hMax = Math.max.apply(Math, heights),
-    h = Math.max(Math.min(hMin, hMax - 1), 0),
+    h = Math.max(hMin - 1, 0),
     a = heights,
     b = Array(heights.length).fill(h)
 
