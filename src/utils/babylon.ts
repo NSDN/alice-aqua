@@ -127,19 +127,23 @@ export function getChunkSideVertexData(_u0: N, _u1: N, _v0: N, _v1: N, _h0: N, _
   const [vs, fs] = SIDE_VERTEX_MAP[sides],
     positions = [ ] as N[],
     normals = [ ] as N[],
-    indices = [ ] as N[]
+    indices = [ ] as N[],
+    uvs = [ ] as N[]
   vs.forEach(i => {
-    for (let n = i * 3, j = n; j < n + 3; j ++) {
+    const n = i * 3
+    for (let j = n; j < n + 3; j ++) {
       positions.push(arguments[ SIDE_POS[j] ])
       normals.push(SIDE_NORM[j])
     }
+    uvs.push(arguments[ SIDE_POS[n] ] + arguments[ SIDE_POS[n + 2] ])
+    uvs.push(arguments[ SIDE_POS[n + 1] ])
   })
   fs.forEach(i => {
     for (let n = i * 6, j = n; j < n + 6; j ++) {
       indices.push(SIDE_IDX[j])
     }
   })
-  return { positions, normals, indices }
+  return { positions, normals, indices, uvs }
 }
 
 export function getBoundingVertexData(sx: N, sy: N, sz: N, addCross: boolean) {

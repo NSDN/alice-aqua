@@ -17,9 +17,9 @@ import {
 } from './tiles'
 
 import {
+  // VERTEX_GROUND,
   getChunkGroundVertexData,
   getChunkSideVertexData,
-  VERTEX_GROUND,
   StaticBoxImpostor,
 } from './babylon'
 
@@ -68,6 +68,7 @@ export default class Chunks extends EventEmitter<Events> {
   private readonly chunkGrids: number
   private readonly texturePixel: number
   private readonly sideMaterial: StandardMaterial
+  // private readonly waterMaterial: BABYLON.WaterMaterial
   private readonly tiles: { [id: number]: TileDefine }
   private data: { [key: string]: ChunkData } = { }
 
@@ -87,7 +88,22 @@ export default class Chunks extends EventEmitter<Events> {
 
     const sideMaterial = this.sideMaterial = new StandardMaterial('side', scene)
     sideMaterial.disableLighting = true
-    sideMaterial.emissiveColor = new Color3(0.8, 0.8, 0.8)
+    sideMaterial.emissiveColor = Color3.White()
+    const texture = sideMaterial.diffuseTexture = new Texture('assets/chunk_side.png', scene)
+    texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
+    texture.uScale = texture.vScale = this.chunkGrids
+
+    /*
+    const waterMesh = Mesh.CreateGround('chunks/water', 64, 64, 16, scene, false),
+      waterMaterial = this.waterMaterial = waterMesh.material =
+        new BABYLON.WaterMaterial('chunk/water/mat', scene, new BABYLON.Vector2(512, 512))
+    waterMaterial.backFaceCulling = true
+    waterMaterial.windForce = -5
+    waterMaterial.waveHeight = 0.1
+    waterMaterial.bumpHeight = 0.08
+    waterMaterial.waterColor = new BABYLON.Color3(52, 113, 175).scale(1 / 255)
+    waterMaterial.colorBlendFactor = 0.8
+    */
   }
 
   private getChunkData(m: number, n: number) {
@@ -121,6 +137,8 @@ export default class Chunks extends EventEmitter<Events> {
         new DynamicTexture('chunk/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
 
       this.data[k] = { top, side, blocks, texture, i, j, k }
+      // this.waterMaterial.addToRenderList(top)
+      // this.waterMaterial.addToRenderList(side)
 
       setImmediate(() => {
         for (let u = 0; u < chunkGrids; u ++) {
@@ -160,11 +178,15 @@ export default class Chunks extends EventEmitter<Events> {
         dc.drawImage(src, offsetX, offsetY, size, size, dx, dy, texturePixel, texturePixel)
       }
     }
+    else {
+      dc.fillStyle = 'rgb(200, 200, 200)'
+      dc.fillRect(dx, dy, texturePixel, texturePixel)
+    }
   }
 
   private updateHeight(m: number, n: number) {
-    const { chunkGrids, gridSize, chunkSize, scene } = this,
-      { heights, top, side, blocks, k } = this.getChunkData(m, n),
+    const { chunkGrids, gridSize, scene } = this,
+      { heights, top, side, blocks } = this.getChunkData(m, n),
       blks = getBlocksFromHeightMap(heights, chunkGrids)
 
     const gvd = {
@@ -173,7 +195,7 @@ export default class Chunks extends EventEmitter<Events> {
       indices: [ ] as number[],
       uvs: [ ] as number[]
     }
-    blks.forEach(([u0, u1, v0, v1, _, h1]) => {
+    blks.forEach(([u0, u1, v0, v1, , h1]) => {
       const i0 = gvd.positions.length / 3,
         vd = getGroundVertexDataWithUVMemo(u0, u1, v0, v1, h1)
       push.apply(gvd.positions, vd.positions.map(p => p * gridSize))
@@ -188,7 +210,8 @@ export default class Chunks extends EventEmitter<Events> {
     const svd = {
       positions: [ ] as number[],
       normals: [ ] as number[],
-      indices: [ ] as number[]
+      indices: [ ] as number[],
+      uvs: [ ] as number[],
     }
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
       const g = chunkGrids,
@@ -202,6 +225,7 @@ export default class Chunks extends EventEmitter<Events> {
       push.apply(svd.positions, vd.positions.map(p => p * gridSize))
       push.apply(svd.normals,   vd.normals)
       push.apply(svd.indices,   vd.indices.map(i => i + i0))
+      push.apply(svd.uvs,       vd.uvs.map(v => v / chunkGrids))
     })
     Object.assign(new VertexData(), svd).applyToMesh(side)
     // FIXME: babylonjs
@@ -220,8 +244,10 @@ export default class Chunks extends EventEmitter<Events> {
       keepInBlocks[id] = true
     })
 
-    if (Math.min.apply(Math, heights) < 0) {
-      const id = ['chunk', 'water', k].join('/')
+    /*
+    if (Math.min.apply(Math, heights) < 1) {
+      const id = top + '/water',
+        { chunkSize } = this
       if (!blocks[id]) {
         const cacheId = 'cache/chunk/water'
 
@@ -234,14 +260,15 @@ export default class Chunks extends EventEmitter<Events> {
           mesh.visibility = 0.8
           mesh.isVisible = false
           const material = mesh.material = new StandardMaterial('water', scene)
-          material.emissiveColor = new Color3(91 / 255, 176 / 255, 226 / 255)
+          material.emissiveColor = new Color3(30, 74, 140).scale(1 / 255)
         }
 
         const water = cache.createInstance(id)
-        water.position.copyFrom(top.position.add(new Vector3(chunkSize / 2, -0.2, chunkSize / 2)))
+        water.position.copyFrom(top.position.add(new Vector3(chunkSize / 2, 0.2, chunkSize / 2)))
       }
       keepInBlocks[id] = true
     }
+    */
 
     Object.keys(blocks).filter(id => !keepInBlocks[id]).forEach(id => {
       blocks[id].dispose()

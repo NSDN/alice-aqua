@@ -19,21 +19,35 @@ import Sprite from './sprite'
 export default class Box extends InstancedMesh implements ObjectUsable {
   static readonly BOX_TAG = 'generated-box'
 
-  constructor(name: string, source: Mesh, gen: BoxGenerator) {
+  constructor(name: string, source: Mesh, private generator: BoxGenerator) {
     super(name, source)
 
-    const origin = gen.position.add(new Vector3(0, 2, 0))
+    const origin = generator.position.add(new Vector3(0, 2, 0))
     this.position.copyFrom(origin)
 
-    const opts = { mass: 10, friction: 0 }
-    this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.BoxImpostor, opts),
+    const params = { mass: generator.boxMass, friction: 0 }
+    this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.BoxImpostor, params),
     this.physicsImpostor.registerBeforePhysicsStep(impostor => {
-      impostor.setLinearVelocity(impostor.getLinearVelocity().scale(0.98))
-      impostor.setAngularVelocity(impostor.getAngularVelocity().scale(0.98))
+      const v = impostor.getLinearVelocity(), a = impostor.getAngularVelocity()
+
       if (this.position.y < -10) setImmediate(() => {
         this.position.copyFrom(origin)
         impostor.setLinearVelocity(Vector3.Zero())
       })
+
+      const threshold = generator.velocityThreshold
+      if (threshold > 0) {
+        const velocity = v.multiplyByFloats(1, 0.5, 1).length()
+        if (velocity < threshold) {
+          const f = Math.sqrt(velocity / threshold), vf = 0.1 + 0.9 * f,
+            af = 0.9 + 0.1 * vf, ay = 0.1 + 0.9 * vf
+          v.multiplyInPlace(new Vector3(vf, 1, vf))
+          a.multiplyInPlace(new Vector3(af, ay, af))
+        }
+      }
+
+      impostor.setLinearVelocity(v.scale(0.98))
+      impostor.setAngularVelocity(a.scale(0.98))
     })
   }
 
@@ -44,19 +58,22 @@ export default class Box extends InstancedMesh implements ObjectUsable {
   useFrom(mesh: AbstractMesh) {
     if (mesh.name === 'flandre') {
       const direction = this.position.subtract(mesh.position).multiplyByFloats(1, 0, 1).normalize()
-      this.physicsImpostor.applyImpulse(direction.scale(30 * 10), this.position)
+      this.physicsImpostor.applyImpulse(direction.scale(1000 / this.generator.boxMass), this.position)
     }
   }
 }
 
 export class BoxGenerator extends Sprite implements ObjectPlayListener {
+  public boxMass = 5
+  public velocityThreshold = 0
+
   startPlaying() {
-    const cacheId = 'cache/box'
+    const { material, texSize, offsetX, offsetY, width, height } = this.opts.icon,
+      cacheId = ['cache/box', material.name, offsetX, offsetY].join('/')
 
     let cache = this.getScene().getMeshByName(cacheId) as Mesh
     if (!cache) {
-      const { material, texSize, offsetX, offsetY, width, height } = this.opts.icon,
-        u0 = offsetX / texSize,
+      const u0 = offsetX / texSize,
         v0 = 1 - (offsetY + height) / texSize,
         u1 = (offsetX + width) / texSize,
         v1 = 1 - offsetY / texSize,

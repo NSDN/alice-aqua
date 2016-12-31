@@ -74,6 +74,8 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
         this.physicsImpostor.forceUpdate()
       }
     })
+
+    this.physicsImpostor.forceUpdate()
   }
 
   bindToElement(container: HTMLElement, save: (args: Partial<Gate>) => void) {

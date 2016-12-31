@@ -3,6 +3,7 @@
 <head>
   <title></title>
   <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
+  <meta charset="utf-8">
   <style>
     html, body, .full-size {
       overflow: hidden;
@@ -107,6 +108,12 @@
       color: #eee;
     }
 
+    .game-config {
+      min-width: 120px;
+      float: left;
+      padding: 0 10px;
+    }
+
     .doc-help {
       display: none;
       position: absolute;
@@ -153,14 +160,18 @@
         <div class="ui-classes"></div>
       </div>
       <div class="hidden ui-panel panel-game">
-        <p>map</p>
-        <button id="configDownloadMap">download map</button>
-        <button id="configUploadMap">upload map</button>
-        <button id="configResetMap">reset map</button>
-        <p>tool</p>
-        <label>
-          <input type="checkbox" id="configRotateCamera" /> rotate camera
-        </label>
+        <div class="game-config">
+          <h3>display</h3>
+          <label><input id="configDisplaySSAO" type="checkbox" />enable AO</label><br />
+          <label><input id="configDisplaySkyBox" type="checkbox" />show skybox</label><br />
+          <button id="configApplyDisplay">Apply Display Settings</button>
+        </div>
+        <div class="game-config">
+          <h3>map</h3>
+          <button id="configDownloadMap">download map</button>
+          <button id="configUploadMap">upload map</button>
+          <button id="configResetMap">reset map</button>
+        </div>
       </div>
     </div>
   </div>
@@ -217,6 +228,13 @@
       </ul>
       <hr>
 
+      <h2>In #game panel</h2>
+      <ul>
+        <li>开启 SSAO 和 SkyBox</li>
+        <li>上传 / 下载地图</li>
+      </ul>
+      <hr>
+
       <h2>In #play panel</h2>
       <p>开始测试地图!</p>
     </div>
@@ -225,6 +243,7 @@
   <script src="node_modules/babylonjs/dist/cannon.js"></script>
   <script src="node_modules/babylonjs/dist/babylon.2.5.max.js"></script>
   <script src="node_modules/babylonjs/dist/babylon.2.5.canvas2d.max.js"></script>
+  <script src="node_modules/babylonjs/dist/preview release/materialsLibrary/babylon.waterMaterial.js"></script>
   <script src="build/bundle.js"></script>
 </body>
 </html>

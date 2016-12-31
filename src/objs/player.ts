@@ -29,6 +29,19 @@ import {
 
 import Sprite from './sprite'
 
+const DEFAULT_CONFIG = {
+  width: 1,
+  height: 1.8,
+  mass: 1,
+  friction: 0,
+  restitution: 0,
+  moveForce: 0.5,
+  jumpForce: 3,
+  minimumY: -10,
+  angularDamping: new Vector3(0, 0.8, 0),
+  linearDamping: new Vector3(0.8, 0.99, 0.8),
+}
+
 export default class Player extends Mesh {
   static readonly PLAYER_TAG = 'player-tag'
   static readonly PLAYER_BODY_TAG = 'player-body'
@@ -88,16 +101,7 @@ export default class Player extends Mesh {
   }) {
     super(name, scene)
 
-    opts = this.opts = Object.assign({
-      width: 1,
-      height: 1.8,
-      mass: 1,
-      friction: 0,
-      restitution: 0,
-      moveForce: 0.5,
-      jumpForce: 2.5,
-      minimumY: -10,
-    }, opts)
+    opts = this.opts = Object.assign({ }, DEFAULT_CONFIG, opts)
 
     this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.ParticleImpostor, {
       mass: opts.mass,
@@ -105,11 +109,9 @@ export default class Player extends Mesh {
       restitution: opts.restitution,
     })
 
-    const angularDamping = this.opts.angularDamping || new Vector3(0, 0.8, 0),
-      linearDamping = this.opts.linearDamping || new Vector3(0.8, 0.99, 0.8)
     this.physicsImpostor.registerBeforePhysicsStep(impostor => {
-      impostor.setAngularVelocity(impostor.getAngularVelocity().multiply(angularDamping))
-      impostor.setLinearVelocity(impostor.getLinearVelocity().multiply(linearDamping))
+      impostor.setAngularVelocity(impostor.getAngularVelocity().multiply(opts.angularDamping))
+      impostor.setLinearVelocity(impostor.getLinearVelocity().multiply(opts.linearDamping))
 
       if (this.position.y < this.opts.minimumY) setImmediate(() => {
         this.position.copyFrom(this.lastShadowDropPosition)

@@ -11,6 +11,7 @@ import {
   Tags,
   Matrix,
   AbstractMesh,
+  SSAORenderingPipeline,
 } from './babylon'
 
 import {
@@ -21,6 +22,7 @@ import {
   createScene,
   createFpsCounter,
   createKeyStates,
+  createSkyBox,
   createObjectFrame,
   createSelectionBox,
   createGridPlane,
@@ -79,6 +81,7 @@ class History {
     assets = await loadAssets(scene),
 
     source = createObjectFrame(scene),
+    skybox = createSkyBox(scene),
 
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
     lastSelection = createSelectionBox(scene),
@@ -358,13 +361,18 @@ class History {
     selectedObject = null
   })
 
-  const configRotateCamera = document.getElementById('configRotateCamera') as HTMLInputElement
-  configRotateCamera && configRotateCamera.addEventListener('click', function tick() {
-    if (configRotateCamera.checked) {
-      camera.alpha += 0.02
-      setTimeout(tick, 20)
-    }
+  const configDisplaySSAO = document.getElementById('configDisplaySSAO') as HTMLInputElement,
+    configDisplaySkyBox = document.getElementById('configDisplaySkyBox') as HTMLInputElement
+  if (configDisplaySSAO.checked = !!localStorage.getItem('config-display-ssao')) {
+    new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
+  }
+  skybox.isVisible = configDisplaySkyBox.checked = !!localStorage.getItem('config-display-skybox')
+  document.getElementById('configApplyDisplay').addEventListener('click', _ => {
+    localStorage.setItem('config-display-ssao', configDisplaySSAO.checked ? '1' : '')
+    localStorage.setItem('config-display-skybox', configDisplaySkyBox.checked ? '1' : '')
+    location.reload()
   })
+
   document.getElementById('configDownloadMap').addEventListener('click', _ => {
     const s = map.toJSON(chunks, objectsToSave)
     const a = appendElement('a', {
@@ -496,6 +504,7 @@ class History {
       if (z < p.z - s.z / 2) grid.position.z -= g
       if (z > p.z + s.z / 2) grid.position.z += g
     }
+    skybox.position.copyFrom(camera.target)
   })
 
   setImmediate(() => {

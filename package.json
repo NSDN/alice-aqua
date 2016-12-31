@@ -1,11 +1,11 @@
 {
   "name": "pth",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
     "dev": "webpack-dev-server",
-    "deploy": "webpack && ./tools/deploy.sh"
+    "pub": "webpack && bash ./tools/publish.sh"
   },
   "keywords": [],
   "author": "",

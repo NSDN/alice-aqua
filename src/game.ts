@@ -10,7 +10,6 @@ import {
   Scene,
   Vector3,
   ScreenSpaceCanvas2D,
-  SSAORenderingPipeline,
   LinesMesh,
   Color3,
   Mesh,
@@ -72,8 +71,6 @@ export const TAGS = {
 export const ASSET_IMAGES = {
   imAssetTile1: 'assets/rpg_maker_vx_rtp_tileset_by_telles0808.png',
   objectIcons1: 'assets/object_icons.png',
-  playerFlandre: 'assets/flandre.png',
-  playerRemilia: 'assets/remilia.png',
 }
 
 export const ASSET_TILES: [number, keyof typeof ASSET_IMAGES, number, number, number, boolean][] = [
@@ -116,7 +113,8 @@ export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, 
   [ 1, 'imAssetTile1',   0, 1440, 64, 64, 'sprite', { spriteHeight: 4 }],
   [ 2, 'imAssetTile1',   0, 1504, 64, 64, 'sprite', { spriteHeight: 4 }],
   [ 3, 'imAssetTile1', 192, 1344, 64, 64, 'sprite', { spriteHeight: 4 }],
-  [ 4, 'imAssetTile1', 512,  256, 64, 64, 'box',    { spriteHeight: 2 }],
+  [ 4, 'imAssetTile1', 512,  256, 64, 64, 'box',    { spriteHeight: 2, boxMass: 5 }],
+  [33, 'imAssetTile1', 768,   32, 64, 64, 'box',    { spriteHeight: 2, boxMass: 25, velocityThreshold: 0.5 }],
   [ 5, 'imAssetTile1', 160, 1024, 32, 64, 'sprite', { spriteHeight: 4 }],
   [ 6, 'imAssetTile1', 128, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
   [ 7, 'imAssetTile1',   0, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
@@ -202,8 +200,6 @@ export function createScene() {
   camera.lowerBetaLimit = Math.PI * 0.15
   camera.upperBetaLimit = Math.PI * 0.45
 
-  new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
-
   const canvas2d = new ScreenSpaceCanvas2D(scene)
 
   return { scene, camera, canvas2d }
@@ -241,6 +237,28 @@ export function createKeyStates() {
   })
 
   return { keys }
+}
+
+export function createSkyBox(scene: Scene) {
+  const sky = Mesh.CreateSphere('skybox', 3, 1, scene, false, Mesh.BACKSIDE)
+  sky.scaling.scaleInPlace(256)
+
+  const material = sky.material = new StandardMaterial('skybox', scene)
+  material.emissiveColor = Color3.White()
+  material.disableLighting = true
+
+  const size = 64,
+    texture = material.diffuseTexture = new DynamicTexture('skytex', size, scene, false),
+    dc = texture.getContext(),
+    grad = dc.createLinearGradient(0, 0, 0, texture.getSize().width)
+  grad.addColorStop(0.0, 'rgb(51, 51, 77)')
+  grad.addColorStop(0.4, 'rgb(51, 51, 77)')
+  grad.addColorStop(1.0, 'rgb(225, 236, 241)')
+  dc.fillStyle = grad
+  dc.fillRect(0, 0, size, size)
+  texture.update()
+
+  return sky
 }
 
 export function createSelectionBox(scene: Scene) {
@@ -288,6 +306,7 @@ export function createGridPlane(scene: Scene, count: number) {
   const grid = new Mesh('grid', scene)
   VERTEX_GROUND.applyToMesh(grid)
   grid.scaling.copyFromFloats(count * repeat, 1, count * repeat)
+  grid.position.y = 0.001
 
   const material = grid.material = new StandardMaterial('grid', scene)
   material.disableLighting = true
