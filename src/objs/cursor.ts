@@ -44,14 +44,14 @@ const VECTOR_ONE = new Vector3(1, 1, 1),
   VECTOR_HALF = new Vector3(0.5, 0.5, 0.5),
   DIRECTIONS = {
     // rotation/Math.PI*2, delta, axis, xyz
-    '1/0/0' : [new Vector3(  0, 0, -1), new Vector3(  1,  1,  1), 'x', 'yxz'],
-    '-1/0/0': [new Vector3(  0, 0,  1), new Vector3( -1,  1,  1), 'x', 'yxz'],
-    '0/1/0' : [new Vector3(  0, 0,  0), new Vector3(  1,  1,  1), 'y', 'xyz'],
-    '0/-1/0': [new Vector3(  0, 0, -2), new Vector3(  1, -1,  1), 'y', 'xyz'],
-    '0/0/1' : [new Vector3(  1, 0,  0), new Vector3(  1,  1,  1), 'z', 'xzy'],
-    '0/0/-1': [new Vector3( -1, 0,  0), new Vector3(  1,  1, -1), 'z', 'xzy'],
+    '1/0/0' : [new Vector3(  0, 0, -1), new Vector3(  1,  1,  1), 'x', ['y', 'x', 'z']],
+    '-1/0/0': [new Vector3(  0, 0,  1), new Vector3( -1,  1,  1), 'x', ['y', 'x', 'z']],
+    '0/1/0' : [new Vector3(  0, 0,  0), new Vector3(  1,  1,  1), 'y', ['x', 'y', 'z']],
+    '0/-1/0': [new Vector3(  0, 0, -2), new Vector3(  1, -1,  1), 'y', ['x', 'y', 'z']],
+    '0/0/1' : [new Vector3(  1, 0,  0), new Vector3(  1,  1,  1), 'z', ['x', 'z', 'y']],
+    '0/0/-1': [new Vector3( -1, 0,  0), new Vector3(  1,  1, -1), 'z', ['x', 'z', 'y']],
   } as  {
-    [dir: string]: [Vector3, Vector3, 'x' | 'y' | 'z', string]
+    [dir: string]: [Vector3, Vector3, 'x' | 'y' | 'z', ('x' | 'y' | 'z')[]]
   }
 
 export default class Cursor extends LinesMesh {

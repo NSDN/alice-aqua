@@ -9,6 +9,7 @@ import {
   Engine,
   Scene,
   Vector3,
+  ScreenSpaceCanvas2D,
   SSAORenderingPipeline,
   LinesMesh,
   Color3,
@@ -21,6 +22,7 @@ import {
 
 import {
   debounce,
+  EventEmitter,
 } from './utils'
 
 import {
@@ -70,6 +72,8 @@ export const TAGS = {
 export const ASSET_IMAGES = {
   imAssetTile1: 'assets/rpg_maker_vx_rtp_tileset_by_telles0808.png',
   objectIcons1: 'assets/object_icons.png',
+  playerFlandre: 'assets/flandre.png',
+  playerRemilia: 'assets/remilia.png',
 }
 
 export const ASSET_TILES: [number, keyof typeof ASSET_IMAGES, number, number, number, boolean][] = [
@@ -150,6 +154,8 @@ export const KEY_MAP = {
   delKey: 46,
 
   focus: 'F',
+  undo: 'Z',
+  redo: 'Y',
 
   moveForward: 'W',
   moveBack: 'S',
@@ -160,6 +166,8 @@ export const KEY_MAP = {
   switch: 'Q',
   use: 'E'
 }
+
+type KeyType = keyof typeof KEY_MAP
 
 export function createFpsCounter(n = 30) {
   let a = Array(n).fill(0), c = 0
@@ -196,26 +204,40 @@ export function createScene() {
 
   new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
 
-  return { scene, camera }
+  const canvas2d = new ScreenSpaceCanvas2D(scene)
+
+  return { scene, camera, canvas2d }
 }
 
+type KeyEvents = 'keydown' | 'keyup' | 'key'
 export function createKeyStates() {
   const keys = { } as {
-    [P in keyof typeof KEY_MAP]: boolean
+    [P in KeyType]: boolean
+  } & {
+    on: (e: KeyEvents, c: Function) => Function
+    off: (e: KeyEvents, c: Function) => Function
   }
 
-  const nameOfKeyCode = { } as any
-  for (const key in KEY_MAP) {
-    const val = KEY_MAP[key],
+  const nameOfKeyCode = { } as { [key: number]: KeyType }
+  for (const str in KEY_MAP) {
+    const key = str as KeyType,
+      val = KEY_MAP[key],
       name = typeof val === 'string' ? val.charCodeAt(0) : val
     nameOfKeyCode[name] = key
   }
 
+  const keyListener = new EventEmitter<KeyEvents>()
+  keys.on = (e, c) => keyListener.addEventListener(e, c)
+  keys.off = (e, c) => keyListener.removeEventListener(e, c)
   window.addEventListener('keydown', evt => {
-    (keys as any)[ nameOfKeyCode[evt.which] ] = true
+    keys[ nameOfKeyCode[evt.which] ] = true
+    keyListener.emit('keydown', nameOfKeyCode[evt.which])
+    keyListener.emit('key', nameOfKeyCode[evt.which])
   })
   window.addEventListener('keyup', evt => {
-    (keys as any)[ nameOfKeyCode[evt.which] ] = false
+    keys[ nameOfKeyCode[evt.which] ] = false
+    keyListener.emit('keyup', nameOfKeyCode[evt.which])
+    keyListener.emit('key', nameOfKeyCode[evt.which])
   })
 
   return { keys }
@@ -278,7 +300,8 @@ export function createGridPlane(scene: Scene, count: number) {
 export async function loadAssets(scene: Scene) {
   const materials = { } as { [key: string]: { material: Material, texSize: number } }
   for (const id in ASSET_IMAGES) {
-    const src = ASSET_IMAGES[id], style = { display: 'none' }
+    const src = ASSET_IMAGES[id as keyof typeof ASSET_IMAGES],
+      style = { display: 'none' }
     await new Promise((onload, onerror) => appendElement('img', { src, style, id, onload, onerror }))
 
     const img = document.getElementById(id) as HTMLImageElement,
@@ -307,8 +330,8 @@ export async function loadAssets(scene: Scene) {
     const src = document.getElementById(srcId) as HTMLImageElement,
       cls = OBJECT_CLASSES[clsName] as typeof ObjectBase,
       { material, texSize } = materials[srcId],
-      opts = { clsId, clsName, src, material, offsetX, offsetY, width, height, texSize }
-    return { clsName, clsId, args, opts, cls }
+      icon = { material, offsetX, offsetY, width, height, texSize }
+    return { clsName, clsId, src, args, icon, cls }
   })
 
   return { tiles, classes }

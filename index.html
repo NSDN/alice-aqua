@@ -31,7 +31,7 @@
     }
     .object-toolbar {
       position: absolute;
-      background-color: rgba(255, 255, 255, 0.5);
+      background-color: rgba(255, 255, 255, 0.3);
       padding: 5px;
       display: none;
       user-select: none;
@@ -88,9 +88,6 @@
     .ui-list-item.selected {
       background: white;
     }
-    .on-panel-play .ui-toolbar {
-      display: none;
-    }
     .ui-head {
       position: absolute;
       width: 100%;
@@ -103,6 +100,40 @@
       padding: 0 10px;
       color: #eee;
     }
+    .ui-top-right {
+      float: right;
+    }
+    .ui-top-right a {
+      color: #eee;
+    }
+
+    .doc-help {
+      display: none;
+      position: absolute;
+      left: 20px;
+      top: 170px;
+      right: 20px;
+      bottom: 20px;
+      overflow: auto;
+      background: rgba(255, 255, 255, 0.6);
+    }
+    .doc-help .content {
+      color: #333;
+      padding: 10px;
+    }
+    .doc-help .content a {
+      color: #333;
+    }
+    .show-help .doc-help {
+      display: block;
+    }
+
+    .on-panel-play .ui-toolbar {
+      display: none;
+    }
+    .on-panel-play .doc-help {
+      top: 40px;
+    }
   </style>
 </head>
 <body>
@@ -114,7 +145,7 @@
             <span title="use tile from start"><i class="fa fa-question"></i></span>
           </div>
           <div class="ui-list-item" tid="">
-            <span title="don't update tiles"><i class="fa fa-ban"></i></span>
+            <span title="none"><i class="fa fa-ban"></i></span>
           </div>
         </div>
       </div>
@@ -135,29 +166,17 @@
   </div>
   <div class="ui-head">
     <div class="ui-top">
-      <select class="ui-panel-selector">
-        <option>brushes</option>
-        <option>objects</option>
-        <option>game</option>
-        <option>play</option>
-      </select>
+      <select class="ui-panel-selector"></select>
       <span class="hidden ui-panel panel-brushes">
         <select class="ui-brush-height">
           <option value="+1">shift up</option>
           <option value="-1">shift down</option>
           <option value="0">flatten</option>
-          <option value="">keep</option>
+          <option value="">none</option>
         </select>
-        ctrl &amp; drag to draw, shift &amp; drag to fill
       </span>
-      <span class="hidden ui-panel panel-objects">
-        ctrl &amp; click to put, shift &amp; drag to select
-      </span>
-      <div class="float-right">
-        <span id="fpsCounterText"></span> /
-        <label>
-          <input type="checkbox" id="showDebugLayer" /> debug layer
-        </label>
+      <div class="ui-top-right">
+        <span id="fpsCounterText"></span> / <a href="javascript:void(0)" id="docShowDebug"><i class="fa fa-info"></i></a> / <a href="javascript:void(0)" id="docShowHelp"><i class="fa fa-question"></i></a>
       </div>
     </div>
   </div>
@@ -168,9 +187,44 @@
     <i class="cancel-select fa fa-close" title="cancel"></i>
     <div class="object-settings"></div>
   </div>
+  <div class="doc-help">
+    <div class="content">
+      <div class="float-right">
+        <a href="javascript:void(0)" id="docHideHelp"><i class="fa fa-close"></i></a>
+      </div>
+      <h2>General</h2>
+      <ul>
+        <li>按住鼠标拖动以调整视角</li>
+        <li>按 shift+f 将视野中心移动到光标位置</li>
+        <li>编辑时可用 ctrl+z 撤销，ctrl+y 重做</li>
+      </ul>
+      <hr>
+
+      <h2>In #brushes panel</h2>
+      <ul>
+        <li>先在上方选择绘制时对地形的操作（提升，下沉，平整，无），在下方选择绘制时要覆盖的图案</li>
+        <li>按住 ctrl 并拖动可自由绘制每个图块，按住 shift 并拖动可以绘制整块区域</li>
+        <li>按住 shift 并点击图案可以对红色框选区域进行重复操作</li>
+      </ul>
+      <hr>
+
+      <h2>In #objects panel</h2>
+      <ul>
+        <li>在上方选择要放置的对象</li>
+        <li>按 ctrl 点击将新对象放置到地图上</li>
+        <li>按 shift 可框选已放置的对象</li>
+        <li>在选中对象的工具栏上可移动或者删除对象，某些对象具有有可编辑的属性</li>
+      </ul>
+      <hr>
+
+      <h2>In #play panel</h2>
+      <p>开始测试地图!</p>
+    </div>
+  </div>
   <script src="//localhost:8080/webpack-dev-server.js"></script>
-  <script src="node_modules/cannon/build/cannon.js"></script>
-  <script src="node_modules/babylonjs/babylon.max.js"></script>
+  <script src="node_modules/babylonjs/dist/cannon.js"></script>
+  <script src="node_modules/babylonjs/dist/babylon.2.5.max.js"></script>
+  <script src="node_modules/babylonjs/dist/babylon.2.5.canvas2d.max.js"></script>
   <script src="build/bundle.js"></script>
 </body>
 </html>

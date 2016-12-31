@@ -3,6 +3,7 @@ import {
   Mesh,
   Material,
   AbstractMesh,
+  ScreenSpaceCanvas2D,
 } from '../babylon'
 
 import {
@@ -10,14 +11,17 @@ import {
 } from '../utils/dom'
 
 export interface ObjectOptions {
-  clsName: string
-  material: Material
-  texSize: number
-  offsetX: number
-  offsetY: number
-  width: number
-  height: number
   keys: any
+  source: Mesh
+  canvas2d: ScreenSpaceCanvas2D
+  icon: {
+    material: Material
+    texSize: number
+    offsetX: number
+    offsetY: number
+    width: number
+    height: number
+  }
 }
 
 export { appendElement } from '../utils/dom'
@@ -36,12 +40,12 @@ export function appendSelectItem(label: string, val: string, options: string[], 
 }
 
 export interface ObjectTriggerable {
-  onTrigger(isOn: boolean)
+  onTrigger(isOn: boolean): void
 }
 
 export interface ObjectUsable {
   canBeUsedBy(mesh: AbstractMesh): boolean
-  useFrom(mesh: AbstractMesh)
+  useFrom(mesh: AbstractMesh): void
 }
 
 export interface ObjectElementBinder {
@@ -54,7 +58,7 @@ export interface ObjectPlayListener {
 }
 
 export default class ObjectBase extends InstancedMesh {
-  constructor(name: string, source: Mesh, readonly opts: ObjectOptions) {
-    super(name, source)
+  constructor(name: string, readonly opts: ObjectOptions) {
+    super(name, opts.source)
   }
 }

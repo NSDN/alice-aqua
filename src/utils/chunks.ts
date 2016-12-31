@@ -167,7 +167,12 @@ export default class Chunks extends EventEmitter<Events> {
       { heights, top, side, blocks, k } = this.getChunkData(m, n),
       blks = getBlocksFromHeightMap(heights, chunkGrids)
 
-    const gvd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] }
+    const gvd = {
+      positions: [ ] as number[],
+      normals: [ ] as number[],
+      indices: [ ] as number[],
+      uvs: [ ] as number[]
+    }
     blks.forEach(([u0, u1, v0, v1, _, h1]) => {
       const i0 = gvd.positions.length / 3,
         vd = getGroundVertexDataWithUVMemo(u0, u1, v0, v1, h1)
@@ -180,7 +185,11 @@ export default class Chunks extends EventEmitter<Events> {
     // FIXME: babylonjs
     if (!gvd.indices.length) top.releaseSubMeshes()
 
-    const svd = { positions: [ ], normals: [ ], indices: [ ] }
+    const svd = {
+      positions: [ ] as number[],
+      normals: [ ] as number[],
+      indices: [ ] as number[]
+    }
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
       const g = chunkGrids,
         sides =

@@ -19,7 +19,7 @@ import Sprite from './sprite'
 export default class Box extends InstancedMesh implements ObjectUsable {
   static readonly BOX_TAG = 'generated-box'
 
-  constructor(name, source, gen: BoxGenerator) {
+  constructor(name: string, source: Mesh, gen: BoxGenerator) {
     super(name, source)
 
     const origin = gen.position.add(new Vector3(0, 2, 0))
@@ -55,7 +55,7 @@ export class BoxGenerator extends Sprite implements ObjectPlayListener {
 
     let cache = this.getScene().getMeshByName(cacheId) as Mesh
     if (!cache) {
-      const { texSize, offsetX, offsetY, width, height } = this.opts,
+      const { material, texSize, offsetX, offsetY, width, height } = this.opts.icon,
         u0 = offsetX / texSize,
         v0 = 1 - (offsetY + height) / texSize,
         u1 = (offsetX + width) / texSize,
@@ -63,7 +63,7 @@ export class BoxGenerator extends Sprite implements ObjectPlayListener {
         faceUV = Array(6).fill(new Vector4(u0, v0, u1, v1))
       cache = MeshBuilder.CreateBox(cacheId, { faceUV }, this.getScene())
       cache.scaling.copyFromFloats(1.9, 1.9, 1.9)
-      cache.material = this.opts.material
+      cache.material = material
       cache.isVisible = false
     }
 

@@ -22,11 +22,20 @@ export interface ClassDefine {
 
 type Events = 'tile-selected' | 'panel-changed'
 
+const PANELS = {
+  brushes: true,
+  objects: true,
+  game: true,
+  play: true,
+}
+
 export class UI extends EventEmitter<Events> {
   constructor(tiles: TileDefine[], classes: ClassDefine[],
       private panel = document.querySelector('.ui-panel-selector') as HTMLSelectElement,
       private brushHeight = document.querySelector('.ui-brush-height') as HTMLSelectElement) {
     super()
+
+    Object.keys(PANELS).forEach(innerHTML => appendElement('option', { innerHTML }, this.panel))
 
     this.panel.addEventListener('change', _ => {
       for (const elem of document.querySelectorAll('.ui-panel')) {
@@ -86,7 +95,7 @@ export class UI extends EventEmitter<Events> {
   }
 
   get activePanel() {
-    return this.panel.value
+    return this.panel.value as keyof typeof PANELS
   }
 
   set activePanel(val) {
@@ -101,6 +110,6 @@ export class UI extends EventEmitter<Events> {
 
   get selectedClassIndex() {
     const div = document.querySelector('.ui-classes .ui-list-item.selected')
-    return div.getAttribute('cid')
+    return parseInt(div.getAttribute('cid'))
   }
 }

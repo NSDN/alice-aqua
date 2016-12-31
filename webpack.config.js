@@ -25,7 +25,5 @@ module.exports = {
       }
     ],
   },
-  plugins: isDevServer ? [ ] : [
-    new webpack.optimize.UglifyJsPlugin()
-  ]
+  plugins: isDevServer ? [ ] : [new webpack.optimize.UglifyJsPlugin()]
 }

@@ -12,6 +12,7 @@ import {
 } from '../utils/babylon'
 
 import ObjectBase, {
+  ObjectOptions,
   ObjectElementBinder,
   ObjectTriggerable,
   appendSelectItem,
@@ -50,8 +51,8 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
     return box
   }
 
-  constructor(name, mesh, opts) {
-    super(name, mesh, opts)
+  constructor(name: string, opts: ObjectOptions) {
+    super(name, opts)
     this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.ParticleImpostor)
 
     this.blockLeft = this.creatBox('block/left')

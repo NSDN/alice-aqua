@@ -13,6 +13,7 @@ import {
 } from '../utils/babylon'
 
 import ObjectBase, {
+  ObjectOptions,
   ObjectElementBinder,
   ObjectTriggerable,
   ObjectPlayListener,
@@ -28,8 +29,8 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
   private readonly triggerOnBox: AbstractMesh
   private readonly triggerOffBox: AbstractMesh
 
-  constructor(name, source, opts) {
-    super(name, source, opts)
+  constructor(name: string, opts: ObjectOptions) {
+    super(name, opts)
 
     let cacheId
 

@@ -39,8 +39,36 @@ import {
   LocationSearch,
 } from './utils/dom'
 
+interface Action {
+  exec(): void
+  revert(): void
+}
+
+class History {
+  private history = [ ] as Action[][]
+  private todos = [ ] as Action[][]
+  undo() {
+    const actions = this.history.pop()
+    if (actions) {
+      actions.reverse().forEach(a => a.revert())
+      this.todos.unshift(actions)
+    }
+  }
+  redo() {
+    const actions = this.todos.shift()
+    if (actions) {
+      actions.forEach(a => a.exec())
+      this.history.push(actions)
+    }
+  }
+  push(actions: Action[]) {
+    this.history.push(actions.slice())
+    this.todos.length = 0
+  }
+}
+
 ; (async function() {
-  const { scene, camera } = createScene(),
+  const { scene, camera, canvas2d } = createScene(),
     { keys } = createKeyStates(),
     canvas = scene.getEngine().getRenderingCanvas(),
 
@@ -50,7 +78,7 @@ import {
 
     assets = await loadAssets(scene),
 
-    frame = createObjectFrame(scene),
+    source = createObjectFrame(scene),
 
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
     lastSelection = createSelectionBox(scene),
@@ -58,11 +86,41 @@ import {
     chunks = new Chunks(scene, assets.tiles, map.chunksData),
     grid = createGridPlane(scene, chunks.chunkSize),
 
-    ui = new UI(assets.tiles, assets.classes.map(cls => cls.opts))
+    ui = new UI(assets.tiles, assets.classes.map(cls => ({ ...cls, ...cls.icon }))),
+    editorHistory = new History()
 
   let selectedPixel: { t: number, h: number },
     selectedObject: AbstractMesh,
     toolbarDragStarted: { x: number, y: number }
+
+  class SetPixelAction implements Action {
+    constructor(private readonly x: number, private readonly z: number, pixel: typeof selectedPixel,
+      private readonly p = { ...pixel }, private readonly d = chunks.getPixel(x, z)) {
+      this.exec()
+    }
+    exec() {
+      chunks.setPixel(this.x, this.z, this.p)
+    }
+    revert() {
+      chunks.setPixel(this.x, this.z, this.d)
+    }
+  }
+
+  class MoveObjectAction implements Action {
+    constructor(private readonly m: AbstractMesh,
+        private readonly px: number, private readonly pz: number,
+        private readonly dx = m.position.x, private readonly dz = m.position.z) {
+      this.exec()
+    }
+    exec() {
+      const { px, pz } = this
+      this.m.position.copyFromFloats(px, chunks.getPixel(px, pz).h, pz)
+    }
+    revert() {
+      const { dx, dz } = this
+      this.m.position.copyFromFloats(dx, chunks.getPixel(dx, dz).h, dz)
+    }
+  }
 
   // use shift to draw rectangles
   attachDragable(evt => {
@@ -79,15 +137,18 @@ import {
     lastSelection.scaling.copyFrom(maximum.subtract(minimum))
   }, _ => {
     const { minimum, maximum } = cursor, { h } = ui.selectedTilePixel,
-      pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) }
+      pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) },
+      actions = [ ] as Action[]
     for (let m = minimum.x; m < maximum.x; m ++) {
       for (let n = minimum.z; n < maximum.z; n ++) {
-        chunks.setPixel(m, n, pixel)
+        actions.push(new SetPixelAction(m, n, pixel))
       }
     }
+    editorHistory.push(actions)
   })
 
   // use ctrl key to draw pixels
+  const setPixelActions = [ ] as Action[]
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'brushes' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
@@ -96,16 +157,22 @@ import {
       t: t === '?' ? chunks.getPixel(x, z).t : t && parseInt(t),
       h: h && cursor.hover.y + parseInt(h)
     }
-    chunks.setPixel(x, z, selectedPixel)
+    setPixelActions.push(new SetPixelAction(x, z, selectedPixel))
+
+    cursor.alpha = 0
 
     lastSelection.scaling.copyFromFloats(1, 1, 1)
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
     const { x, z } = cursor.hover
-    chunks.setPixel(x, z, selectedPixel)
+    setPixelActions.push(new SetPixelAction(x, z, selectedPixel))
 
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
+    cursor.alpha = 1
+
+    editorHistory.push(setPixelActions)
+    setPixelActions.length = 0
   })
 
   // use shift key to select objects
@@ -129,11 +196,11 @@ import {
       objs = scene.getMeshesByTags(TAGS.object)
     selectedObject = objs.find(mesh => box.intersectsPoint(mesh.position))
     if (!selectedObject) {
-      const index = ui.selectedClassIndex,
-        { clsId, clsName, args, opts, cls } = assets.classes[index],
+      const clsId = ui.selectedClassIndex,
+        { clsName, args, icon, cls } = assets.classes.find(c => c.clsId === clsId),
         rnd = Math.floor(Math.random() * 0xffffffff + 0x100000000).toString(16).slice(1),
         id = ['object', clsName, rnd].join('/'),
-        object = new cls(id, frame, { ...opts, keys })
+        object = new cls(id, { icon, keys, source, canvas2d })
       object.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0, 0.5)))
       Object.assign(object, args)
       objectsToSave[id] = JSON.parse(JSON.stringify({ clsId, args }))
@@ -178,8 +245,8 @@ import {
       if (box.intersectsPoint(new Vector3(x, pos.y, z))) {
         const clsFound = assets.classes.find(s => s.clsId === clsId)
         if (clsFound) {
-          const { opts, cls } = clsFound,
-            object = new cls(id, frame, { ...opts, keys })
+          const { icon, cls } = clsFound,
+            object = new cls(id, { icon, keys, source, canvas2d })
           object.position.copyFromFloats(x, y, z)
           Object.assign(object, args)
           Tags.AddTagsTo(object, TAGS.object)
@@ -197,12 +264,14 @@ import {
       const { position, scaling } = lastSelection,
         minimum = position.subtract(scaling.scale(0.5)),
         maximum = position.add(scaling.scale(0.5)),
-        pixel = ui.selectedTilePixel
+        pixel = ui.selectedTilePixel,
+        actions = [ ] as Action[]
       for (let m = minimum.x; m < maximum.x; m ++) {
         for (let n = minimum.z; n < maximum.z; n ++) {
-          chunks.setPixel(m, n, pixel as any)
+          actions.push(new SetPixelAction(m, n, pixel as any))
         }
       }
+      editorHistory.push(actions)
     }
     canvas.focus()
   })
@@ -212,7 +281,7 @@ import {
       if (scene.getMeshesByTags(PlayerGenerator.PLAYER_GENERATOR_TAG).length === 0) {
         const { x, z } = camera.target,
           { h } = chunks.getPixel(x, z),
-          player = new Player('remilia', scene, keys)
+          player = new Player('remilia', scene, { keys, canvas2d })
         player.position.copyFromFloats(x, h + 2, z)
         Tags.AddTagsTo(player, 'auto-generated-player')
         console.warn('creating player from camera position...')
@@ -234,15 +303,10 @@ import {
       })
     }
 
-    grid.isVisible = ui.activePanel !== 'play'
+    grid.isVisible = ui.activePanel === 'brushes' || ui.activePanel === 'objects'
     lastSelection.isVisible = ui.activePanel === 'brushes'
-    frame.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
+    source.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
     canvas.focus()
-  })
-
-  const showDebugLayer = document.getElementById('showDebugLayer') as HTMLInputElement
-  showDebugLayer && showDebugLayer.addEventListener('click', _ => {
-    showDebugLayer.checked ? scene.debugLayer.show() : scene.debugLayer.hide()
   })
 
   const objectToolbar = document.getElementById('objectToolbar')
@@ -256,18 +320,26 @@ import {
     objectToolbar.style.display = selectedObject ? 'block' : 'none'
   })
 
+  const moveObjectActions = [ ] as Action[]
   attachDragable(objectToolbar.querySelector('.move-object') as HTMLElement, evt => {
     toolbarDragStarted = { ...cursor.offset }
+
     cursor.offset.x = parseFloat(objectToolbar.style.left) - evt.clientX
     cursor.offset.y = parseFloat(objectToolbar.style.top) - evt.clientY
   }, evt => {
-    selectedObject.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0, 0.5)))
+    const { x, z } = cursor.hover.add(new Vector3(0.5, 0, 0.5))
+    moveObjectActions.push(new MoveObjectAction(selectedObject, x, z))
+
     objectToolbar.style.left = (evt.clientX + cursor.offset.x) + 'px'
     objectToolbar.style.top = (evt.clientY + cursor.offset.y) + 'px'
   }, _ => {
     cursor.offset.x = toolbarDragStarted.x
     cursor.offset.y = toolbarDragStarted.y
     toolbarDragStarted = null
+
+    editorHistory.push(moveObjectActions)
+    moveObjectActions.length = 0
+
     map.saveDebounced(chunks, objectsToSave)
   })
   objectToolbar.querySelector('.focus-object').addEventListener('click', _ => {
@@ -319,18 +391,40 @@ import {
     location.reload()
   })
 
+  document.getElementById('docShowDebug').addEventListener('click', _ => {
+    const isDebugShown = (document.getElementById('DebugLayerOptions') || { } as Element).scrollHeight > 0
+    isDebugShown ? scene.debugLayer.hide() : scene.debugLayer.show()
+  })
+  document.getElementById('docShowHelp').addEventListener('click', _ => {
+    const isHelpShown = document.querySelector('.doc-help').scrollHeight > 0
+    isHelpShown ? document.body.classList.remove('show-help') : document.body.classList.add('show-help')
+  })
+  document.getElementById('docHideHelp').addEventListener('click', _ => {
+    document.body.classList.remove('show-help')
+  })
+
+  keys.on('key', watch(() => {
+    return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && (keys.ctrlKey || keys.shiftKey)
+  }, shouldDetachCamera => {
+    (cursor.isVisible = shouldDetachCamera) ? camera.detachControl(canvas) : camera.attachControl(canvas)
+  }, true))()
+  keys.on('key', watch(() => {
+    return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.shiftKey && keys.focus
+  }, focusCameraToCursor => {
+    focusCameraToCursor && camera.followTarget.copyFrom(cursor.hover)
+  }, false))
+  keys.on('key', watch(() => {
+    return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.ctrlKey && keys.undo
+  }, keyDown => {
+    keyDown && editorHistory.undo()
+  }, false))
+  keys.on('key', watch(() => {
+    return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.ctrlKey && keys.redo
+  }, keyDown => {
+    keyDown && editorHistory.redo()
+  }, false))
+
   const renderListeners = [
-    watch(() => {
-      return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && (keys.ctrlKey || keys.shiftKey)
-    }, shouldDetachCamera => {
-      cursor.isVisible = shouldDetachCamera
-      shouldDetachCamera ? camera.detachControl(canvas) : camera.attachControl(canvas)
-    }, true),
-    watch(() => {
-      return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.shiftKey && keys.focus
-    }, focusCameraToCursor => {
-      focusCameraToCursor && camera.followTarget.copyFrom(cursor.hover)
-    }, false),
     watch(() => {
       return ui.activePanel === 'objects' && selectedObject
     }, (newObject, oldObject) => {
@@ -389,17 +483,19 @@ import {
   scene.registerBeforeRender(() => {
     renderListeners.forEach(poll => poll())
 
-    const cbs = panelListeners[ui.activePanel]
+    const cbs = panelListeners[ui.activePanel as keyof typeof panelListeners]
     cbs && cbs.forEach(poll => poll())
 
     fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
 
-    const { x, z } = camera.target, g = chunks.chunkSize,
-      p = grid.position, s = grid.scaling
-    if (x < p.x - s.x / 2) grid.position.x -= g
-    if (x > p.x + s.x / 2) grid.position.x += g
-    if (z < p.z - s.z / 2) grid.position.z -= g
-    if (z > p.z + s.z / 2) grid.position.z += g
+    if (cursor.isVisible) {
+      const { x, z } = cursor.hover, g = chunks.chunkSize,
+        p = grid.position, s = grid.scaling
+      if (x < p.x - s.x / 2) grid.position.x -= g
+      if (x > p.x + s.x / 2) grid.position.x += g
+      if (z < p.z - s.z / 2) grid.position.z -= g
+      if (z > p.z + s.z / 2) grid.position.z += g
+    }
   })
 
   setImmediate(() => {

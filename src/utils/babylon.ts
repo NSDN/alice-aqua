@@ -181,7 +181,7 @@ export class StaticBoxImpostor extends PhysicsImpostor {
 
 export class FollowCamera extends ArcRotateCamera {
   public readonly followTarget = Vector3.Zero()
-  constructor(name, alpha, beta, radius, target, scene) {
+  constructor(name: string, alpha: number, beta: number, radius: number, target: Vector3, scene: Scene) {
     super(name, alpha, beta, radius, target, scene)
     this.followTarget.copyFrom(target)
     this.getScene().registerAfterRender(() => {

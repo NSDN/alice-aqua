@@ -27,8 +27,7 @@
     "webpack-dev-server": "^1.16.2"
   },
   "dependencies": {
-    "babylonjs": "^2.5.0",
-    "cannon": "^0.6.2",
+    "babylonjs": "git+https://github.com/BabylonJS/Babylon.js",
     "font-awesome": "^4.6.3"
   }
 }

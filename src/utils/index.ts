@@ -48,7 +48,7 @@ export function throttle<F extends Function>(fn: F, delay: number) {
 }
 
 export function memo<F extends Function>(fn: F) {
-  const cache = { }, join = [ ].join
+  const cache = { } as any, join = [ ].join
   return function() {
     const key = join.call(arguments)
     return cache[key] || (cache[key] = fn.apply(this, arguments))
@@ -96,8 +96,8 @@ function each2(a: N[], b: N[], n: N,
     }
   }
 }
-export function getBlocksFromHeightMap(heights: number[], n: number) {
-  const blocks = [ ] as number[][],
+export function getBlocksFromHeightMap(heights: N[], n: N) {
+  const blocks = [ ] as N[][],
     hMin = Math.min.apply(Math, heights),
     h = Math.max(hMin - 1, 0),
     a = heights,
@@ -107,7 +107,7 @@ export function getBlocksFromHeightMap(heights: number[], n: number) {
   while (f) {
     const i0 = f.i, j0 = f.j, h0 = b[i0 * n + j0]
 
-    let i1 = i0 + 1, j1 = j0 + 1, isNotFlat = (a, b) => a <= h0 || b !== h0
+    let i1 = i0 + 1, j1 = j0 + 1, isNotFlat = (a: N, b: N) => a <= h0 || b !== h0
     while (i1 < n && !find2(a, b, n, i1, i1 + 1, j0, j0 + 1, isNotFlat)) i1 ++
     while (j1 < n && !find2(a, b, n, i0, i1,     j1, j1 + 1, isNotFlat)) j1 ++
 
@@ -130,6 +130,7 @@ export class EventEmitter<EventNames extends any> {
     if (cbs.indexOf(callback) === -1) {
       cbs.push(callback)
     }
+    return callback
   }
 
   removeEventListener(evt: EventNames, callback: Function) {
@@ -137,6 +138,7 @@ export class EventEmitter<EventNames extends any> {
     if (cbs) {
       cbs.splice(cbs.indexOf(callback), 1)
     }
+    return callback
   }
 
   emit(evt: EventNames, ...args: any[]) {

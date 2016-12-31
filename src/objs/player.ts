@@ -10,10 +10,11 @@ import {
   Ray,
   Quaternion,
   Tags,
-  AbstractMesh,
+  ScreenSpaceCanvas2D,
 } from '../babylon'
 
 import {
+  ObjectOptions,
   ObjectPlayListener,
   ObjectUsable,
 } from './object-base'
@@ -36,13 +37,12 @@ export default class Player extends Mesh {
   readonly playerBody: Mesh
   readonly playerHead: Mesh
   readonly shadow: Mesh
+  readonly usableMark: Mesh
   readonly lastShadowDropPosition = Vector3.Zero()
 
   private isPlayerAnimating = false
   private isActivePlayer = false
   private forwardDirection = new Vector3(0, 0, 1)
-
-  private meshToUse: AbstractMesh
 
   private pickFromBottom(dist = 0.1) {
     const origin = this.position.add(new Vector3(0, dist, 0)),
@@ -64,15 +64,17 @@ export default class Player extends Mesh {
     return pick
   }
 
-  constructor(name: string, scene: Scene, public keyStates: {
-    moveLeft: boolean
-    moveRight: boolean
-    moveForward: boolean
-    moveBack: boolean
-    jump: boolean
-    switch: boolean
-    use: boolean
-  }, private opts = { } as {
+  constructor(name: string, scene: Scene, private opts: {
+    canvas2d: ScreenSpaceCanvas2D
+    keys: {
+      moveLeft: boolean
+      moveRight: boolean
+      moveForward: boolean
+      moveBack: boolean
+      jump: boolean
+      switch: boolean
+      use: boolean
+    }
     width?: number
     height?: number
     mass?: number
@@ -93,7 +95,7 @@ export default class Player extends Mesh {
       friction: 0,
       restitution: 0,
       moveForce: 0.5,
-      jumpForce: 4,
+      jumpForce: 2.5,
       minimumY: -10,
     }, opts)
 
@@ -108,19 +110,21 @@ export default class Player extends Mesh {
     this.physicsImpostor.registerBeforePhysicsStep(impostor => {
       impostor.setAngularVelocity(impostor.getAngularVelocity().multiply(angularDamping))
       impostor.setLinearVelocity(impostor.getLinearVelocity().multiply(linearDamping))
+
       if (this.position.y < this.opts.minimumY) setImmediate(() => {
         this.position.copyFrom(this.lastShadowDropPosition)
         this.position.y += 2
         this.physicsImpostor.setLinearVelocity(Vector3.Zero())
       })
-      if (this.isActivePlayer) setImmediate(_ => {
+
+      if (this.isActivePlayer) {
         const camera = scene.activeCamera as FollowCamera
         if (camera && camera.target) {
           this.forwardDirection.copyFrom(camera.target.subtract(camera.position))
           camera.followTarget.copyFrom(this.position)
         }
-        this.update()
-      })
+        setImmediate(_ => this.update())
+      }
     })
     this.physicsImpostor.registerAfterPhysicsStep(impostor => {
       if (this.isDisposed()) {
@@ -170,15 +174,13 @@ export default class Player extends Mesh {
         this.lastShadowDropPosition.copyFrom(pickBottom.pickedPoint)
       }
 
-      const pickUsable = this.pickUsableFromCenter(),
-        meshToUse = pickUsable.hit && pickUsable.pickedMesh
-      if (meshToUse !== this.meshToUse) {
-        if (this.meshToUse) {
-          this.meshToUse.showBoundingBox = false
-        }
-        if (this.meshToUse = meshToUse) {
-          this.meshToUse.showBoundingBox = true
-        }
+      if (this.isActivePlayer) {
+        const pick = this.pickUsableFromCenter(),
+          mesh = pick.hit && pick.pickedMesh,
+          usable = mesh as any as ObjectUsable,
+          canBeUsed = usable && usable.canBeUsedBy && usable.canBeUsedBy(this) || false,
+          markPos = canBeUsed ? mesh.position.add(mesh.scaling.multiplyByFloats(0, 0.5, 0)) : new Vector3(0, 10000, 0)
+        this.usableMark.position.copyFrom(markPos)
       }
     })
 
@@ -214,9 +216,6 @@ export default class Player extends Mesh {
     // shadow.parent = this
     shadow.registerAfterRender(_ => {
       if (this.isDisposed()) {
-        if (this.meshToUse) {
-          this.meshToUse.showBoundingBox = false
-        }
         shadow.dispose()
       }
     })
@@ -225,16 +224,38 @@ export default class Player extends Mesh {
     allPlayers.forEach(mesh => (mesh as Player).isActivePlayer = false)
     Tags.AddTagsTo(this, Player.PLAYER_TAG)
     this.isActivePlayer = true
+
+    const markId = 'mark/player/usable'
+    this.usableMark = scene.getMeshByName(markId) as Mesh
+    if (!this.usableMark) {
+      this.usableMark = new Mesh(markId, scene)
+      this.usableMark.position.copyFromFloats(0, 10000, 0)
+      new BABYLON.Group2D({
+        parent: this.opts.canvas2d,
+        trackNode: this.usableMark,
+        children: [
+          new BABYLON.Rectangle2D({
+            width: 150,
+            height: 30,
+            fill: '#404080FF',
+            children: [
+              new BABYLON.Text2D('press [ E ] to use', {
+                marginAlignment: 'v: center, h: center'
+              })
+            ]
+          })
+        ]
+      })
+    }
   }
 
   protected update() {
-    const keys = this.keyStates
+    const keys = this.opts.keys
 
     if (keys.use) {
-      if (this.meshToUse) {
-        const usable = this.meshToUse as any as ObjectUsable
-        usable.useFrom && usable.useFrom(this)
-      }
+      const pick = this.pickUsableFromCenter(),
+        mesh = pick.hit && pick.pickedMesh as any as ObjectUsable
+      mesh && mesh.useFrom && mesh.useFrom(this)
       keys.use = false
     }
 
@@ -288,8 +309,8 @@ export default class Player extends Mesh {
 export class PlayerGenerator extends Sprite implements ObjectPlayListener {
   static readonly PLAYER_GENERATOR_TAG = 'player-generator'
 
-  constructor(name, scene, opts) {
-    super(name, scene, opts)
+  constructor(name: string, opts: ObjectOptions) {
+    super(name, opts)
     Tags.AddTagsTo(this, PlayerGenerator.PLAYER_GENERATOR_TAG)
   }
 
@@ -298,7 +319,7 @@ export class PlayerGenerator extends Sprite implements ObjectPlayListener {
     if (this.activePlayer) {
       this.activePlayer.dispose()
     }
-    this.activePlayer = new Player(this._playerName, this.getScene(), this.opts.keys)
+    this.activePlayer = new Player(this._playerName, this.getScene(), this.opts)
     this.activePlayer.position.copyFrom(this.position.add(new Vector3(0, 2, 0)))
     this.spriteBody.isVisible = false
   }

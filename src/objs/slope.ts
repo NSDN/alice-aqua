@@ -84,7 +84,8 @@ export default class Slope extends ObjectBase implements ObjectElementBinder {
       max = Vector3.Maximize(p0, p1).add(new Vector3(1, 0, 1)),
       delta = max.subtract(min),
       center = max.add(min).scale(0.5),
-      [dir, axis] = this.direction === 'z' ? 'zx' : 'xz'
+      dir = this.direction,
+      axis = dir === 'z' ? 'x' : 'z'
     if (delta[dir] > 2) {
       const dist = delta[dir] - 2,
         angle = Math.atan2(delta.y, dist),
@@ -105,10 +106,10 @@ export default class Slope extends ObjectBase implements ObjectElementBinder {
     }
   }
 
-  constructor(name: string, source: Mesh, opts: ObjectOptions) {
-    super(name, source, opts)
+  constructor(name: string, opts: ObjectOptions) {
+    super(name, opts)
 
-    const scene = source.getScene()
+    const scene = opts.source.getScene()
 
     const watchTargetMeshChange = watch((targetMesh: AbstractMesh) => {
       const p0 = Vector3Map(this.position, Math.floor),
