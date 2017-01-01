@@ -58,7 +58,7 @@ export default class Box extends InstancedMesh implements ObjectUsable {
   useFrom(mesh: AbstractMesh) {
     if (mesh.name === 'flandre') {
       const direction = this.position.subtract(mesh.position).multiplyByFloats(1, 0, 1).normalize()
-      this.physicsImpostor.applyImpulse(direction.scale(1000 / this.generator.boxMass), this.position)
+      this.physicsImpostor.applyImpulse(direction.scale(150 * 5 / this.generator.boxMass), this.position)
     }
   }
 }

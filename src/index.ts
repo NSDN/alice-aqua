@@ -329,6 +329,7 @@ class History {
 
     cursor.offset.x = parseFloat(objectToolbar.style.left) - evt.clientX
     cursor.offset.y = parseFloat(objectToolbar.style.top) - evt.clientY
+    cursor.updateFromPickTarget(evt)
   }, evt => {
     const { x, z } = cursor.hover.add(new Vector3(0.5, 0, 0.5))
     moveObjectActions.push(new MoveObjectAction(selectedObject, x, z))
@@ -414,7 +415,7 @@ class History {
   keys.on('key', watch(() => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && (keys.ctrlKey || keys.shiftKey)
   }, shouldDetachCamera => {
-    (cursor.isVisible = shouldDetachCamera) ? camera.detachControl(canvas) : camera.attachControl(canvas)
+    (cursor.isVisible = shouldDetachCamera) ? camera.detachControl(canvas) : camera.attachControl(canvas, true)
   }, true))()
   keys.on('key', watch(() => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.shiftKey && keys.focus
@@ -475,11 +476,11 @@ class History {
     play: [
       () => {
         const minBeta = Math.PI * 0.38
-        if (camera.beta < minBeta && !cursor.isKeyDown) {
+        if (camera.beta < minBeta - 1e-3 && !cursor.isKeyDown) {
           camera.beta = camera.beta * 0.9 + minBeta * 0.1
         }
         const maxRadius = 40
-        if (camera.radius > maxRadius && !cursor.isKeyDown) {
+        if (camera.radius > maxRadius + 1e-3 && !cursor.isKeyDown) {
           camera.radius = camera.radius * 0.9 + maxRadius * 0.1
         }
       },

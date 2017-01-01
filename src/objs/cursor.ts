@@ -77,15 +77,14 @@ export default class Cursor extends LinesMesh {
     getBoundingVertexData(0.3, 0.3, 0.3, true).applyToMesh(this)
     this.position.copyFrom(VECTOR_HALF)
 
-    scene.getEngine().getRenderingCanvas().addEventListener('mousedown', evt => {
-      this.updateFromPickTarget(evt)
+    const canvas = scene.getEngine().getRenderingCanvas()
+    canvas.addEventListener('mousedown', evt => {
       this._isKeyDown = true
+      this.updateFromPickTarget(evt)
     })
 
     window.addEventListener('mousemove', evt => {
-      this._isKeyDown ?
-        this.updateWithMouseDown(evt) :
-        this.updateFromPickTarget(evt)
+      this._isKeyDown ? this.updateWithMouseDown(evt) : this.updateFromPickTarget(evt)
     })
 
     window.addEventListener('mouseup', _ => {
@@ -93,7 +92,7 @@ export default class Cursor extends LinesMesh {
     })
   }
 
-  private updateFromPickTarget(evt: MouseEvent) {
+  updateFromPickTarget(evt: MouseEvent) {
     const { norm, position } = getMousePickOnMesh(this.scene,
       evt.clientX + this.offset.x, evt.clientY + this.offset.y, this.pickFilter)
     this._direction = [norm.x, norm.y, norm.z].join('/')

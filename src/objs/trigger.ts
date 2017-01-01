@@ -17,7 +17,7 @@ import ObjectBase, {
   ObjectElementBinder,
   ObjectTriggerable,
   ObjectPlayListener,
-  appendSelectItem,
+  appendElement,
 } from './object-base'
 
 import Box from './box'
@@ -56,6 +56,7 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
       material.disableLighting = true
       material.emissiveColor = new Color3(1, 0.5, 0.5)
     }
+
     let boxOff = this.getScene().getMeshByName(cacheId = 'cache/trigger/box/off') as Mesh
     if (!boxOff) {
       const box = boxOff = new Mesh(cacheId, this.getScene())
@@ -66,6 +67,7 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
       material.disableLighting = true
       material.emissiveColor = new Color3(0.8, 0.8, 0.8)
     }
+
     this.triggerOnBox = boxOn.createInstance(this.name + '/box')
     this.triggerOnBox.isVisible = false
     this.triggerOffBox = boxOff.createInstance(this.name + '/box')
@@ -74,11 +76,40 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
   }
 
   bindToElement(container: HTMLElement, save: (args: Partial<Trigger>) => void) {
-    const options = this.getScene().meshes
-      .filter(mesh => (mesh as any as ObjectTriggerable).onTrigger)
-      .map(mesh => mesh.name)
-    const select = appendSelectItem('targetName: ', this.targetName, options, container)
-    select.addEventListener('change', _ => save({ targetName: select.value as any }))
+    const updateTargetName = () => {
+      const targetName = [].map.call(container.querySelectorAll('.config-item'), (elem: HTMLDivElement) => {
+        const name = (elem.querySelector('select.name') as HTMLSelectElement).value,
+          isNe = (elem.querySelector('select.is-ne') as HTMLSelectElement).value
+        return name && (isNe + name)
+      }).filter(target => !!target).join(',')
+      save({ targetName })
+    }
+    const updateSelections = () => {
+      container.innerHTML = ''
+      const availNames = this.getScene().meshes.filter(mesh => (mesh as any as ObjectTriggerable).onTrigger).map(mesh => mesh.name),
+        savedTargets = (this.targetName || '').split(',').filter(target => !!target).concat('')
+      while (availNames.length && savedTargets.length) {
+        const target = savedTargets.shift(),
+          isNe = target[0] === '!' ? '!' : '',
+          name = isNe ? target.substr(1) : target,
+          item = appendElement('div', { className: 'config-item' }, container)
+
+        const isNeSel = appendElement('select', { className: 'is-ne' }, item) as HTMLSelectElement
+        appendElement('option', { innerHTML: 'on', value: '' }, isNeSel)
+        appendElement('option', { innerHTML: 'off', value: '!' }, isNeSel)
+        isNeSel.value = isNe
+        isNeSel.addEventListener('change', _ => updateTargetName())
+
+        const nameSel = appendElement('select', { className: 'name' }, item) as HTMLSelectElement
+        availNames.forEach(name => appendElement('option', { innerHTML: name }, nameSel))
+        appendElement('option', { innerHTML: '--', value: '' }, nameSel)
+        nameSel.value = name
+        nameSel.addEventListener('change', _ => (updateTargetName(), updateSelections()))
+
+        availNames.splice(availNames.indexOf(target), 1)
+      }
+    }
+    updateSelections()
   }
 
   private triggerMeshes = [] as AbstractMesh[]
@@ -94,10 +125,14 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
     if ((lastLength === 0 && this.triggerMeshes.length > 0) || (lastLength > 0 && this.triggerMeshes.length === 0)) {
       this.triggerOnBox.isVisible = isOn
       this.triggerOffBox.isVisible = !isOn
-      const mesh = this.getScene().getMeshByName(this.targetName) as any as ObjectTriggerable
-      if (mesh && mesh.onTrigger) {
-        mesh.onTrigger(isOn)
-      }
+      ; (this.targetName || '').split(',').forEach(target => {
+        const isNe = target[0] === '!',
+          name = isNe ? target.substr(1) : target,
+          mesh = this.getScene().getMeshByName(name) as any as ObjectTriggerable
+        if (mesh && mesh.onTrigger) {
+          mesh.onTrigger(isNe ? !isOn : isOn)
+        }
+      })
     }
   }
   private registerTrigger() {
