@@ -81,7 +81,6 @@ class History {
     assets = await loadAssets(scene),
 
     source = createObjectFrame(scene),
-    skybox = createSkyBox(scene),
 
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
     lastSelection = createSelectionBox(scene),
@@ -308,6 +307,7 @@ class History {
 
     grid.isVisible = ui.activePanel === 'brushes' || ui.activePanel === 'objects'
     lastSelection.isVisible = ui.activePanel === 'brushes'
+    sky.setIsVisible(ui.activePanel === 'play')
     source.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
     canvas.focus()
   })
@@ -362,16 +362,27 @@ class History {
     selectedObject = null
   })
 
-  const configDisplaySSAO = document.getElementById('configDisplaySSAO') as HTMLInputElement,
-    configDisplaySkyBox = document.getElementById('configDisplaySkyBox') as HTMLInputElement
-  if (configDisplaySSAO.checked = !!localStorage.getItem('config-display-ssao')) {
-    new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
-  }
-  skybox.isVisible = configDisplaySkyBox.checked = !!localStorage.getItem('config-display-skybox')
+  const configDisplaySSAO = document.getElementById('configDisplaySSAO') as HTMLInputElement
+  configDisplaySSAO.checked = !!localStorage.getItem('config-display-ssao')
+  configDisplaySSAO.checked && new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
+  const configDisplaySkyBox = document.getElementById('configDisplaySkyBox') as HTMLInputElement
+  configDisplaySkyBox.checked = !!localStorage.getItem('config-display-skybox')
+  const sky = configDisplaySkyBox.checked && createSkyBox(scene)
   document.getElementById('configApplyDisplay').addEventListener('click', _ => {
     localStorage.setItem('config-display-ssao', configDisplaySSAO.checked ? '1' : '')
     localStorage.setItem('config-display-skybox', configDisplaySkyBox.checked ? '1' : '')
     location.reload()
+  })
+
+  const quaterPI = Math.PI / 4
+  document.getElementById('playResetCameraAlpha').addEventListener('click', _ => {
+    camera.followAlpha = Math.floor(camera.alpha / quaterPI) * quaterPI
+  })
+  document.getElementById('playSetCameraAlphaInc').addEventListener('click', _ => {
+    camera.followAlpha = (Math.floor(camera.alpha / quaterPI + 0.1) + 1) * quaterPI
+  })
+  document.getElementById('playSetCameraAlphaDec').addEventListener('click', _ => {
+    camera.followAlpha = (Math.floor(camera.alpha / quaterPI + 0.1) - 1) * quaterPI
   })
 
   document.getElementById('configDownloadMap').addEventListener('click', _ => {
@@ -505,7 +516,6 @@ class History {
       if (z < p.z - s.z / 2) grid.position.z -= g
       if (z > p.z + s.z / 2) grid.position.z += g
     }
-    skybox.position.copyFrom(camera.target)
   })
 
   setImmediate(() => {

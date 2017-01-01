@@ -183,8 +183,16 @@ export class StaticBoxImpostor extends PhysicsImpostor {
   }
 }
 
+const Pi2 = Math.PI * 2
+function roundInPi2(a: number) {
+  while (a < 0) a += Pi2
+  while (a > Pi2) a -= Pi2
+  return a
+}
+
 export class FollowCamera extends ArcRotateCamera {
   public readonly followTarget = Vector3.Zero()
+  public followAlpha = undefined as number | undefined
   constructor(name: string, alpha: number, beta: number, radius: number, target: Vector3, scene: Scene) {
     super(name, alpha, beta, radius, target, scene)
     this.followTarget.copyFrom(target)
@@ -193,6 +201,19 @@ export class FollowCamera extends ArcRotateCamera {
         const cameraDirection = this.target.subtract(this.position)
         this.setTarget(Vector3.Lerp(this.target, this.followTarget, 0.1))
         this.setPosition(this.target.subtract(cameraDirection))
+      }
+      if (this.followAlpha !== undefined) {
+        let alpha = roundInPi2(this.followAlpha),
+          delta = Math.abs(this.alpha - alpha)
+        if (delta > Math.PI) {
+          alpha = alpha > this.alpha ? alpha - Pi2 : alpha + Pi2
+        }
+        if (delta > 1e-2) {
+          this.alpha = roundInPi2(this.alpha * 0.9 + alpha * 0.1)
+        }
+        else {
+          this.followAlpha = undefined
+        }
       }
     })
   }

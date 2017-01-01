@@ -104,7 +104,7 @@
     .ui-top-right {
       float: right;
     }
-    .ui-top-right a {
+    .ui-top a {
       color: #eee;
     }
 
@@ -186,8 +186,18 @@
           <option value="">none</option>
         </select>
       </span>
+      <span class="hidden ui-panel panel-play"> /
+       <a href="javascript:void(0)" id="playSetCameraAlphaDec"
+         title="rotate left"><i class="fa fa-angle-double-left"></i></a>
+       <a href="javascript:void(0)" id="playResetCameraAlpha"
+         title="camera"><i class="fa fa-street-view"></i></a>
+       <a href="javascript:void(0)" id="playSetCameraAlphaInc"
+         title="rotate right"><i class="fa fa-angle-double-right"></i></a>
+      </span>
       <div class="ui-top-right">
-        <span id="fpsCounterText"></span> / <a href="javascript:void(0)" id="docShowDebug"><i class="fa fa-info"></i></a> / <a href="javascript:void(0)" id="docShowHelp"><i class="fa fa-question"></i></a>
+        <span id="fpsCounterText"></span> /
+        <a href="javascript:void(0)" id="docShowDebug" title="debug"><i class="fa fa-info"></i></a> /
+        <a href="javascript:void(0)" id="docShowHelp" title="help"><i class="fa fa-question"></i></a>
       </div>
     </div>
   </div>
@@ -203,13 +213,15 @@
       <div class="float-right">
         <a href="javascript:void(0)" id="docHideHelp"><i class="fa fa-close"></i></a>
       </div>
-      <h2>{hash}</h2>
+      <h2>What's New</h2>
       <ul>
         <li>新的“石头”！</li>
         <li>新的“门”！</li>
         <li>地形侧面贴图</li>
-        <li>在 #game 面板中可设置图形选项</li>
         <li>trigger 对象可支持正反触发无限多的目标</li>
+        <li>在 #game 面板中可设置图形选项</li>
+        <li>在 #play 面板上增加控制摄像机的按钮</li>
+        <li>（开启 SkyBox 后）像茄子一样的云和像柱子一样的山！</li>
       </ul>
       <hr>
 

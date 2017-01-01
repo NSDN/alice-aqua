@@ -37,6 +37,7 @@ import {
   getBoundingVertexData,
   VERTEX_GROUND,
   FollowCamera,
+  getPlaneVertexDataFromRegion,
 } from './utils/babylon'
 
 import ObjectBase from './objs/object-base'
@@ -239,11 +240,76 @@ export function createKeyStates() {
   return { keys }
 }
 
-export function createSkyBox(scene: Scene) {
-  const sky = Mesh.CreateSphere('skybox', 3, 1, scene, false, Mesh.BACKSIDE)
-  sky.scaling.scaleInPlace(256)
+const random = (b, e) => Math.random() * (e - b) + b
 
-  const material = sky.material = new StandardMaterial('skybox', scene)
+function createSkyClouds(box: Mesh) {
+  const scene = box.getScene(),
+    cloud = new Mesh('cache/sky/cloud', scene),
+    region = { offsetX: 1, offsetY: 0, width: 174, height: 143 }
+  getPlaneVertexDataFromRegion(512, region).applyToMesh(cloud)
+  cloud.isVisible = false
+  const cloudMaterial = cloud.material = new StandardMaterial('cloud', scene)
+  cloudMaterial.disableLighting = true
+  cloudMaterial.emissiveColor = new Color3(51, 51, 77).scale(1 / 255)
+  const cloudTexture = cloudMaterial.diffuseTexture = new Texture('assets/clouds.png', scene)
+  cloudTexture.hasAlpha = true
+
+  const clouds = Array(20).fill(0).map((_, i) => {
+    const c = cloud.createInstance('sky/cloud/' + i),
+      r = random(0.6, 0.9) * 0.5,
+      y = random(0.0, 1.0) * 0.1,
+      q = Math.sqrt(r * r - y * y),
+      v = random(0.1, 1.0) * 0.001,
+      t = random(0.0, 100),
+      w = random(0.1, 0.3),
+      h = random(0.02, 0.08)
+    c.scaling.copyFromFloats(w, h, 1)
+    c.parent = box
+    return { c, y, q, t, v }
+  })
+
+  return clouds
+}
+
+function createSkyFarMountains(box: Mesh) {
+  const scene = box.getScene(),
+    mounts = Mesh.CreateTube('sky/mounts',
+      [Vector3.Zero(), Vector3.Up()], 1, 16, null, Mesh.NO_CAP, scene, false, Mesh.BACKSIDE),
+    r = 0.8 * 0.5,
+    h = Math.sqrt(0.5 * 0.5 - r * r) * 0.8 * 2
+  mounts.scaling.copyFromFloats(r, h, r)
+  mounts.position.y = -h / 2
+  mounts.parent = box
+
+  const material = mounts.material = new StandardMaterial('sky/mounts', scene)
+  material.disableLighting = true
+  material.emissiveColor = Color3.White()
+
+  const size = 256,
+    texture = material.diffuseTexture =
+      new DynamicTexture('sky/mounts', size, scene, false, Texture.NEAREST_SAMPLINGMODE),
+    dc = texture.getContext()
+  dc.fillStyle = 'rgb(51, 51, 77)'
+  dc.strokeStyle = 'rgb(41, 41, 67)'
+  dc.fillRect(0, 0.7 * size, size, size)
+  Array(30).fill(0).forEach(_ => {
+    const x = random(0, size),
+      y = random(0.3, 0.5) * size,
+      w = random(0.02, 0.04) * size
+    dc.fillRect(x, y, w, size - y)
+    dc.strokeRect(x, y, w, size)
+  })
+  texture.hasAlpha = true
+  texture.update()
+
+  return mounts
+}
+
+export function createSkyBox(scene: Scene) {
+  const box = Mesh.CreateSphere('skybox', 3, 1, scene, false, Mesh.BACKSIDE)
+  box.scaling.scaleInPlace(256)
+
+  const material = box.material = new StandardMaterial('skybox', scene)
   material.emissiveColor = Color3.White()
   material.disableLighting = true
 
@@ -258,7 +324,26 @@ export function createSkyBox(scene: Scene) {
   dc.fillRect(0, 0, size, size)
   texture.update()
 
-  return sky
+  const clouds = createSkyClouds(box),
+    mounts = createSkyFarMountains(box)
+
+  box.registerAfterRender(_ => {
+    box.position.copyFrom((scene.activeCamera as FollowCamera).target)
+    clouds.forEach(d => {
+      d.c.position.copyFromFloats(d.q * Math.sin(d.t), d.y, d.q * Math.cos(d.t))
+      d.c.rotation.y = d.t
+      d.t += d.v
+    })
+  })
+
+  return {
+    box,
+    setIsVisible(isVisible: boolean) {
+      box.isVisible = isVisible
+      mounts.isVisible = isVisible
+      clouds.forEach(d => d.c.isVisible = isVisible)
+    }
+  }
 }
 
 export function createSelectionBox(scene: Scene) {
