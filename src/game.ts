@@ -33,7 +33,6 @@ import Chunks, {
 } from './utils/chunks'
 
 import {
-  VERTEX_GROUND,
   FollowCamera,
   getPlaneVertexDataFromRegion,
 } from './utils/babylon'
@@ -372,17 +371,6 @@ export function createSkyBox(scene: Scene) {
       clouds.forEach(d => d.c.isVisible = isVisible)
     }
   }
-}
-
-export function createObjectFrame(scene: Scene) {
-  const frame = new Mesh('cache/object/frame', scene)
-  frame.isVisible = false
-  VERTEX_GROUND.applyToMesh(frame)
-  const material = frame.material = new StandardMaterial('frame', scene)
-  material.emissiveColor = new Color3(1, 0.5, 0.5)
-  material.wireframe = true
-  material.disableLighting = true
-  return frame
 }
 
 export async function loadAssets(scene: Scene) {

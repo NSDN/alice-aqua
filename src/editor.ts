@@ -10,7 +10,12 @@ import {
   StandardMaterial,
   DynamicTexture,
   Texture,
+  VertexData,
 } from './babylon'
+
+import {
+  ObjectSaveData,
+} from './game'
 
 import {
   VERTEX_GROUND,
@@ -22,7 +27,7 @@ import {
   drawIconFont,
 } from './utils/dom'
 
-export function createDataURLFromIconFontAndSub(className: string, subText: string, size: number = 24, color = '#333') {
+export function createDataURLFromIconFontAndSub(mainClass: string, subClass: string, size: number = 32, color = '#333') {
   const attrs = { width: size, height: size },
     canvas = appendElement('canvas', attrs) as HTMLCanvasElement,
     dc = canvas.getContext('2d')
@@ -30,10 +35,9 @@ export function createDataURLFromIconFontAndSub(className: string, subText: stri
   dc.textAlign = 'center'
   dc.textBaseline = 'middle'
 
-  drawIconFont(dc, className, size / 2, size / 2, size)
-  if (subText) {
-    dc.font = `${size * 0.8}px arial`
-    dc.fillText(subText, size * 0.2, size * 0.2)
+  drawIconFont(dc, mainClass, size * 0.5, size * 0.5, size * 0.8)
+  if (subClass) {
+    drawIconFont(dc, subClass, size * 0.25, size * 0.25, size * 0.5)
   }
 
   const url = canvas.toDataURL()
@@ -48,6 +52,33 @@ export class SelectionBox extends LinesMesh {
     getBoundingVertexData(0.3, 0.3, 0.3, false).applyToMesh(this)
     this.color = new Color3(1, 0.5, 0.5)
     this.renderingGroupId = 1
+  }
+}
+
+export class ObjectBoundary extends Mesh {
+  constructor(name: string, scene: Scene) {
+    super(name, scene)
+
+    const positions = [
+       0.5, -0.01,  0.5,
+       0.5, -0.01, -0.5,
+      -0.5, -0.01, -0.5,
+      -0.5, -0.01,  0.5,
+    ]
+    const indices = [
+      0, 1, 2,
+      1, 2, 3,
+      2, 3, 0,
+      3, 0, 1,
+    ]
+    Object.assign(new VertexData(), { positions, indices }).applyToMesh(this)
+
+    const material = this.material = new StandardMaterial(name + '/mat', scene)
+    material.wireframe = true
+    material.emissiveColor = new Color3(1, 0.5, 0.5)
+    material.disableLighting = true
+
+    this.isVisible = false
   }
 }
 
@@ -146,6 +177,31 @@ export class MoveObjectAction implements EditorAction {
     const { x, z } = this.oldPos,
       mesh = this.chunks.scene.getMeshByName(this.id)
     mesh && mesh.position.copyFromFloats(x, this.chunks.getPixel(x, z).h, z)
+  }
+}
+
+export class UpdateObjectAction implements EditorAction {
+  constructor(private readonly objectsData: { [key: string]: ObjectSaveData },
+    object: AbstractMesh, update: any,
+    private readonly newArgs = JSON.parse(JSON.stringify(update)),
+    private readonly oldArgs = JSON.parse(JSON.stringify(objectsData[object.name])),
+    private readonly repArgs = { },
+    private readonly id = object.name,
+    private readonly scene = object.getScene()) {
+    for (const k in newArgs) {
+      if (!(k in oldArgs)) {
+        repArgs[k] = JSON.parse(JSON.stringify(object[k]))
+      }
+    }
+    this.exec()
+  }
+  exec() {
+    Object.assign(this.objectsData[this.id], this.newArgs)
+    Object.assign(this.scene.getMeshByName(this.id), this.newArgs)
+  }
+  revert() {
+    this.objectsData[this.id] = this.oldArgs
+    Object.assign(this.scene.getMeshByName(this.id), this.oldArgs, this.repArgs)
   }
 }
 

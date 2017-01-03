@@ -23,7 +23,6 @@ import {
   createFpsCounter,
   createKeyStates,
   createSkyBox,
-  createObjectFrame,
   loadAssets,
   loadSavedMap,
   TAGS,
@@ -34,10 +33,12 @@ import {
   MoveObjectAction,
   CreateObjectAction,
   RemoveObjectAction,
+  UpdateObjectAction,
   EditorAction,
   EditorHistory,
   SelectionBox,
   GridPlane,
+  ObjectBoundary,
   createDataURLFromIconFontAndSub,
 } from './editor'
 
@@ -52,15 +53,28 @@ import {
   LocationSearch,
 } from './utils/dom'
 
+const pixelHeightNames = {
+  '+1': 'up',
+  '-1': 'down',
+  '0': 'flat',
+  '': 'none',
+}
 const iconClassFromCursorClass = {
-  'cursor-brushes-ctrl' : 'fa fa-pencil',
-  'cursor-brushes-shift': 'fa fa-pencil-square-o',
+  'cursor-up-ctrl' : 'fa fa-pencil/fa fa-arrow-up',
+  'cursor-down-ctrl' : 'fa fa-pencil/fa fa-arrow-down',
+  'cursor-flat-ctrl' : 'fa fa-pencil/fa fa-arrows-h',
+  'cursor-none-ctrl' : 'fa fa-pencil',
+  'cursor-up-shift': 'fa fa-pencil-square-o/fa fa-arrow-up',
+  'cursor-down-shift': 'fa fa-pencil-square-o/fa fa-arrow-down',
+  'cursor-flat-shift': 'fa fa-pencil-square-o/fa fa-arrows-h',
+  'cursor-none-shift': 'fa fa-pencil-square-o',
   'cursor-objects-ctrl' : 'fa fa-tree',
   'cursor-objects-shift': 'fa fa-object-group',
 }
-const appendCursorStyle = memo((cursorClass: string, subText: string) => {
-  const dataUrl = createDataURLFromIconFontAndSub(iconClassFromCursorClass[cursorClass], subText)
-  appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` })
+const appendCursorStyle = memo((cursorClass: string) => {
+  const [mainClass, subClass] = iconClassFromCursorClass[cursorClass].split('/'),
+    dataUrl = createDataURLFromIconFontAndSub(mainClass, subClass)
+  return appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` })
 })
 
 ; (async function() {
@@ -71,7 +85,7 @@ const appendCursorStyle = memo((cursorClass: string, subText: string) => {
     map = await loadSavedMap(),
     assets = await loadAssets(scene),
 
-    source = createObjectFrame(scene),
+    source = new ObjectBoundary('frame', scene),
 
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
     lastSelection = new SelectionBox('select', scene),
@@ -400,18 +414,16 @@ const appendCursorStyle = memo((cursorClass: string, subText: string) => {
   // check
   watchCameraDetach(null)
 
-  keys.on('change', watch(() => {
-    return [ui.activePanel, keys.ctrlKey ? '-ctrl' : '', keys.shiftKey ? '-shift' : '']
-  }, keyStates => {
+  keys.on('change', watch(() => [
+    ui.activePanel === 'brushes' ? pixelHeightNames[ui.selectedTilePixel.h] : ui.activePanel,
+    keys.ctrlKey ? '-ctrl' : '',
+    keys.shiftKey ? '-shift' : ''
+  ], keyStates => {
     const cursorClass = 'cursor-' + keyStates.join(''),
       iconClass = iconClassFromCursorClass[cursorClass]
-    // check https://bugs.chromium.org/p/chromium/issues/detail?id=26723
-    Object.keys(iconClassFromCursorClass).forEach(cursorClass => {
-      canvas.classList.remove(cursorClass)
-    })
+    Object.keys(iconClassFromCursorClass).forEach(cursorClass => canvas.classList.remove(cursorClass))
     if (iconClass) {
-      const subText = ui.activePanel === 'brushes' && ui.selectedTilePixel.h
-      appendCursorStyle(cursorClass, { '+1': '+', '-1': '-', '0': 'o' }[subText] || '')
+      appendCursorStyle(cursorClass)
       canvas.classList.add(cursorClass)
     }
   }))
@@ -434,6 +446,7 @@ const appendCursorStyle = memo((cursorClass: string, subText: string) => {
     keyDown && editorHistory.redo()
   }, false))
 
+  const objectUpdateActions = [ ] as EditorAction[]
   const renderListeners = [
     watch(() => {
       return ui.activePanel === 'objects' && selectedObject
@@ -447,17 +460,19 @@ const appendCursorStyle = memo((cursorClass: string, subText: string) => {
         newObject.showBoundingBox = true
         newObject.getChildMeshes().forEach(child => child.showBoundingBox = true)
 
-        const { args } = map.objectsData[newObject.name],
-          container = objectToolbar.querySelector('.object-settings')
-        container.innerHTML = '<div>' + newObject.name + '</div>'
+        const container = objectToolbar.querySelector('.object-settings')
+        container.innerHTML = `<div><b>#${newObject.name}</b></div>`
 
         const binder = newObject as any as ObjectElementBinder,
           elem = appendElement('div', { }, container)
-        binder.bindToElement && binder.bindToElement(elem, ret => {
-          Object.assign(args, ret)
-          Object.assign(newObject, ret)
+        binder.bindToElement && binder.bindToElement(elem, update => {
+          objectUpdateActions.push(new UpdateObjectAction(map.objectsData, newObject, update))
           map.saveDebounced(chunks)
         })
+      }
+      if (objectUpdateActions.length) {
+        editorHistory.push(objectUpdateActions)
+        objectUpdateActions.length = 0
       }
     }),
   ]
@@ -513,6 +528,7 @@ const appendCursorStyle = memo((cursorClass: string, subText: string) => {
       const { x, y, z, clsId, args } = map.objectsData[id]
       objectManager.create(id, clsId, new Vector3(x, y, z), args)
     })
+    selectedObject = null
   })
 
 })()
