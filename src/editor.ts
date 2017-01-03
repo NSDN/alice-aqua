@@ -17,6 +17,30 @@ import {
   getBoundingVertexData,
 } from './utils/babylon'
 
+import {
+  appendElement,
+  drawIconFont,
+} from './utils/dom'
+
+export function createDataURLFromIconFontAndSub(className: string, subText: string, size: number = 24, color = '#333') {
+  const attrs = { width: size, height: size },
+    canvas = appendElement('canvas', attrs) as HTMLCanvasElement,
+    dc = canvas.getContext('2d')
+  dc.fillStyle = color
+  dc.textAlign = 'center'
+  dc.textBaseline = 'middle'
+
+  drawIconFont(dc, className, size / 2, size / 2, size)
+  if (subText) {
+    dc.font = `${size * 0.8}px arial`
+    dc.fillText(subText, size * 0.2, size * 0.2)
+  }
+
+  const url = canvas.toDataURL()
+  canvas.parentNode.removeChild(canvas)
+  return url
+}
+
 export class SelectionBox extends LinesMesh {
   constructor(name: string, scene: Scene) {
     super(name, scene)

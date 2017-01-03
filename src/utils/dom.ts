@@ -8,18 +8,16 @@ export function appendElement(tag: string, attrs = { } as any, parent = document
   return elem
 }
 
-export function createDataURLFromIconFont(className: string, size: number = 24, color = '#333') {
+export function drawIconFont(dc: CanvasRenderingContext2D, className: string, x: number, y: number, size: number) {
   const attrs = { className, width: size, height: size, style: { fontSize: size + 'px' } },
-    canvas = appendElement('canvas', attrs) as HTMLCanvasElement,
-    dc = canvas.getContext('2d'),
-    style = getComputedStyle(canvas, ':before'),
+    span = appendElement('i', attrs) as HTMLCanvasElement,
+    style = getComputedStyle(span, ':before'),
     text = (style.content || '').replace(/"/g, '')
-  dc.fillStyle = color
+  dc.save()
   dc.font = style.font
-  dc.textAlign = 'center'
-  dc.textBaseline = 'middle'
-  dc.fillText(text, size / 2, size / 2)
-  return canvas.toDataURL()
+  dc.fillText(text, x, y)
+  dc.restore()
+  span.parentNode.removeChild(span)
 }
 
 export function attachDragable(

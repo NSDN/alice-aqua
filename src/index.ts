@@ -38,6 +38,7 @@ import {
   EditorHistory,
   SelectionBox,
   GridPlane,
+  createDataURLFromIconFontAndSub,
 } from './editor'
 
 import {
@@ -48,18 +49,17 @@ import {
 import {
   appendElement,
   attachDragable,
-  createDataURLFromIconFont,
   LocationSearch,
 } from './utils/dom'
 
 const iconClassFromCursorClass = {
-  'cursor-brushes-ctrl': 'fa fa-pencil',
+  'cursor-brushes-ctrl' : 'fa fa-pencil',
   'cursor-brushes-shift': 'fa fa-pencil-square-o',
-  'cursor-objects-ctrl': 'fa fa-tree',
+  'cursor-objects-ctrl' : 'fa fa-tree',
   'cursor-objects-shift': 'fa fa-object-group',
 }
-const appendCursorStyle = memo((cursorClass: string) => {
-  const dataUrl = createDataURLFromIconFont(iconClassFromCursorClass[cursorClass])
+const appendCursorStyle = memo((cursorClass: string, subText: string) => {
+  const dataUrl = createDataURLFromIconFontAndSub(iconClassFromCursorClass[cursorClass], subText)
   appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` })
 })
 
@@ -410,7 +410,8 @@ const appendCursorStyle = memo((cursorClass: string) => {
       canvas.classList.remove(cursorClass)
     })
     if (iconClass) {
-      appendCursorStyle(cursorClass)
+      const subText = ui.activePanel === 'brushes' && ui.selectedTilePixel.h
+      appendCursorStyle(cursorClass, { '+1': '+', '-1': '-', '0': 'o' }[subText] || '')
       canvas.classList.add(cursorClass)
     }
   }))
