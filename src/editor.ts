@@ -89,9 +89,16 @@ export class ObjectBoundary extends Mesh {
 export class GridPlane extends Mesh {
   constructor(name: string, scene: Scene, count: number) {
     super(name, scene)
+    const pixel = 32, size = count * pixel, repeat = 2
 
-    const pixel = 32, size = count * pixel, repeat = 2,
-      texture = new DynamicTexture('grid', size, scene, true),
+    VERTEX_GROUND.applyToMesh(this)
+    this.scaling.copyFromFloats(count * repeat, 1, count * repeat)
+
+    const material = this.material = new StandardMaterial(name + '/grid', scene)
+    material.disableLighting = true
+    material.emissiveColor = Color3.White()
+
+    const texture = material.diffuseTexture = new DynamicTexture(name + '/grid', size, scene, true),
       dc = texture.getContext()
     dc.strokeStyle = '#aaaaaa'
     dc.lineWidth = 3
@@ -110,16 +117,6 @@ export class GridPlane extends Mesh {
     texture.uScale = texture.vScale = repeat
     texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
     texture.update()
-
-    const grid = new Mesh('grid', scene)
-    VERTEX_GROUND.applyToMesh(grid)
-    grid.scaling.copyFromFloats(count * repeat, 1, count * repeat)
-    grid.position.y = 0.001
-
-    const material = grid.material = new StandardMaterial(name + '/grid', scene)
-    material.disableLighting = true
-    material.emissiveColor = Color3.White()
-    material.diffuseTexture = texture
   }
 }
 
@@ -134,7 +131,7 @@ export class EditorHistory extends EventEmitter<{ 'change': void }> {
   undo() {
     const actions = this.dones.pop()
     if (actions) {
-      actions.reverse().forEach(a => a.revert())
+      actions.slice().reverse().forEach(a => a.revert())
       this.todos.unshift(actions)
     }
     this.emit('change', null)
