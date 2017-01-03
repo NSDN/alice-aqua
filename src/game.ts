@@ -2,6 +2,7 @@ import Sprite from './objs/sprite'
 import Slope from './objs/slope'
 import Gate from './objs/gate'
 import Trigger from './objs/trigger'
+import Jump from './objs/jump'
 import Box, { BoxGenerator } from './objs/box'
 import Player, { PlayerGenerator } from './objs/player'
 
@@ -58,6 +59,7 @@ const OBJECT_CLASSES = {
   gate: Gate,
   box: BoxGenerator,
   trigger: Trigger,
+  jump: Jump,
   player: PlayerGenerator,
 }
 
@@ -138,6 +140,7 @@ export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, 
   [27, 'imAssetTile1', 160, 1696, 32, 32, 'sprite', { spriteHeight: 1 }],
   [28, 'imAssetTile1',   0,   32, 32, 32, 'gate',    { }],
   [29, 'imAssetTile1',   0,   32, 32, 32, 'slope',   { }],
+  [34, 'imAssetTile1',   0,   32, 32, 32, 'jump', { listenTags: [Box.BOX_TAG, Player.PLAYER_BODY_TAG] }],
   [30, 'objectIcons1',  64,    0, 32, 32, 'trigger', { listenTags: [Box.BOX_TAG, Player.PLAYER_BODY_TAG] }],
   [31, 'objectIcons1',   0,    0, 32, 32, 'player',  { playerName: 'remilia' }],
   [32, 'objectIcons1',  32,    0, 32, 32, 'player',  { playerName: 'flandre' }],

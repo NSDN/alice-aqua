@@ -92,9 +92,9 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
   public autoResetTimeout = 0
   public listenTags = [] as string[]
 
-  private readonly triggerSensor: AbstractMesh
-  private readonly triggerOnBox: AbstractMesh
-  private readonly triggerOffBox: AbstractMesh
+  protected readonly triggerSensor: AbstractMesh
+  protected readonly triggerOnBox: AbstractMesh
+  protected readonly triggerOffBox: AbstractMesh
 
   private showLockerSprite(timeout: number) {
     const spriteId = 'trigger/lock/sprite',
@@ -218,7 +218,7 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
     }
   }
 
-  private triggerMeshes = [] as AbstractMesh[]
+  protected triggerMeshes = [] as AbstractMesh[]
   private checkTrigger(mesh: AbstractMesh, isOn: boolean) {
     const lastLength = this.triggerMeshes.length
     if (isOn && this.triggerMeshes.indexOf(mesh) === -1) {

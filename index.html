@@ -144,11 +144,11 @@
       top: 0;
       right: 0;
       bottom: 0;
-      background: #333;
+      background: #eee;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #eee;
+      color: #333;
       font-size: 150%;
       flex-direction: column;
     }
@@ -166,7 +166,7 @@
       transition: all 0.3s;
     }
     .doc-loading-dot.active {
-      color: #eee;
+      color: #aaa;
       font-size: 100%;
     }
 
@@ -313,7 +313,7 @@
     </div>
   </div>
   <div class="doc-loading">
-    <div>Loading</div>
+    <div id="docLoadingText">Loading Page</div>
     <div>
       <span class="doc-loading-dot"></span>
       <span class="doc-loading-dot"></span>
@@ -322,10 +322,24 @@
       <span class="doc-loading-dot"></span>
     </div>
   </div>
+  <script>
+    setTimeout(function check() {
+      const dots = [].slice.call(document.querySelectorAll('.doc-loading .doc-loading-dot'))
+        index = dots.findIndex(elem => elem.classList.contains('active'))
+      dots.forEach(dot => dot.classList.remove('active'))
+      dots[(index + 1) % dots.length].classList.add('active')
+      if (!document.body.classList.contains('doc-loaded')) {
+        setTimeout(check, 300)
+      }
+    }, 300)
+  </script>
   <script src="//localhost:8080/webpack-dev-server.js"></script>
   <script src="node_modules/babylonjs/dist/cannon.js"></script>
   <script src="node_modules/babylonjs/dist/babylon.2.5.max.js"></script>
   <script src="node_modules/babylonjs/dist/babylon.2.5.canvas2d.max.js"></script>
   <script src="build/bundle.js"></script>
+  <script>
+    document.getElementById('docLoadingText').innerHTML = 'Loading Assets'
+  </script>
 </body>
 </html>

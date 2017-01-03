@@ -77,16 +77,6 @@ const appendCursorStyle = memo((cursorClass: string) => {
   return appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` })
 })
 
-setTimeout(function check() {
-  const dots = [].slice.call(document.querySelectorAll('.doc-loading .doc-loading-dot')) as Element[],
-    index = dots.findIndex(elem => elem.classList.contains('active'))
-  dots.forEach(dot => dot.classList.remove('active'))
-  dots[(index + 1) % dots.length].classList.add('active')
-  if (!document.body.classList.contains('doc-loaded')) {
-    setTimeout(check, 300)
-  }
-}, 300)
-
 ; (async function() {
   const { scene, camera, canvas2d } = createScene(),
     { keys } = createKeyStates(),
@@ -544,13 +534,12 @@ setTimeout(function check() {
     }
   })
 
-  setImmediate(() => {
-    Object.keys(map.objectsData).forEach(id => {
-      const { x, y, z, clsId, args } = map.objectsData[id]
-      objectManager.create(id, clsId, new Vector3(x, y, z), args)
-    })
-    selectedObject = null
-    document.body.classList.add('doc-loaded')
+  Object.keys(map.objectsData).forEach(id => {
+    const { x, y, z, clsId, args } = map.objectsData[id]
+    objectManager.create(id, clsId, new Vector3(x, y, z), args)
   })
+  selectedObject = null
 
+  await new Promise(resolve => setTimeout(resolve, 800))
+  document.body.classList.add('doc-loaded')
 })()
