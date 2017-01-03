@@ -27,6 +27,10 @@ import {
   drawIconFont,
 } from './utils/dom'
 
+import {
+  EventEmitter,
+} from './utils'
+
 export function createDataURLFromIconFontAndSub(mainClass: string, subClass: string, size: number = 32, color = '#333') {
   const attrs = { width: size, height: size },
     canvas = appendElement('canvas', attrs) as HTMLCanvasElement,
@@ -124,26 +128,35 @@ export interface EditorAction {
   revert(): void
 }
 
-export class EditorHistory {
-  private history = [ ] as EditorAction[][]
+export class EditorHistory extends EventEmitter<{ 'change': void }> {
+  private dones = [ ] as EditorAction[][]
   private todos = [ ] as EditorAction[][]
   undo() {
-    const actions = this.history.pop()
+    const actions = this.dones.pop()
     if (actions) {
       actions.reverse().forEach(a => a.revert())
       this.todos.unshift(actions)
     }
+    this.emit('change', null)
   }
   redo() {
     const actions = this.todos.shift()
     if (actions) {
       actions.forEach(a => a.exec())
-      this.history.push(actions)
+      this.dones.push(actions)
     }
+    this.emit('change', null)
   }
   push(actions: EditorAction[]) {
-    this.history.push(actions.slice())
+    this.dones.push(actions.slice())
     this.todos.length = 0
+    this.emit('change', null)
+  }
+  get canUndo() {
+    return this.dones.length > 0
+  }
+  get canRedo() {
+    return this.todos.length > 0
   }
 }
 

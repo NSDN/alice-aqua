@@ -406,13 +406,24 @@ const appendCursorStyle = memo((cursorClass: string) => {
     document.body.classList.remove('show-help')
   })
 
-  const watchCameraDetach = keys.on('change', watch(() => {
+  editorHistory.on('change', _ => {
+    document.getElementById('docActionUndo').classList[editorHistory.canUndo ? 'remove' : 'add']('disabled')
+    document.getElementById('docActionRedo').classList[editorHistory.canRedo ? 'remove' : 'add']('disabled')
+  })
+  document.getElementById('docActionUndo').addEventListener('click', _ => {
+    editorHistory.undo()
+  })
+  document.getElementById('docActionRedo').addEventListener('click', _ => {
+    editorHistory.redo()
+  })
+
+  cursor.isVisible = false
+  camera.attachControl(canvas)
+  keys.on('change', watch(() => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && (keys.ctrlKey || keys.shiftKey)
   }, shouldDetachCamera => {
     (cursor.isVisible = shouldDetachCamera) ? camera.detachControl(canvas) : camera.attachControl(canvas, true)
   }, true))
-  // check
-  watchCameraDetach(null)
 
   keys.on('change', watch(() => [
     ui.activePanel === 'brushes' ? pixelHeightNames[ui.selectedTilePixel.h] : ui.activePanel,

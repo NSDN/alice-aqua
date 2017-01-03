@@ -18,6 +18,9 @@
     .hidden {
       display: none;
     }
+    .disabled {
+      opacity: 0.2;
+    }
     .clear-both {
       width: 100%;
       clear: both;
@@ -194,6 +197,13 @@
        <a href="javascript:void(0)" id="playSetCameraAlphaInc"
          title="rotate right"><i class="fa fa-angle-double-right"></i></a>
       </span>
+      <span class="hidden ui-panel panel-brushes panel-objects">
+        /
+        <a class="disabled" href="javascript:void(0)" id="docActionUndo"
+          title="undo (ctrl+Z)"><i class="fa fa-undo"></i></a>
+        <a class="disabled" href="javascript:void(0)" id="docActionRedo"
+          title="redo (ctrl+Y)"><i class="fa fa-repeat"></i></a>
+      </span>
       <div class="ui-top-right">
         <span id="fpsCounterText"></span> /
         <a href="javascript:void(0)" id="docShowDebug" title="debug"><i class="fa fa-info"></i></a> /
@@ -216,6 +226,7 @@
       <h2>Build 0dd2223a1d21747b2860</h2>
       <ul>
         <li>trigger 对象支持定时重置（可以制作单向通过的门，或者配合斜坡延时）</li>
+        <li>绘制地图时的指针提示</li>
       </ul>
       <hr>
 
