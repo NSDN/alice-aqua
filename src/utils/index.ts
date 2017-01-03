@@ -50,7 +50,7 @@ export function throttle<F extends Function>(fn: F, delay: number) {
 export function memo<F extends Function>(fn: F) {
   const cache = { } as any, join = [ ].join
   return function() {
-    const key = join.call(arguments)
+    const key = join.call(arguments, '/')
     return cache[key] || (cache[key] = fn.apply(this, arguments))
   } as any as F
 }
@@ -122,10 +122,10 @@ export function getBlocksFromHeightMap(heights: N[], n: N) {
   return blocks
 }
 
-export class EventEmitter<EventNames extends any> {
-  private callbacks = { } as { [P in EventNames]: Function[] }
+export class EventEmitter<EventNames> {
+  private callbacks = { } as { [E in keyof EventNames]: Function[] }
 
-  addEventListener(evt: EventNames, callback: Function) {
+  on<E extends keyof EventNames>(evt: E, callback: (data: EventNames[E]) => void) {
     const cbs = this.callbacks[evt] || (this.callbacks[evt] = [ ])
     if (cbs.indexOf(callback) === -1) {
       cbs.push(callback)
@@ -133,7 +133,7 @@ export class EventEmitter<EventNames extends any> {
     return callback
   }
 
-  removeEventListener(evt: EventNames, callback: Function) {
+  off<E extends keyof EventNames>(evt: E, callback: (data: EventNames[E]) => void) {
     const cbs = this.callbacks[evt]
     if (cbs) {
       cbs.splice(cbs.indexOf(callback), 1)
@@ -141,7 +141,7 @@ export class EventEmitter<EventNames extends any> {
     return callback
   }
 
-  emit(evt: EventNames, ...args: any[]) {
-    (this.callbacks[evt] || [ ]).forEach(cb => cb.apply(this, args))
+  emit<E extends keyof EventNames>(evt: E, data: EventNames[E]) {
+    (this.callbacks[evt] || [ ]).forEach(cb => cb(data))
   }
 }

@@ -61,7 +61,7 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
       cache.isVisible = false
       const material = cache.material = new StandardMaterial(cacheId + '/mat', this.getScene())
       material.disableLighting = true
-      material.emissiveColor = Color3.White().scale(0.8)
+      material.emissiveColor = Color3.White().scale(0.9)
     }
     this.creatBox('block/left', cache, {
       x: [

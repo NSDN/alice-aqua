@@ -32,9 +32,14 @@ export function appendConfigItem(label: string, tag: string, attrs: any, contain
   return appendElement(tag, attrs, item)
 }
 
-export function appendSelectItem(label: string, val: string, options: string[], container: HTMLElement) {
+export function appendSelectItem(label: string, val: string, options: any, container: HTMLElement) {
   const select = appendConfigItem(label, 'select', { }, container) as HTMLSelectElement
-  options.forEach(innerHTML => appendElement('option', { innerHTML }, select))
+  if (Array.isArray(options)) {
+    options.forEach(innerHTML => appendElement('option', { innerHTML }, select))
+  }
+  else {
+    Object.keys(options).forEach(value => appendElement('option', { innerHTML: options[value], value }, select))
+  }
   select.value = val
   return select
 }

@@ -2,15 +2,14 @@ import Sprite from './objs/sprite'
 import Slope from './objs/slope'
 import Gate from './objs/gate'
 import Trigger from './objs/trigger'
-import { BoxGenerator } from './objs/box'
-import { PlayerGenerator } from './objs/player'
+import Box, { BoxGenerator } from './objs/box'
+import Player, { PlayerGenerator } from './objs/player'
 
 import {
   Engine,
   Scene,
   Vector3,
   ScreenSpaceCanvas2D,
-  LinesMesh,
   Color3,
   Mesh,
   Material,
@@ -34,7 +33,6 @@ import Chunks, {
 } from './utils/chunks'
 
 import {
-  getBoundingVertexData,
   VERTEX_GROUND,
   FollowCamera,
   getPlaneVertexDataFromRegion,
@@ -141,7 +139,7 @@ export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, 
   [27, 'imAssetTile1', 160, 1696, 32, 32, 'sprite', { spriteHeight: 1 }],
   [28, 'imAssetTile1',   0,   32, 32, 32, 'gate',    { }],
   [29, 'imAssetTile1',   0,   32, 32, 32, 'slope',   { }],
-  [30, 'objectIcons1',  64,    0, 32, 32, 'trigger', { }],
+  [30, 'objectIcons1',  64,    0, 32, 32, 'trigger', { listenTags: [Box.BOX_TAG, Player.PLAYER_BODY_TAG] }],
   [31, 'objectIcons1',   0,    0, 32, 32, 'player',  { playerName: 'remilia' }],
   [32, 'objectIcons1',  32,    0, 32, 32, 'player',  { playerName: 'flandre' }],
 ]
@@ -166,6 +164,17 @@ export const KEY_MAP = {
   use: 'E'
 }
 
+const SKY_THEME_COLOR = Color3.FromHexString('#607f9a').scale(0.7),
+  SKY_TOP_COLOR = Color3.White(),
+  // WATER_THEME_COLOR = Color3.FromHexString('#6197ce'),
+  SKY_COLOR_GRADS = [
+    // from bottom to top
+    [0.0, SKY_THEME_COLOR.scale(0.3)],
+    [0.4, SKY_THEME_COLOR],
+    [0.7, SKY_TOP_COLOR],
+    [1.0, SKY_TOP_COLOR],
+  ] as [number, Color3][]
+
 type KeyType = keyof typeof KEY_MAP
 
 export function createFpsCounter(n = 30) {
@@ -187,6 +196,7 @@ export function createScene() {
 
   scene.enablePhysics(new Vector3(0, -3, 0))
   scene.workerCollisions = true
+  scene.clearColor = SKY_THEME_COLOR
 
   engine.runRenderLoop(() => {
     scene.render()
@@ -206,15 +216,7 @@ export function createScene() {
   return { scene, camera, canvas2d }
 }
 
-type KeyEvents = 'keydown' | 'keyup' | 'key'
 export function createKeyStates() {
-  const keys = { } as {
-    [P in KeyType]: boolean
-  } & {
-    on: (e: KeyEvents, c: Function) => Function
-    off: (e: KeyEvents, c: Function) => Function
-  }
-
   const nameOfKeyCode = { } as { [key: number]: KeyType }
   for (const str in KEY_MAP) {
     const key = str as KeyType,
@@ -223,18 +225,23 @@ export function createKeyStates() {
     nameOfKeyCode[name] = key
   }
 
-  const keyListener = new EventEmitter<KeyEvents>()
-  keys.on = (e, c) => keyListener.addEventListener(e, c)
-  keys.off = (e, c) => keyListener.removeEventListener(e, c)
+  const keys = Object.assign(new EventEmitter<{
+    'change': KeyType,
+    'down': KeyType,
+    'up': KeyType,
+  }>(), { } as { [P in KeyType]: boolean })
+
   window.addEventListener('keydown', evt => {
-    keys[ nameOfKeyCode[evt.which] ] = true
-    keyListener.emit('keydown', nameOfKeyCode[evt.which])
-    keyListener.emit('key', nameOfKeyCode[evt.which])
+    const name = nameOfKeyCode[evt.which]
+    keys[name] = true
+    keys.emit('down', name)
+    keys.emit('change', name)
   })
   window.addEventListener('keyup', evt => {
-    keys[ nameOfKeyCode[evt.which] ] = false
-    keyListener.emit('keyup', nameOfKeyCode[evt.which])
-    keyListener.emit('key', nameOfKeyCode[evt.which])
+    const name = nameOfKeyCode[evt.which]
+    keys[name] = false
+    keys.emit('up', name)
+    keys.emit('change', name)
   })
 
   return { keys }
@@ -250,14 +257,14 @@ function createSkyClouds(box: Mesh) {
   cloud.isVisible = false
   const cloudMaterial = cloud.material = new StandardMaterial('cloud', scene)
   cloudMaterial.disableLighting = true
-  cloudMaterial.emissiveColor = new Color3(51, 51, 77).scale(1 / 255)
+  cloudMaterial.emissiveColor = Color3.Lerp(SKY_THEME_COLOR, Color3.White(), 0.7)
   const cloudTexture = cloudMaterial.diffuseTexture = new Texture('assets/clouds.png', scene)
   cloudTexture.hasAlpha = true
 
   const clouds = Array(20).fill(0).map((_, i) => {
     const c = cloud.createInstance('sky/cloud/' + i),
       r = random(0.6, 0.9) * 0.5,
-      y = random(0.0, 1.0) * 0.1,
+      y = random(0.1, 1.0) * 0.1,
       q = Math.sqrt(r * r - y * y),
       v = random(0.1, 1.0) * 0.001,
       t = random(0.0, 100),
@@ -283,18 +290,18 @@ function createSkyFarMountains(box: Mesh) {
 
   const material = mounts.material = new StandardMaterial('sky/mounts', scene)
   material.disableLighting = true
-  material.emissiveColor = Color3.White()
+  material.emissiveColor = SKY_THEME_COLOR
 
   const size = 256,
     texture = material.diffuseTexture =
       new DynamicTexture('sky/mounts', size, scene, false, Texture.NEAREST_SAMPLINGMODE),
     dc = texture.getContext()
-  dc.fillStyle = 'rgb(51, 51, 77)'
-  dc.strokeStyle = 'rgb(41, 41, 67)'
+  dc.fillStyle = '#ffffff'
+  dc.strokeStyle = '#dddddd'
   dc.fillRect(0, 0.7 * size, size, size)
   Array(30).fill(0).forEach(_ => {
     const x = random(0, size),
-      y = random(0.3, 0.5) * size,
+      y = random(0.2, 0.5) * size,
       w = random(0.02, 0.04) * size
     dc.fillRect(x, y, w, size - y)
     dc.strokeRect(x, y, w, size)
@@ -304,6 +311,27 @@ function createSkyFarMountains(box: Mesh) {
 
   return mounts
 }
+
+/*
+export function createWater(box: Mesh) {
+  const scene = box.getScene()
+
+  const water = new Mesh('sky/water', scene)
+  VERTEX_GROUND.applyToMesh(water)
+  water.scaling.copyFromFloats(box.scaling.x, 1, box.scaling.z)
+  water.position.y = 0.8
+  water.visibility = 0.3
+
+  const material = water.material = new StandardMaterial('sky/water', scene)
+  material.disableLighting = true
+  material.emissiveColor = WATER_THEME_COLOR
+  const bump = material.bumpTexture = new Texture('assets/waterbump.png', scene)
+  bump.uScale = bump.vScale = 1 / 16
+  bump.level = 0.2
+
+  return water
+}
+*/
 
 export function createSkyBox(scene: Scene) {
   const box = Mesh.CreateSphere('skybox', 3, 1, scene, false, Mesh.BACKSIDE)
@@ -317,9 +345,7 @@ export function createSkyBox(scene: Scene) {
     texture = material.diffuseTexture = new DynamicTexture('skytex', size, scene, false),
     dc = texture.getContext(),
     grad = dc.createLinearGradient(0, 0, 0, texture.getSize().width)
-  grad.addColorStop(0.0, 'rgb(51, 51, 77)')
-  grad.addColorStop(0.4, 'rgb(51, 51, 77)')
-  grad.addColorStop(1.0, 'rgb(225, 236, 241)')
+  SKY_COLOR_GRADS.forEach(([pos, color]) => grad.addColorStop(pos, color.toHexString()))
   dc.fillStyle = grad
   dc.fillRect(0, 0, size, size)
   texture.update()
@@ -328,7 +354,9 @@ export function createSkyBox(scene: Scene) {
     mounts = createSkyFarMountains(box)
 
   box.registerAfterRender(_ => {
-    box.position.copyFrom((scene.activeCamera as FollowCamera).target)
+    const { x, z } = (scene.activeCamera as FollowCamera).target.multiplyByFloats(1, 0, 1)
+    box.position.x = x
+    box.position.z = z
     clouds.forEach(d => {
       d.c.position.copyFromFloats(d.q * Math.sin(d.t), d.y, d.q * Math.cos(d.t))
       d.c.rotation.y = d.t
@@ -346,15 +374,6 @@ export function createSkyBox(scene: Scene) {
   }
 }
 
-export function createSelectionBox(scene: Scene) {
-  const box = new LinesMesh('selection', scene)
-  box.scaling.copyFromFloats(0, 0, 0)
-  getBoundingVertexData(0.3, 0.3, 0.3, false).applyToMesh(box)
-  box.color = new Color3(1, 0.5, 0.5)
-  box.renderingGroupId = 1
-  return box
-}
-
 export function createObjectFrame(scene: Scene) {
   const frame = new Mesh('cache/object/frame', scene)
   frame.isVisible = false
@@ -364,41 +383,6 @@ export function createObjectFrame(scene: Scene) {
   material.wireframe = true
   material.disableLighting = true
   return frame
-}
-
-export function createGridPlane(scene: Scene, count: number) {
-  const pixel = 32, size = count * pixel, repeat = 2,
-    texture = new DynamicTexture('grid', size, scene, true),
-    dc = texture.getContext()
-  dc.strokeStyle = '#aaaaaa'
-  dc.lineWidth = 3
-  dc.strokeRect(0, 0, size, size)
-  dc.strokeStyle = '#666666'
-  dc.lineWidth = 1
-  for (let v = 0; v < size; v += pixel) {
-    dc.moveTo(0, v)
-    dc.lineTo(size, v)
-    dc.stroke()
-    dc.moveTo(v, 0)
-    dc.lineTo(v, size)
-    dc.stroke()
-  }
-  texture.hasAlpha = true
-  texture.uScale = texture.vScale = repeat
-  texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
-  texture.update()
-
-  const grid = new Mesh('grid', scene)
-  VERTEX_GROUND.applyToMesh(grid)
-  grid.scaling.copyFromFloats(count * repeat, 1, count * repeat)
-  grid.position.y = 0.001
-
-  const material = grid.material = new StandardMaterial('grid', scene)
-  material.disableLighting = true
-  material.emissiveColor = Color3.White()
-  material.diffuseTexture = texture
-
-  return grid
 }
 
 export async function loadAssets(scene: Scene) {
@@ -442,25 +426,25 @@ export async function loadAssets(scene: Scene) {
 }
 
 export async function loadSavedMap() {
-  const toJSON = function(chunks: Chunks, objectsToSave: { [id: string]: ObjectSaveData }) {
+  const toJSON = function(chunks: Chunks) {
     const chunksData = chunks.serialize(),
-      objectsData = { } as typeof objectsToSave
+      objectsData = savedMap.objectsData
     chunks.scene.getMeshesByTags(TAGS.object).forEach(obj => {
-      const { clsId, args } = objectsToSave[obj.name],
+      const { clsId, args } = objectsData[obj.name],
         { x, y, z } = obj.position
       objectsData[obj.name] = { args, clsId, x, y, z }
     })
     return JSON.stringify({ objectsData, chunksData })
   }
 
-  const saveDebounced = debounce((chunks: Chunks, objectsToSave: { [id: string]: ObjectSaveData }) => {
-    const dataToSave = toJSON(chunks, objectsToSave)
+  const saveDebounced = debounce((chunks: Chunks) => {
+    const dataToSave = toJSON(chunks)
     localStorage.setItem('saved-map', dataToSave)
     console.log(`save chunk data ok (${dataToSave.length} bytes)`)
   }, 1000)
 
   const reset = () => {
-    localStorage.clear()
+    localStorage.setItem('saved-map', '{}')
   }
 
   let dataToLoad: string

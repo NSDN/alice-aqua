@@ -20,7 +20,6 @@ import {
 } from './object-base'
 
 import {
-  VERTEX_DUMMY,
   VERTEX_PLANE,
   VERTEX_GROUND,
   VERTEX_SPHERE,
@@ -37,7 +36,7 @@ const DEFAULT_CONFIG = {
   restitution: 0,
   moveForce: 0.5,
   jumpForce: 3,
-  minimumY: -10,
+  minimumY: -5,
   angularDamping: new Vector3(0, 0.8, 0),
   linearDamping: new Vector3(0.8, 0.99, 0.8),
 }
@@ -48,7 +47,6 @@ export default class Player extends Mesh {
 
   readonly spriteBody: Mesh
   readonly playerBody: Mesh
-  readonly playerHead: Mesh
   readonly shadow: Mesh
   readonly usableMark: Mesh
   readonly lastShadowDropPosition = Vector3.Zero()
@@ -57,23 +55,25 @@ export default class Player extends Mesh {
   private isActivePlayer = false
   private forwardDirection = new Vector3(0, 0, 1)
 
+  private canJumpFromPickedMesh(mesh: Mesh) {
+    return mesh.isVisible && mesh.visibility === 1 &&
+      mesh.parent !== this && mesh !== this.shadow
+  }
   private pickFromBottom(dist = 0.1) {
     const origin = this.position.add(new Vector3(0, dist, 0)),
       ray = new Ray(origin, new Vector3(0, -1, 0)),
-      filter = (mesh: Mesh) => mesh.isVisible && mesh.parent !== this && mesh !== this.shadow,
-      pick = this.getScene().pickWithRay(ray, filter, false)
+      pick = this.getScene().pickWithRay(ray, mesh => this.canJumpFromPickedMesh(mesh), false)
     return pick
   }
 
-  private canPickMeshAsUsable(mesh: Mesh) {
+  private canUsePickedMesh(mesh: Mesh) {
     const usable = mesh as any as ObjectUsable
     return mesh.isVisible && usable.canBeUsedBy && usable.canBeUsedBy(this)
   }
-
   private pickUsableFromCenter() {
     const origin = new Vector3(0, this.opts.height / 2, 0),
       ray = Ray.Transform(new Ray(origin, new Vector3(0, 0, 1), this.opts.width * 0.6), this.worldMatrixFromCache),
-      pick = this.getScene().pickWithRay(ray, mesh => this.canPickMeshAsUsable(mesh), false)
+      pick = this.getScene().pickWithRay(ray, mesh => this.canUsePickedMesh(mesh), false)
     return pick
   }
 
@@ -194,14 +194,6 @@ export default class Player extends Mesh {
     body.parent = this
     body.physicsImpostor = new PhysicsImpostor(body, PhysicsImpostor.SphereImpostor)
     Tags.AddTagsTo(body, Player.PLAYER_BODY_TAG)
-
-    const head = this.playerHead = new Mesh(name + '/head', scene)
-    VERTEX_DUMMY.applyToMesh(head)
-    head.position.copyFromFloats(0, opts.height - opts.width / 2, 0)
-    head.scaling.copyFromFloats(opts.width, opts.width, opts.width)
-    head.isVisible = false
-    head.parent = this
-    head.physicsImpostor = new PhysicsImpostor(head, PhysicsImpostor.SphereImpostor)
 
     this.physicsImpostor.forceUpdate()
 

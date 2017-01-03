@@ -1,12 +1,14 @@
-VER_HASH=`cat build/bundle.js | md5sum | awk '{ print $1 }'`
-DST_DIR=qcs.ofr.me:~/www/alice-aqua-editor-$VER_HASH
+BUILD_HASH=`webpack | grep Hash: | awk '{ print $2 }'`
+DST_DIR=qcs.ofr.me:~/www/alice-aqua-editor-$BUILD_HASH
 TMP_DIR=.depoly-temp
 SRC_DIRS=(
   "node_modules/babylonjs/dist/*.js"
   "node_modules/font-awesome/css/*.css"
+  "node_modules/font-awesome/fonts/*.*"
 )
 
 mkdir -p $TMP_DIR &&\
+sed -i -e "s/{{BUILD_HASH}}/$BUILD_HASH/" index.html &&\
 cp index.html $TMP_DIR/ &&\
 cp -r assets $TMP_DIR/ &&\
 cp -r build $TMP_DIR/ &&\

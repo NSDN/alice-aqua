@@ -31,6 +31,8 @@ import {
 } from './'
 
 export interface ChunkData {
+  tiles: number[]
+  heights: number[]
   top: Mesh
   side: Mesh
   blocks: { [id: string]: PhysicsImpostor | AbstractMesh }
@@ -41,7 +43,7 @@ export interface ChunkData {
 }
 
 export interface SaveData {
-  tiles: number[],
+  tiles: number[]
   heights: number[]
 }
 
@@ -62,9 +64,11 @@ const push = [ ].push,
   getGroundVertexDataWithUVMemo = memo(getChunkGroundVertexData),
   getSideVertexDataMemo = memo(getChunkSideVertexData)
 
-type Events = 'height-updated' | 'tile-updated' | 'chunk-loaded'
-
-export default class Chunks extends EventEmitter<Events> {
+export default class Chunks extends EventEmitter<{
+  'tile-updated': { m: number, n: number },
+  'height-updated': ChunkData,
+  'chunk-loaded': ChunkData,
+}> {
   private readonly chunkGrids: number
   private readonly texturePixel: number
   private readonly sideMaterial: StandardMaterial
@@ -74,13 +78,14 @@ export default class Chunks extends EventEmitter<Events> {
 
   constructor(readonly scene: Scene,
     tiles: TileDefine[],
-    readonly saveData = { } as { [key: string]: SaveData },
+    saveData = { } as { [key: string]: SaveData },
     readonly gridSize = 1,
     readonly chunkSize = 16,
     readonly textureSize = 16 * 32) {
     super()
 
     this.tiles = { }
+    // index tiles with tileId
     tiles.forEach(tile => this.tiles[tile.tileId] = tile)
 
     this.chunkGrids = Math.floor(chunkSize / gridSize)
@@ -104,58 +109,65 @@ export default class Chunks extends EventEmitter<Events> {
     waterMaterial.waterColor = new BABYLON.Color3(52, 113, 175).scale(1 / 255)
     waterMaterial.colorBlendFactor = 0.8
     */
+
+    Object.keys(saveData).forEach(k => {
+      const { tiles, heights } = saveData[k]
+      this.createChunkData(k, tiles, heights)
+    })
+  }
+
+  private createChunkData(k: string,
+      tiles = Array(this.chunkGrids * this.chunkGrids).fill(0),
+      heights = Array(this.chunkGrids * this.chunkGrids).fill(0)) {
+    const [i, j] = k.split('/').map(parseFloat),
+      { chunkGrids, scene, chunkSize, textureSize } = this
+
+    const top = new Mesh('chunk/top/' + k, scene)
+    top.position.copyFromFloats(i * chunkSize, 0, j * chunkSize)
+
+    const side = new Mesh('chunk/side/' + k, scene)
+    side.material = this.sideMaterial
+    side.parent = top
+
+    const blocks = { }
+
+    const material = top.material = new StandardMaterial('chunk/mat/' + k, scene)
+    material.disableLighting = true
+    material.emissiveColor = new Color3(1, 1, 1)
+
+    const texture = material.diffuseTexture =
+      new DynamicTexture('chunk/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
+    // this.waterMaterial.addToRenderList(top)
+    // this.waterMaterial.addToRenderList(side)
+
+    setImmediate(() => {
+      for (let u = 0; u < chunkGrids; u ++) {
+        for (let v = 0; v < chunkGrids; v ++) {
+          this.updateTexture(i * chunkGrids + u, j * chunkGrids + v)
+        }
+      }
+      texture.update()
+
+      this.updateHeight(i * chunkGrids, j * chunkGrids)
+
+      this.emit('chunk-loaded', this.data[k])
+    })
+
+    return this.data[k] = { tiles, heights, top, side, blocks, texture, i, j, k }
   }
 
   private getChunkData(m: number, n: number) {
-    const { chunkSize, chunkGrids, scene, textureSize } = this,
-      i = Math.floor(m / chunkGrids),
-      j = Math.floor(n / chunkGrids),
+    const g = this.chunkGrids,
+      i = Math.floor(m / g),
+      j = Math.floor(n / g),
       k = [i, j].join('/'),
-      u = m - i * chunkGrids,
-      v = n - j * chunkGrids,
-      c = u * chunkGrids + v
-
-    if (!this.data[k]) {
-      const json = this.saveData[k] || (this.saveData[k] = { } as SaveData)
-      json.tiles   || (json.tiles = Array(chunkGrids * chunkGrids).fill(0)),
-      json.heights || (json.heights = json.tiles.map(_ => 0))
-
-      const top = new Mesh('chunk/top/' + k, scene)
-      top.position.copyFromFloats(i * chunkSize, 0, j * chunkSize)
-
-      const side = new Mesh('chunk/side/' + k, scene)
-      side.material = this.sideMaterial
-      side.parent = top
-
-      const blocks = { }
-
-      const material = top.material = new StandardMaterial('chunk/mat/' + k, scene)
-      material.disableLighting = true
-      material.emissiveColor = new Color3(1, 1, 1)
-
-      const texture = material.diffuseTexture =
-        new DynamicTexture('chunk/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
-
-      this.data[k] = { top, side, blocks, texture, i, j, k }
-      // this.waterMaterial.addToRenderList(top)
-      // this.waterMaterial.addToRenderList(side)
-
-      setImmediate(() => {
-        for (let u = 0; u < chunkGrids; u ++) {
-          for (let v = 0; v < chunkGrids; v ++) {
-            this.updateTexture(i * chunkGrids + u, j * chunkGrids + v)
-          }
-        }
-        texture.update()
-
-        this.updateHeight(m, n)
-
-        this.emit('chunk-loaded', this.data[k])
-      })
-    }
-
-    const { tiles, heights } = this.saveData[k], t = tiles[c], h = heights[c]
-    return { ...this.data[k], tiles, heights, u, v, c, t, h }
+      u = m - i * g,
+      v = n - j * g,
+      c = u * g + v,
+      { tiles, heights } = this.data[k] || this.createChunkData(k),
+      t = tiles[c],
+      h = heights[c]
+    return { ...this.data[k], u, v, c, t, h }
   }
 
   private updateTexture(m: number, n: number) {
@@ -280,13 +292,13 @@ export default class Chunks extends EventEmitter<Events> {
   private chunkTextureToUpdate = { } as { [index: string]: number }
   private chunkHeightToUpdate = { } as { [index: string]: string }
   private batchUpdateChunk() {
-    const texturesToRefresh = { } as { [key: string]: DynamicTexture }
+    const texturesToRefresh = { } as { [key: string]: { texture: DynamicTexture, m: number, n: number } }
 
     Object.keys(this.chunkTextureToUpdate).forEach(index => {
       const [m, n] = index.split('/').map(parseFloat)
       this.updateTexture(m, n)
       const { k, texture } = this.getChunkData(m, n)
-      texturesToRefresh[k] = texture
+      texturesToRefresh[k] = { texture, m, n }
     })
     this.chunkTextureToUpdate = { }
 
@@ -299,8 +311,9 @@ export default class Chunks extends EventEmitter<Events> {
     this.chunkHeightToUpdate = { }
 
     Object.keys(texturesToRefresh).forEach(index => {
-      texturesToRefresh[index].update()
-      this.emit('tile-updated', index)
+      const { texture, m, n } = texturesToRefresh[index]
+      texture.update()
+      this.emit('tile-updated', { m, n })
     })
   }
   private addTextureToUpdate(m: number, n: number, v: number, u: number) {
@@ -348,6 +361,11 @@ export default class Chunks extends EventEmitter<Events> {
   }
 
   serialize() {
-    return this.saveData
+    const saveData = { } as { [key: string]: SaveData }
+    Object.keys(this.data).forEach(k => {
+      const { tiles, heights } = this.data[k]
+      saveData[k] = { tiles, heights }
+    })
+    return saveData
   }
 }

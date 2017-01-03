@@ -24,50 +24,44 @@ import {
   createKeyStates,
   createSkyBox,
   createObjectFrame,
-  createSelectionBox,
-  createGridPlane,
   loadAssets,
   loadSavedMap,
   TAGS,
 } from './game'
 
 import {
+  SetPixelAction,
+  MoveObjectAction,
+  CreateObjectAction,
+  RemoveObjectAction,
+  EditorAction,
+  EditorHistory,
+  SelectionBox,
+  GridPlane,
+} from './editor'
+
+import {
   watch,
+  memo,
 } from './utils'
 
 import {
   appendElement,
   attachDragable,
+  createDataURLFromIconFont,
   LocationSearch,
 } from './utils/dom'
 
-interface Action {
-  exec(): void
-  revert(): void
+const iconClassFromCursorClass = {
+  'cursor-brushes-ctrl': 'fa fa-pencil',
+  'cursor-brushes-shift': 'fa fa-pencil-square-o',
+  'cursor-objects-ctrl': 'fa fa-tree',
+  'cursor-objects-shift': 'fa fa-object-group',
 }
-
-class History {
-  private history = [ ] as Action[][]
-  private todos = [ ] as Action[][]
-  undo() {
-    const actions = this.history.pop()
-    if (actions) {
-      actions.reverse().forEach(a => a.revert())
-      this.todos.unshift(actions)
-    }
-  }
-  redo() {
-    const actions = this.todos.shift()
-    if (actions) {
-      actions.forEach(a => a.exec())
-      this.history.push(actions)
-    }
-  }
-  push(actions: Action[]) {
-    this.history.push(actions.slice())
-    this.todos.length = 0
-  }
-}
+const appendCursorStyle = memo((cursorClass: string) => {
+  const dataUrl = createDataURLFromIconFont(iconClassFromCursorClass[cursorClass])
+  appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` })
+})
 
 ; (async function() {
   const { scene, camera, canvas2d } = createScene(),
@@ -75,54 +69,54 @@ class History {
     canvas = scene.getEngine().getRenderingCanvas(),
 
     map = await loadSavedMap(),
-    objectsToRestore = { ...map.objectsData },
-    objectsToSave = { ...map.objectsData },
-
     assets = await loadAssets(scene),
 
     source = createObjectFrame(scene),
 
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
-    lastSelection = createSelectionBox(scene),
+    lastSelection = new SelectionBox('select', scene),
 
     chunks = new Chunks(scene, assets.tiles, map.chunksData),
-    grid = createGridPlane(scene, chunks.chunkSize),
+    grid = new GridPlane('grids', scene, chunks.chunkSize),
 
     ui = new UI(assets.tiles, assets.classes.map(cls => ({ ...cls, ...cls.icon }))),
-    editorHistory = new History()
+    editorHistory = new EditorHistory(),
+
+    // TODO: wrap this into new class
+    objectManager = {
+      create(id: string, clsId: number, position: Vector3, restoreArgs?: any) {
+        objectManager.destroy(id)
+        const clsFound = assets.classes.find(c => c.clsId === clsId)
+        if (clsFound) {
+          const { icon, cls } = clsFound,
+            args = Object.assign({ }, clsFound.args, restoreArgs),
+            object = new cls(id, { icon, keys, source, canvas2d })
+          object.position.copyFrom(position)
+          Object.assign(object, args)
+
+          map.objectsData[id] = JSON.parse(JSON.stringify({ clsId, args }))
+          Tags.AddTagsTo(object, TAGS.object)
+          selectedObject = object
+        }
+        else {
+          console.warn(`class ${clsId} is not found! ignoring object #${id}`)
+        }
+      },
+      destroy(id: string) {
+        const object = scene.getMeshByName(id)
+        if (object) {
+          if (selectedObject === object) {
+            selectedObject = null
+          }
+          object.dispose()
+        }
+        delete map.objectsData[id]
+      }
+    }
 
   let selectedPixel: { t: number, h: number },
     selectedObject: AbstractMesh,
     toolbarDragStarted: { x: number, y: number }
-
-  class SetPixelAction implements Action {
-    constructor(private readonly x: number, private readonly z: number, pixel: typeof selectedPixel,
-      private readonly p = { ...pixel }, private readonly d = chunks.getPixel(x, z)) {
-      this.exec()
-    }
-    exec() {
-      chunks.setPixel(this.x, this.z, this.p)
-    }
-    revert() {
-      chunks.setPixel(this.x, this.z, this.d)
-    }
-  }
-
-  class MoveObjectAction implements Action {
-    constructor(private readonly m: AbstractMesh,
-        private readonly px: number, private readonly pz: number,
-        private readonly dx = m.position.x, private readonly dz = m.position.z) {
-      this.exec()
-    }
-    exec() {
-      const { px, pz } = this
-      this.m.position.copyFromFloats(px, chunks.getPixel(px, pz).h, pz)
-    }
-    revert() {
-      const { dx, dz } = this
-      this.m.position.copyFromFloats(dx, chunks.getPixel(dx, dz).h, dz)
-    }
-  }
 
   // use shift to draw rectangles
   attachDragable(evt => {
@@ -140,17 +134,17 @@ class History {
   }, _ => {
     const { minimum, maximum } = cursor, { h } = ui.selectedTilePixel,
       pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) },
-      actions = [ ] as Action[]
+      actions = [ ] as EditorAction[]
     for (let m = minimum.x; m < maximum.x; m ++) {
       for (let n = minimum.z; n < maximum.z; n ++) {
-        actions.push(new SetPixelAction(m, n, pixel))
+        actions.push(new SetPixelAction(chunks, m, n, pixel))
       }
     }
     editorHistory.push(actions)
   })
 
   // use ctrl key to draw pixels
-  const setPixelActions = [ ] as Action[]
+  const setPixelActions = [ ] as EditorAction[]
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'brushes' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
@@ -159,7 +153,7 @@ class History {
       t: t === '?' ? chunks.getPixel(x, z).t : t && parseInt(t),
       h: h && cursor.hover.y + parseInt(h)
     }
-    setPixelActions.push(new SetPixelAction(x, z, selectedPixel))
+    setPixelActions.push(new SetPixelAction(chunks, x, z, selectedPixel))
 
     cursor.alpha = 0
 
@@ -167,7 +161,7 @@ class History {
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
     const { x, z } = cursor.hover
-    setPixelActions.push(new SetPixelAction(x, z, selectedPixel))
+    setPixelActions.push(new SetPixelAction(chunks, x, z, selectedPixel))
 
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
@@ -191,6 +185,7 @@ class History {
   })
 
   // use ctrl key to create objects
+  const objectCreationActions = [ ] as EditorAction[]
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'objects' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
@@ -199,25 +194,23 @@ class History {
     selectedObject = objs.find(mesh => box.intersectsPoint(mesh.position))
     if (!selectedObject) {
       const clsId = ui.selectedClassIndex,
-        { clsName, args, icon, cls } = assets.classes.find(c => c.clsId === clsId),
+        { clsName } = assets.classes.find(c => c.clsId === clsId),
         rnd = Math.floor(Math.random() * 0xffffffff + 0x100000000).toString(16).slice(1),
         id = ['object', clsName, rnd].join('/'),
-        object = new cls(id, { icon, keys, source, canvas2d })
-      object.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0, 0.5)))
-      Object.assign(object, args)
-      objectsToSave[id] = JSON.parse(JSON.stringify({ clsId, args }))
-
-      Tags.AddTagsTo(object, TAGS.object)
-
-      selectedObject = object
+        pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
+      objectCreationActions.push(new CreateObjectAction(objectManager, id, clsId, pos))
     }
   }, _ => {
-    selectedObject.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0, 0.5)))
+    const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
+    objectCreationActions.push(new MoveObjectAction(chunks, selectedObject.name, pos))
   }, _ => {
-    map.saveDebounced(chunks, objectsToSave)
+    editorHistory.push(objectCreationActions)
+    objectCreationActions.length = 0
+
+    map.saveDebounced(chunks)
   })
 
-  chunks.addEventListener('height-updated', (chunk: ChunkData) => {
+  chunks.on('height-updated', (chunk: ChunkData) => {
     const pos = chunk.top.position, size = chunks.chunkSize,
       box = new BoundingBox(pos, pos.add(new Vector3(size, 0, size)))
     scene.getMeshesByTags(TAGS.object).forEach(mesh => {
@@ -230,55 +223,34 @@ class History {
         mesh.position.y = picked.hit && picked.getNormal().y > 0.9 ? picked.pickedPoint.y : height
       }
     })
-    map.saveDebounced(chunks, objectsToSave)
+    map.saveDebounced(chunks)
   })
-  chunks.addEventListener('tile-updated', () => {
-    map.saveDebounced(chunks, objectsToSave)
+  chunks.on('tile-updated', () => {
+    map.saveDebounced(chunks)
   })
 
-  chunks.addEventListener('chunk-loaded', (chunk: ChunkData) => {
+  chunks.on('chunk-loaded', (chunk: ChunkData) => {
     Tags.AddTagsTo(chunk.top, TAGS.block)
     Tags.AddTagsTo(chunk.side, TAGS.block)
-
-    const pos = chunk.top.position, size = chunks.chunkSize,
-      box = new BoundingBox(pos, pos.add(new Vector3(size, 0, size)))
-    Object.keys(objectsToRestore).forEach(id => {
-      const { x, y, z, clsId, args } = objectsToRestore[id]
-      if (box.intersectsPoint(new Vector3(x, pos.y, z))) {
-        const clsFound = assets.classes.find(s => s.clsId === clsId)
-        if (clsFound) {
-          const { icon, cls } = clsFound,
-            object = new cls(id, { icon, keys, source, canvas2d })
-          object.position.copyFromFloats(x, y, z)
-          Object.assign(object, args)
-          Tags.AddTagsTo(object, TAGS.object)
-        }
-        else {
-          console.warn('class ' + clsId + ' is not found! Ignoring object #' + id)
-        }
-        delete objectsToRestore[id]
-      }
-    })
   })
 
-  ui.addEventListener('tile-selected', () => {
+  ui.on('tile-selected', () => {
     if (keys.ctrlKey || keys.shiftKey) {
       const { position, scaling } = lastSelection,
         minimum = position.subtract(scaling.scale(0.5)),
         maximum = position.add(scaling.scale(0.5)),
         pixel = ui.selectedTilePixel,
-        actions = [ ] as Action[]
+        actions = [ ] as EditorAction[]
       for (let m = minimum.x; m < maximum.x; m ++) {
         for (let n = minimum.z; n < maximum.z; n ++) {
-          actions.push(new SetPixelAction(m, n, pixel as any))
+          actions.push(new SetPixelAction(chunks, m, n, pixel as any))
         }
       }
       editorHistory.push(actions)
     }
-    canvas.focus()
   })
 
-  ui.addEventListener('panel-changed', (oldPanel: string) => {
+  ui.on('panel-changed', (oldPanel: string) => {
     if (ui.activePanel === 'play') {
       if (scene.getMeshesByTags(PlayerGenerator.PLAYER_GENERATOR_TAG).length === 0) {
         const { x, z } = camera.target,
@@ -294,6 +266,7 @@ class History {
         listener.startPlaying && listener.startPlaying()
       })
     }
+
     if (oldPanel === 'play') {
       scene.getMeshesByTags('auto-generated-player').forEach(mesh => {
         mesh.dispose()
@@ -307,9 +280,8 @@ class History {
 
     grid.isVisible = ui.activePanel === 'brushes' || ui.activePanel === 'objects'
     lastSelection.isVisible = ui.activePanel === 'brushes'
-    sky.setIsVisible(ui.activePanel === 'play')
+    sky && sky.setIsVisible(ui.activePanel === 'play')
     source.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
-    canvas.focus()
   })
 
   const objectToolbar = document.getElementById('objectToolbar')
@@ -323,7 +295,7 @@ class History {
     objectToolbar.style.display = selectedObject ? 'block' : 'none'
   })
 
-  const moveObjectActions = [ ] as Action[]
+  const moveObjectActions = [ ] as EditorAction[]
   attachDragable(objectToolbar.querySelector('.move-object') as HTMLElement, evt => {
     toolbarDragStarted = { ...cursor.offset }
 
@@ -331,8 +303,8 @@ class History {
     cursor.offset.y = parseFloat(objectToolbar.style.top) - evt.clientY
     cursor.updateFromPickTarget(evt)
   }, evt => {
-    const { x, z } = cursor.hover.add(new Vector3(0.5, 0, 0.5))
-    moveObjectActions.push(new MoveObjectAction(selectedObject, x, z))
+    const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
+    moveObjectActions.push(new MoveObjectAction(chunks, selectedObject.name, pos))
 
     objectToolbar.style.left = (evt.clientX + cursor.offset.x) + 'px'
     objectToolbar.style.top = (evt.clientY + cursor.offset.y) + 'px'
@@ -344,7 +316,7 @@ class History {
     editorHistory.push(moveObjectActions)
     moveObjectActions.length = 0
 
-    map.saveDebounced(chunks, objectsToSave)
+    map.saveDebounced(chunks)
   })
   objectToolbar.querySelector('.focus-object').addEventListener('click', _ => {
     if (selectedObject) {
@@ -352,11 +324,8 @@ class History {
     }
   })
   objectToolbar.querySelector('.remove-object').addEventListener('click', _ => {
-    delete objectsToSave[selectedObject.name]
-    map.saveDebounced(chunks, objectsToSave)
-
-    selectedObject.dispose()
-    selectedObject = null
+    editorHistory.push([new RemoveObjectAction(objectManager, selectedObject, map.objectsData[selectedObject.name])])
+    map.saveDebounced(chunks)
   })
   objectToolbar.querySelector('.cancel-select').addEventListener('click', _ => {
     selectedObject = null
@@ -386,7 +355,7 @@ class History {
   })
 
   document.getElementById('configDownloadMap').addEventListener('click', _ => {
-    const s = map.toJSON(chunks, objectsToSave)
+    const s = map.toJSON(chunks)
     const a = appendElement('a', {
       href: 'data:text/json;charset=utf-8,' + encodeURIComponent(s),
       target: '_blank',
@@ -423,22 +392,42 @@ class History {
     document.body.classList.remove('show-help')
   })
 
-  keys.on('key', watch(() => {
+  const watchCameraDetach = keys.on('change', watch(() => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && (keys.ctrlKey || keys.shiftKey)
   }, shouldDetachCamera => {
     (cursor.isVisible = shouldDetachCamera) ? camera.detachControl(canvas) : camera.attachControl(canvas, true)
-  }, true))()
-  keys.on('key', watch(() => {
+  }, true))
+  // check
+  watchCameraDetach(null)
+
+  keys.on('change', watch(() => {
+    return [ui.activePanel, keys.ctrlKey ? '-ctrl' : '', keys.shiftKey ? '-shift' : '']
+  }, keyStates => {
+    const cursorClass = 'cursor-' + keyStates.join(''),
+      iconClass = iconClassFromCursorClass[cursorClass]
+    // check https://bugs.chromium.org/p/chromium/issues/detail?id=26723
+    Object.keys(iconClassFromCursorClass).forEach(cursorClass => {
+      canvas.classList.remove(cursorClass)
+    })
+    if (iconClass) {
+      appendCursorStyle(cursorClass)
+      canvas.classList.add(cursorClass)
+    }
+  }))
+
+  keys.on('change', watch(() => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.shiftKey && keys.focus
   }, focusCameraToCursor => {
     focusCameraToCursor && camera.followTarget.copyFrom(cursor.hover)
   }, false))
-  keys.on('key', watch(() => {
+
+  keys.on('change', watch(() => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.ctrlKey && keys.undo
   }, keyDown => {
     keyDown && editorHistory.undo()
   }, false))
-  keys.on('key', watch(() => {
+
+  keys.on('change', watch(() => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.ctrlKey && keys.redo
   }, keyDown => {
     keyDown && editorHistory.redo()
@@ -457,7 +446,7 @@ class History {
         newObject.showBoundingBox = true
         newObject.getChildMeshes().forEach(child => child.showBoundingBox = true)
 
-        const { args } = objectsToSave[newObject.name],
+        const { args } = map.objectsData[newObject.name],
           container = objectToolbar.querySelector('.object-settings')
         container.innerHTML = '<div>' + newObject.name + '</div>'
 
@@ -466,7 +455,7 @@ class History {
         binder.bindToElement && binder.bindToElement(elem, ret => {
           Object.assign(args, ret)
           Object.assign(newObject, ret)
-          map.saveDebounced(chunks, objectsToSave)
+          map.saveDebounced(chunks)
         })
       }
     }),
@@ -519,10 +508,10 @@ class History {
   })
 
   setImmediate(() => {
-    chunks.getPixel( 1,  1)
-    chunks.getPixel(-1,  1)
-    chunks.getPixel(-1, -1)
-    chunks.getPixel( 1, -1)
+    Object.keys(map.objectsData).forEach(id => {
+      const { x, y, z, clsId, args } = map.objectsData[id]
+      objectManager.create(id, clsId, new Vector3(x, y, z), args)
+    })
   })
 
 })()
