@@ -138,6 +138,38 @@
       display: block;
     }
 
+    .doc-loading {
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #eee;
+      font-size: 150%;
+      flex-direction: column;
+    }
+    .doc-loaded .doc-loading {
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0s 0.2s, opacity 0.2s linear;
+    }
+    .doc-loading-dot:before {
+      content: '-';
+    }
+    .doc-loading-dot {
+      color: #666;
+      font-size: 200%;
+      transition: all 0.3s;
+    }
+    .doc-loading-dot.active {
+      color: #eee;
+      font-size: 100%;
+    }
+
     .on-panel-play .ui-toolbar {
       display: none;
     }
@@ -278,6 +310,16 @@
       <ul>
         <li>使用 W / S / A / D 移动，Q 切换角色</li>
       </ul>
+    </div>
+  </div>
+  <div class="doc-loading">
+    <div>Loading</div>
+    <div>
+      <span class="doc-loading-dot"></span>
+      <span class="doc-loading-dot"></span>
+      <span class="doc-loading-dot"></span>
+      <span class="doc-loading-dot"></span>
+      <span class="doc-loading-dot"></span>
     </div>
   </div>
   <script src="//localhost:8080/webpack-dev-server.js"></script>

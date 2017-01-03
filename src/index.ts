@@ -77,6 +77,16 @@ const appendCursorStyle = memo((cursorClass: string) => {
   return appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` })
 })
 
+setTimeout(function check() {
+  const dots = [].slice.call(document.querySelectorAll('.doc-loading .doc-loading-dot')) as Element[],
+    index = dots.findIndex(elem => elem.classList.contains('active'))
+  dots.forEach(dot => dot.classList.remove('active'))
+  dots[(index + 1) % dots.length].classList.add('active')
+  if (!document.body.classList.contains('doc-loaded')) {
+    setTimeout(check, 300)
+  }
+}, 300)
+
 ; (async function() {
   const { scene, camera, canvas2d } = createScene(),
     { keys } = createKeyStates(),
@@ -423,7 +433,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && (keys.ctrlKey || keys.shiftKey)
   }, shouldDetachCamera => {
     (cursor.isVisible = shouldDetachCamera) ? camera.detachControl(canvas) : camera.attachControl(canvas, true)
-  }, true))
+  }, false))
 
   keys.on('change', watch(() => [
     ui.activePanel === 'brushes' ? pixelHeightNames[ui.selectedTilePixel.h] : ui.activePanel,
@@ -540,6 +550,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
       objectManager.create(id, clsId, new Vector3(x, y, z), args)
     })
     selectedObject = null
+    document.body.classList.add('doc-loaded')
   })
 
 })()

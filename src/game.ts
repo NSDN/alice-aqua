@@ -363,7 +363,7 @@ export function createSkyBox(scene: Scene) {
     })
   })
 
-  return {
+  const ret = {
     box,
     setIsVisible(isVisible: boolean) {
       box.isVisible = isVisible
@@ -371,6 +371,8 @@ export function createSkyBox(scene: Scene) {
       clouds.forEach(d => d.c.isVisible = isVisible)
     }
   }
+  ret.setIsVisible(false)
+  return ret
 }
 
 export async function loadAssets(scene: Scene) {

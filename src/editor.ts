@@ -177,8 +177,8 @@ export class SetPixelAction implements EditorAction {
 export class MoveObjectAction implements EditorAction {
   constructor(private readonly chunks: Chunks,
       private readonly id: string, pos: Vector3,
-      private readonly newPos = pos.clone(),
-      private readonly oldPos = chunks.scene.getMeshByName(id).position.clone()) {
+      readonly newPos = pos.clone(),
+      readonly oldPos = chunks.scene.getMeshByName(id).position.clone()) {
     this.exec()
   }
   exec() {

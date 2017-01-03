@@ -1,10 +1,17 @@
-export function appendElement(tag: string, attrs = { } as any, parent = document.body as Element) {
+export function appendElement(tag: string, attrs = { } as any, parent = document.body as any) {
   const elem = Object.assign(document.createElement(tag), attrs)
   Object.assign(elem.style, attrs.style)
   if (attrs.attributesToSet) for (const key in attrs.attributesToSet) {
     elem.setAttribute(key, attrs.attributesToSet[key])
   }
-  parent && parent.appendChild(elem)
+  if (parent) {
+    if (typeof parent === 'string') {
+      document.querySelector(parent).appendChild(elem)
+    }
+    else {
+      (parent as Element).appendChild(elem)
+    }
+  }
   return elem
 }
 
