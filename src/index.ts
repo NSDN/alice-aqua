@@ -418,7 +418,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
   })
 
   cursor.isVisible = false
-  camera.attachControl(canvas)
+  camera.attachControl(canvas, true)
   keys.on('change', watch(() => {
     return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && (keys.ctrlKey || keys.shiftKey)
   }, shouldDetachCamera => {

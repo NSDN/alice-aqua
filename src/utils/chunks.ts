@@ -65,12 +65,10 @@ const push = [ ].push,
   getSideVertexDataMemo = memo(getChunkSideVertexData)
 
 export default class Chunks extends EventEmitter<{
-  'tile-updated': { m: number, n: number },
+  'tile-updated': string,
   'height-updated': ChunkData,
   'chunk-loaded': ChunkData,
 }> {
-  private readonly chunkGrids: number
-  private readonly texturePixel: number
   private readonly sideMaterial: StandardMaterial
   // private readonly waterMaterial: BABYLON.WaterMaterial
   private readonly tiles: { [id: number]: TileDefine }
@@ -79,24 +77,24 @@ export default class Chunks extends EventEmitter<{
   constructor(readonly scene: Scene,
     tiles: TileDefine[],
     saveData = { } as { [key: string]: SaveData },
-    readonly gridSize = 1,
+    readonly position = Vector3.Zero(),
+    readonly unitSize = 1,
     readonly chunkSize = 16,
-    readonly textureSize = 16 * 32) {
+    readonly textureSize = 16 * 32,
+    readonly chunkUnits = Math.floor(chunkSize / unitSize),
+    readonly unitTexSize = Math.floor(textureSize / chunkUnits)) {
     super()
 
     this.tiles = { }
     // index tiles with tileId
     tiles.forEach(tile => this.tiles[tile.tileId] = tile)
 
-    this.chunkGrids = Math.floor(chunkSize / gridSize)
-    this.texturePixel = Math.floor(textureSize / this.chunkGrids)
-
     const sideMaterial = this.sideMaterial = new StandardMaterial('side', scene)
     sideMaterial.disableLighting = true
     sideMaterial.emissiveColor = Color3.White()
     const texture = sideMaterial.diffuseTexture = new Texture('assets/chunk_side.png', scene)
     texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
-    texture.uScale = texture.vScale = this.chunkGrids
+    texture.uScale = texture.vScale = this.chunkUnits
 
     /*
     const waterMesh = Mesh.CreateGround('chunks/water', 64, 64, 16, scene, false),
@@ -117,13 +115,14 @@ export default class Chunks extends EventEmitter<{
   }
 
   private createChunkData(k: string,
-      tiles = Array(this.chunkGrids * this.chunkGrids).fill(0),
-      heights = Array(this.chunkGrids * this.chunkGrids).fill(0)) {
+      tiles = Array(this.chunkUnits * this.chunkUnits).fill(0) as number[],
+      heights = Array(this.chunkUnits * this.chunkUnits).fill(0) as number[]) {
     const [i, j] = k.split('/').map(parseFloat),
-      { chunkGrids, scene, chunkSize, textureSize } = this
+      { chunkUnits, scene, chunkSize, textureSize } = this
 
-    const top = new Mesh('chunk/top/' + k, scene)
-    top.position.copyFromFloats(i * chunkSize, 0, j * chunkSize)
+    const top = new Mesh('chunk/top/' + k, scene),
+      { x, y, z } = this.position
+    top.position.copyFromFloats(i * chunkSize + x, y, j * chunkSize + z)
 
     const side = new Mesh('chunk/side/' + k, scene)
     side.material = this.sideMaterial
@@ -141,14 +140,15 @@ export default class Chunks extends EventEmitter<{
     // this.waterMaterial.addToRenderList(side)
 
     setImmediate(() => {
-      for (let u = 0; u < chunkGrids; u ++) {
-        for (let v = 0; v < chunkGrids; v ++) {
-          this.updateTexture(i * chunkGrids + u, j * chunkGrids + v)
+      for (let u = 0; u < chunkUnits; u ++) {
+        for (let v = 0; v < chunkUnits; v ++) {
+          this.updateTexture(i * chunkUnits + u, j * chunkUnits + v)
         }
       }
       texture.update()
 
-      this.updateHeight(i * chunkGrids, j * chunkGrids)
+      this.updateHeight(i * chunkUnits, j * chunkUnits)
+      this.emit('height-updated', this.data[k])
 
       this.emit('chunk-loaded', this.data[k])
     })
@@ -157,49 +157,49 @@ export default class Chunks extends EventEmitter<{
   }
 
   private getChunkData(m: number, n: number) {
-    const g = this.chunkGrids,
+    const g = this.chunkUnits,
       i = Math.floor(m / g),
       j = Math.floor(n / g),
       k = [i, j].join('/'),
       u = m - i * g,
       v = n - j * g,
       c = u * g + v,
-      { tiles, heights } = this.data[k] || this.createChunkData(k),
-      t = tiles[c],
-      h = heights[c]
-    return { ...this.data[k], u, v, c, t, h }
+      d = this.data[k] || this.createChunkData(k),
+      t = d.tiles[c],
+      h = d.heights[c]
+    return { ...d, u, v, c, t, h }
   }
 
   private updateTexture(m: number, n: number) {
     const { texture, u, v, t, h } = this.getChunkData(m, n),
-      { texturePixel, textureSize } = this,
+      { unitTexSize, textureSize } = this,
       dc = texture.getContext(),
-      dx = u * texturePixel,
-      dy = textureSize - (v + 1) * texturePixel
+      dx = u * unitTexSize,
+      dy = textureSize - (v + 1) * unitTexSize
 
     if (this.tiles[t]) {
       const { src, offsetX, offsetY, size, isAutoTile } = this.tiles[t]
       if (isAutoTile) {
         const neighbors = AUTO_TILE_NEIGHBORS
-            .map(([i, j]) => this.getPixel(m + i, n + j))
+            .map(([i, j]) => this.getChunkData(m + i, n + j))
             .reduce((s, p, j) => s + (p.t === t && p.h === h ? 1 << j : 0), 0)
         const { im, sx, sy } = getAutoTileImage(src, offsetX, offsetY, size, neighbors)
-        dc.drawImage(im, sx, sy, size, size, dx, dy, texturePixel, texturePixel)
+        dc.drawImage(im, sx, sy, size, size, dx, dy, unitTexSize, unitTexSize)
       }
       else {
-        dc.drawImage(src, offsetX, offsetY, size, size, dx, dy, texturePixel, texturePixel)
+        dc.drawImage(src, offsetX, offsetY, size, size, dx, dy, unitTexSize, unitTexSize)
       }
     }
     else {
       dc.fillStyle = 'rgb(200, 200, 200)'
-      dc.fillRect(dx, dy, texturePixel, texturePixel)
+      dc.fillRect(dx, dy, unitTexSize, unitTexSize)
     }
   }
 
   private updateHeight(m: number, n: number) {
-    const { chunkGrids, gridSize, scene } = this,
+    const { chunkUnits, unitSize, scene } = this,
       { heights, top, side, blocks } = this.getChunkData(m, n),
-      blks = getBlocksFromHeightMap(heights, chunkGrids)
+      blks = getBlocksFromHeightMap(heights, chunkUnits)
 
     const gvd = {
       positions: [ ] as number[],
@@ -210,10 +210,10 @@ export default class Chunks extends EventEmitter<{
     blks.forEach(([u0, u1, v0, v1, , h1]) => {
       const i0 = gvd.positions.length / 3,
         vd = getGroundVertexDataWithUVMemo(u0, u1, v0, v1, h1)
-      push.apply(gvd.positions, vd.positions.map(p => p * gridSize))
+      push.apply(gvd.positions, vd.positions.map(p => p * unitSize))
       push.apply(gvd.normals,   vd.normals)
       push.apply(gvd.indices,   vd.indices.map(i => i + i0))
-      push.apply(gvd.uvs,       vd.uvs.map(v => v / chunkGrids))
+      push.apply(gvd.uvs,       vd.uvs.map(v => v / chunkUnits))
     })
     Object.assign(new VertexData(), gvd).applyToMesh(top)
     // FIXME: babylonjs
@@ -226,7 +226,7 @@ export default class Chunks extends EventEmitter<{
       uvs: [ ] as number[],
     }
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
-      const g = chunkGrids,
+      const g = chunkUnits,
         sides =
           (v1 === g || range(u0, u1).some(u => heights[u * g + v1]       < h1) ? 8 : 0) +
           (u0 === 0 || range(v0, v1).some(v => heights[(u0 - 1) * g + v] < h1) ? 4 : 0) +
@@ -234,10 +234,10 @@ export default class Chunks extends EventEmitter<{
           (u1 === g || range(v0, v1).some(v => heights[u1 * g + v]       < h1) ? 1 : 0),
         i0 = svd.positions.length / 3,
         vd = getSideVertexDataMemo(u0, u1, v0, v1, h0, h1, sides)
-      push.apply(svd.positions, vd.positions.map(p => p * gridSize))
+      push.apply(svd.positions, vd.positions.map(p => p * unitSize))
       push.apply(svd.normals,   vd.normals)
       push.apply(svd.indices,   vd.indices.map(i => i + i0))
-      push.apply(svd.uvs,       vd.uvs.map(v => v / chunkGrids))
+      push.apply(svd.uvs,       vd.uvs.map(v => v / chunkUnits))
     })
     Object.assign(new VertexData(), svd).applyToMesh(side)
     // FIXME: babylonjs
@@ -292,13 +292,13 @@ export default class Chunks extends EventEmitter<{
   private chunkTextureToUpdate = { } as { [index: string]: number }
   private chunkHeightToUpdate = { } as { [index: string]: string }
   private batchUpdateChunk() {
-    const texturesToRefresh = { } as { [key: string]: { texture: DynamicTexture, m: number, n: number } }
+    const texturesToRefresh = { } as { [key: string]: DynamicTexture }
 
     Object.keys(this.chunkTextureToUpdate).forEach(index => {
       const [m, n] = index.split('/').map(parseFloat)
       this.updateTexture(m, n)
       const { k, texture } = this.getChunkData(m, n)
-      texturesToRefresh[k] = { texture, m, n }
+      texturesToRefresh[k] = texture
     })
     this.chunkTextureToUpdate = { }
 
@@ -311,9 +311,9 @@ export default class Chunks extends EventEmitter<{
     this.chunkHeightToUpdate = { }
 
     Object.keys(texturesToRefresh).forEach(index => {
-      const { texture, m, n } = texturesToRefresh[index]
+      const texture = texturesToRefresh[index]
       texture.update()
-      this.emit('tile-updated', { m, n })
+      this.emit('tile-updated', index)
     })
   }
   private addTextureToUpdate(m: number, n: number, v: number, u: number) {
@@ -321,7 +321,7 @@ export default class Chunks extends EventEmitter<{
     const tileV = this.tiles[v], tileU = this.tiles[u]
     if ((tileV && tileV.isAutoTile) || (tileU && tileU.isAutoTile)) {
       AUTO_TILE_NEIGHBORS.forEach(([i, j]) => {
-        const pixel = this.getPixel(m + i, n + j),
+        const pixel = this.getChunkData(m + i, n + j),
           tile = this.tiles[pixel.t]
         if (tile && tile.isAutoTile) {
           this.chunkTextureToUpdate[ [m + i, n + j].join('/') ] = pixel.t
@@ -335,29 +335,32 @@ export default class Chunks extends EventEmitter<{
     this.throttleUpdate()
   }
 
-  setPixel(m: number, n: number, p: { t?: number, h?: number | string }) {
-    [m, n] = [Math.floor(m / this.gridSize), Math.floor(n / this.gridSize)]
-    const { tiles, heights, k, c, t, h } = this.getChunkData(m, n)
+  setPixel(x: number, z: number, p: { t?: number, h?: number | string }) {
+    const m = Math.floor((x - this.position.x) / this.unitSize),
+      n = Math.floor((z - this.position.z) / this.unitSize),
+      { tiles, heights, k, c, t, h } = this.getChunkData(m, n)
 
     if (+p.t === p.t && t !== p.t) {
       tiles[c] = p.t
       this.addTextureToUpdate(m, n, p.t, t)
     }
-    if (typeof p.h === 'string' && p.h) {
-      p.h = h + parseFloat(p.h)
-    }
-    if (+p.h === p.h && h !== p.h) {
-      heights[c] = Math.max(p.h, 0)
+
+    const ph =
+      typeof p.h === 'string' && p.h ? h + parseFloat(p.h) :
+      typeof p.h === 'number' ? p.h - this.position.y : h
+    if (+ph === ph && h !== ph) {
+      heights[c] = ph
       this.addHeightToUpdate(m, n, k)
       this.addTextureToUpdate(m, n, t, t)
     }
-    return { t, h }
+    return { t: tiles[c], h: heights[c] + this.position.y }
   }
 
-  getPixel(m: number, n: number) {
-    [m, n] = [Math.floor(m / this.gridSize), Math.floor(n / this.gridSize)]
-    const { t, h } = this.getChunkData(m, n)
-    return { t, h }
+  getPixel(x: number, z: number) {
+    const m = Math.floor((x - this.position.x) / this.unitSize),
+      n = Math.floor((z - this.position.z) / this.unitSize),
+      { t, h } = this.getChunkData(m, n)
+    return { t, h: h + this.position.y }
   }
 
   serialize() {
