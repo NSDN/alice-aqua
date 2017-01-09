@@ -1,6 +1,6 @@
 import { ObjectElementBinder, ObjectPlayListener } from './objs/object-base'
 import Player, { PlayerGenerator } from './objs/player'
-import Cursor from './objs/cursor'
+import Cursor from './editor/cursor'
 import Chunks, { ChunkData } from './utils/chunks'
 
 import {
@@ -29,18 +29,20 @@ import {
 } from './game'
 
 import {
-  SetPixelAction,
-  MoveObjectAction,
-  CreateObjectAction,
-  RemoveObjectAction,
-  UpdateObjectAction,
-  EditorAction,
-  EditorHistory,
   SelectionBox,
   GridPlane,
   ObjectBoundary,
   createDataURLFromIconFontAndSub,
 } from './editor'
+
+import {
+  SetPixelAction,
+  MoveObjectAction,
+  CreateObjectAction,
+  RemoveObjectAction,
+  UpdateObjectAction,
+  EditorHistory,
+} from './editor/history'
 
 import {
   watch,
@@ -147,18 +149,16 @@ const appendCursorStyle = memo((cursorClass: string) => {
     lastSelection.scaling.copyFrom(maximum.subtract(minimum))
   }, _ => {
     const { minimum, maximum } = cursor, { h } = ui.selectedTilePixel,
-      pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) },
-      actions = [ ] as EditorAction[]
+      pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) }
     for (let m = minimum.x; m < maximum.x; m ++) {
       for (let n = minimum.z; n < maximum.z; n ++) {
-        actions.push(new SetPixelAction(chunks, m, n, pixel))
+        editorHistory.push(new SetPixelAction(chunks, m, n, pixel))
       }
     }
-    editorHistory.push(actions)
+    editorHistory.commit()
   })
 
   // use ctrl key to draw pixels
-  const setPixelActions = [ ] as EditorAction[]
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'brushes' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
@@ -167,7 +167,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
       t: t === '?' ? chunks.getPixel(x, z).t : t && parseInt(t),
       h: h && cursor.hover.y + parseInt(h)
     }
-    setPixelActions.push(new SetPixelAction(chunks, x, z, selectedPixel))
+    editorHistory.push(new SetPixelAction(chunks, x, z, selectedPixel))
 
     cursor.alpha = 0
 
@@ -175,14 +175,13 @@ const appendCursorStyle = memo((cursorClass: string) => {
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
     const { x, z } = cursor.hover
-    setPixelActions.push(new SetPixelAction(chunks, x, z, selectedPixel))
+    editorHistory.push(new SetPixelAction(chunks, x, z, selectedPixel))
 
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
     cursor.alpha = 1
 
-    editorHistory.push(setPixelActions)
-    setPixelActions.length = 0
+    editorHistory.commit()
   })
 
   // use shift key to select objects
@@ -194,32 +193,26 @@ const appendCursorStyle = memo((cursorClass: string) => {
     // mouse move
   }, _ => {
     const box = new BoundingBox(cursor.minimum, cursor.maximum),
-      objs = scene.getMeshesByTags(TAGS.object)
-    selectedObject = objs.find(mesh => box.intersectsPoint(mesh.position))
+      objs = scene.getMeshesByTags(TAGS.object).filter(mesh => box.intersectsPoint(mesh.position)),
+      index = objs.indexOf(selectedObject as Mesh)
+    selectedObject = objs[(index + 1) % objs.length]
   })
 
   // use ctrl key to create objects
-  const objectCreationActions = [ ] as EditorAction[]
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'objects' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
-    const box = new BoundingBox(cursor.minimum, cursor.maximum),
-      objs = scene.getMeshesByTags(TAGS.object)
-    selectedObject = objs.find(mesh => box.intersectsPoint(mesh.position))
-    if (!selectedObject) {
-      const clsId = ui.selectedClassIndex,
-        { clsName } = assets.classes.find(c => c.clsId === clsId),
-        rnd = Math.floor(Math.random() * 0xffffffff + 0x100000000).toString(16).slice(1),
-        id = ['object', clsName, rnd].join('/'),
-        pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
-      objectCreationActions.push(new CreateObjectAction(objectManager, id, clsId, pos))
-    }
+    const clsId = ui.selectedClassIndex,
+      { clsName } = assets.classes.find(c => c.clsId === clsId),
+      rnd = Math.floor(Math.random() * 0xffffffff + 0x100000000).toString(16).slice(1),
+      id = ['object', clsName, rnd].join('/'),
+      pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
+    editorHistory.push(new CreateObjectAction(objectManager, id, clsId, pos))
   }, _ => {
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
-    objectCreationActions.push(new MoveObjectAction(chunks, selectedObject.name, pos))
+    editorHistory.push(new MoveObjectAction(chunks, selectedObject.name, pos))
   }, _ => {
-    editorHistory.push(objectCreationActions)
-    objectCreationActions.length = 0
+    editorHistory.commit()
 
     map.saveDebounced(chunks)
   })
@@ -253,14 +246,13 @@ const appendCursorStyle = memo((cursorClass: string) => {
       const { position, scaling } = lastSelection,
         minimum = position.subtract(scaling.scale(0.5)),
         maximum = position.add(scaling.scale(0.5)),
-        pixel = ui.selectedTilePixel,
-        actions = [ ] as EditorAction[]
+        pixel = ui.selectedTilePixel
       for (let m = minimum.x; m < maximum.x; m ++) {
         for (let n = minimum.z; n < maximum.z; n ++) {
-          actions.push(new SetPixelAction(chunks, m, n, pixel as any))
+          editorHistory.push(new SetPixelAction(chunks, m, n, pixel as any))
         }
       }
-      editorHistory.push(actions)
+      editorHistory.commit()
     }
   })
 
@@ -309,7 +301,6 @@ const appendCursorStyle = memo((cursorClass: string) => {
     objectToolbar.style.display = selectedObject ? 'block' : 'none'
   })
 
-  const moveObjectActions = [ ] as EditorAction[]
   attachDragable(objectToolbar.querySelector('.move-object') as HTMLElement, evt => {
     toolbarDragStarted = { ...cursor.offset }
 
@@ -318,7 +309,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
     cursor.updateFromPickTarget(evt)
   }, evt => {
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
-    moveObjectActions.push(new MoveObjectAction(chunks, selectedObject.name, pos))
+    editorHistory.push(new MoveObjectAction(chunks, selectedObject.name, pos))
 
     objectToolbar.style.left = (evt.clientX + cursor.offset.x) + 'px'
     objectToolbar.style.top = (evt.clientY + cursor.offset.y) + 'px'
@@ -327,8 +318,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
     cursor.offset.y = toolbarDragStarted.y
     toolbarDragStarted = null
 
-    editorHistory.push(moveObjectActions)
-    moveObjectActions.length = 0
+    editorHistory.commit()
 
     map.saveDebounced(chunks)
   })
@@ -338,7 +328,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
     }
   })
   objectToolbar.querySelector('.remove-object').addEventListener('click', _ => {
-    editorHistory.push([new RemoveObjectAction(objectManager, selectedObject, map.objectsData[selectedObject.name])])
+    editorHistory.commit(new RemoveObjectAction(objectManager, selectedObject, map.objectsData[selectedObject.name]))
     map.saveDebounced(chunks)
   })
   objectToolbar.querySelector('.cancel-select').addEventListener('click', _ => {
@@ -355,6 +345,33 @@ const appendCursorStyle = memo((cursorClass: string) => {
     localStorage.setItem('config-display-ssao', configDisplaySSAO.checked ? '1' : '')
     localStorage.setItem('config-display-skybox', configDisplaySkyBox.checked ? '1' : '')
     location.reload()
+  })
+
+  const objectHoverCursor = source.createInstance('object-hover')
+  objectHoverCursor.scaling.copyFromFloats(1.15, 1.15, 1.15)
+  objectHoverCursor.isVisible = false
+  const objectHoverInfo = document.getElementById('objectHoverInfo') as HTMLDivElement
+  canvas.addEventListener('mousemove', evt => {
+    if (objectHoverCursor.isVisible = ui.activePanel === 'objects') {
+      const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
+        picked = scene.pickWithRay(ray, mesh => Tags.MatchesQuery(mesh, TAGS.object))
+      if (objectHoverCursor.isVisible = picked.hit) {
+        objectHoverInfo.innerHTML = '#' + picked.pickedMesh.name
+        objectHoverCursor.position.copyFrom(picked.pickedMesh.position)
+      }
+      else {
+        objectHoverInfo.innerHTML = 'move cursor over an object to see its name'
+      }
+    }
+  })
+
+  const brushHoverInfo = document.getElementById('brushHoverInfo') as HTMLDivElement
+  canvas.addEventListener('mousemove', _ => {
+    if (ui.activePanel === 'brushes') {
+      const { hover, isVisible, isKeyDown, minimum, maximum } = cursor
+      brushHoverInfo.innerHTML = `${hover.x}, ${hover.z}` +
+        (isVisible && isKeyDown ? `: ${minimum.x}, ${minimum.z} ~ ${maximum.x}, ${maximum.z}` : '')
+    }
   })
 
   const quaterPI = Math.PI / 4
@@ -457,7 +474,6 @@ const appendCursorStyle = memo((cursorClass: string) => {
     keyDown && editorHistory.redo()
   }, false))
 
-  const objectUpdateActions = [ ] as EditorAction[]
   const renderListeners = [
     watch(() => {
       return ui.activePanel === 'objects' && selectedObject
@@ -477,14 +493,11 @@ const appendCursorStyle = memo((cursorClass: string) => {
         const binder = newObject as any as ObjectElementBinder,
           elem = appendElement('div', { }, container)
         binder.bindToElement && binder.bindToElement(elem, update => {
-          objectUpdateActions.push(new UpdateObjectAction(map.objectsData, newObject, update))
+          editorHistory.push(new UpdateObjectAction(map.objectsData, newObject, update))
           map.saveDebounced(chunks)
         })
       }
-      if (objectUpdateActions.length) {
-        editorHistory.push(objectUpdateActions)
-        objectUpdateActions.length = 0
-      }
+      editorHistory.commit()
     }),
   ]
 

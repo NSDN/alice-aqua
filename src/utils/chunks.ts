@@ -17,7 +17,6 @@ import {
 } from './tiles'
 
 import {
-  // VERTEX_GROUND,
   getChunkGroundVertexData,
   getChunkSideVertexData,
   StaticBoxImpostor,
@@ -70,24 +69,24 @@ export default class Chunks extends EventEmitter<{
   'chunk-loaded': ChunkData,
 }> {
   private readonly sideMaterial: StandardMaterial
-  // private readonly waterMaterial: BABYLON.WaterMaterial
-  private readonly tiles: { [id: number]: TileDefine }
-  private data: { [key: string]: ChunkData } = { }
+  private readonly tilesDefine: { [id: number]: TileDefine }
+  private readonly data: { [key: string]: ChunkData } = { }
 
   constructor(readonly scene: Scene,
-    tiles: TileDefine[],
+    tilesDefine: TileDefine[],
     saveData = { } as { [key: string]: SaveData },
     readonly position = Vector3.Zero(),
     readonly unitSize = 1,
     readonly chunkSize = 16,
     readonly textureSize = 16 * 32,
+    readonly minimumY = 0,
     readonly chunkUnits = Math.floor(chunkSize / unitSize),
     readonly unitTexSize = Math.floor(textureSize / chunkUnits)) {
     super()
 
-    this.tiles = { }
+    this.tilesDefine = { }
     // index tiles with tileId
-    tiles.forEach(tile => this.tiles[tile.tileId] = tile)
+    tilesDefine.forEach(tile => this.tilesDefine[tile.tileId] = tile)
 
     const sideMaterial = this.sideMaterial = new StandardMaterial('side', scene)
     sideMaterial.disableLighting = true
@@ -95,18 +94,6 @@ export default class Chunks extends EventEmitter<{
     const texture = sideMaterial.diffuseTexture = new Texture('assets/chunk_side.png', scene)
     texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
     texture.uScale = texture.vScale = this.chunkUnits
-
-    /*
-    const waterMesh = Mesh.CreateGround('chunks/water', 64, 64, 16, scene, false),
-      waterMaterial = this.waterMaterial = waterMesh.material =
-        new BABYLON.WaterMaterial('chunk/water/mat', scene, new BABYLON.Vector2(512, 512))
-    waterMaterial.backFaceCulling = true
-    waterMaterial.windForce = -5
-    waterMaterial.waveHeight = 0.1
-    waterMaterial.bumpHeight = 0.08
-    waterMaterial.waterColor = new BABYLON.Color3(52, 113, 175).scale(1 / 255)
-    waterMaterial.colorBlendFactor = 0.8
-    */
 
     Object.keys(saveData).forEach(k => {
       const { tiles, heights } = saveData[k]
@@ -116,7 +103,7 @@ export default class Chunks extends EventEmitter<{
 
   private createChunkData(k: string,
       tiles = Array(this.chunkUnits * this.chunkUnits).fill(0) as number[],
-      heights = Array(this.chunkUnits * this.chunkUnits).fill(0) as number[]) {
+      heights = Array(this.chunkUnits * this.chunkUnits).fill(this.minimumY) as number[]) {
     const [i, j] = k.split('/').map(parseFloat),
       { chunkUnits, scene, chunkSize, textureSize } = this
 
@@ -136,8 +123,6 @@ export default class Chunks extends EventEmitter<{
 
     const texture = material.diffuseTexture =
       new DynamicTexture('chunk/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
-    // this.waterMaterial.addToRenderList(top)
-    // this.waterMaterial.addToRenderList(side)
 
     setImmediate(() => {
       for (let u = 0; u < chunkUnits; u ++) {
@@ -177,8 +162,8 @@ export default class Chunks extends EventEmitter<{
       dx = u * unitTexSize,
       dy = textureSize - (v + 1) * unitTexSize
 
-    if (this.tiles[t]) {
-      const { src, offsetX, offsetY, size, isAutoTile } = this.tiles[t]
+    if (this.tilesDefine[t]) {
+      const { src, offsetX, offsetY, size, isAutoTile } = this.tilesDefine[t]
       if (isAutoTile) {
         const neighbors = AUTO_TILE_NEIGHBORS
             .map(([i, j]) => this.getChunkData(m + i, n + j))
@@ -191,15 +176,16 @@ export default class Chunks extends EventEmitter<{
       }
     }
     else {
-      dc.fillStyle = 'rgb(200, 200, 200)'
+      dc.fillStyle = 'rgb(180, 180, 180)'
       dc.fillRect(dx, dy, unitTexSize, unitTexSize)
     }
   }
 
   private updateHeight(m: number, n: number) {
-    const { chunkUnits, unitSize, scene } = this,
+    const { chunkUnits, unitSize, scene, minimumY } = this,
       { heights, top, side, blocks } = this.getChunkData(m, n),
-      blks = getBlocksFromHeightMap(heights, chunkUnits)
+      h0 = Math.max(Math.min.apply(Math, heights) - 1, minimumY),
+      blks = getBlocksFromHeightMap(heights, chunkUnits, h0)
 
     const gvd = {
       positions: [ ] as number[],
@@ -256,32 +242,6 @@ export default class Chunks extends EventEmitter<{
       keepInBlocks[id] = true
     })
 
-    /*
-    if (Math.min.apply(Math, heights) < 1) {
-      const id = top + '/water',
-        { chunkSize } = this
-      if (!blocks[id]) {
-        const cacheId = 'cache/chunk/water'
-
-        let cache = scene.getMeshByName(cacheId) as Mesh
-        if (!cache) {
-          // TODO: 
-          const mesh = cache = new Mesh(cacheId, scene)
-          VERTEX_GROUND.applyToMesh(mesh)
-          mesh.scaling.copyFromFloats(chunkSize, 1, chunkSize)
-          mesh.visibility = 0.8
-          mesh.isVisible = false
-          const material = mesh.material = new StandardMaterial('water', scene)
-          material.emissiveColor = new Color3(30, 74, 140).scale(1 / 255)
-        }
-
-        const water = cache.createInstance(id)
-        water.position.copyFrom(top.position.add(new Vector3(chunkSize / 2, 0.2, chunkSize / 2)))
-      }
-      keepInBlocks[id] = true
-    }
-    */
-
     Object.keys(blocks).filter(id => !keepInBlocks[id]).forEach(id => {
       blocks[id].dispose()
       delete blocks[id]
@@ -318,11 +278,11 @@ export default class Chunks extends EventEmitter<{
   }
   private addTextureToUpdate(m: number, n: number, v: number, u: number) {
     this.chunkTextureToUpdate[ [m, n].join('/') ] = v
-    const tileV = this.tiles[v], tileU = this.tiles[u]
+    const tileV = this.tilesDefine[v], tileU = this.tilesDefine[u]
     if ((tileV && tileV.isAutoTile) || (tileU && tileU.isAutoTile)) {
       AUTO_TILE_NEIGHBORS.forEach(([i, j]) => {
         const pixel = this.getChunkData(m + i, n + j),
-          tile = this.tiles[pixel.t]
+          tile = this.tilesDefine[pixel.t]
         if (tile && tile.isAutoTile) {
           this.chunkTextureToUpdate[ [m + i, n + j].join('/') ] = pixel.t
         }
@@ -345,11 +305,17 @@ export default class Chunks extends EventEmitter<{
       this.addTextureToUpdate(m, n, p.t, t)
     }
 
-    const ph =
-      typeof p.h === 'string' && p.h ? h + parseFloat(p.h) :
-      typeof p.h === 'number' ? p.h - this.position.y : h
-    if (+ph === ph && h !== ph) {
-      heights[c] = ph
+    let v = h
+    if (typeof p.h === 'string' && p.h) {
+      v = h + parseFloat(p.h)
+    }
+    else if (typeof p.h === 'number') {
+      v = p.h - this.position.y
+    }
+
+    v = Math.max(v, this.minimumY)
+    if (+v === v && h !== v) {
+      heights[c] = v
       this.addHeightToUpdate(m, n, k)
       this.addTextureToUpdate(m, n, t, t)
     }

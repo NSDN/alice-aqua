@@ -1,15 +1,17 @@
 import {
   Mesh,
-  PhysicsImpostor,
   Vector2,
   Vector3,
-  Quaternion,
-  StandardMaterial,
   Color3,
+  Quaternion,
+  PhysicsImpostor,
+  StandardMaterial,
+  DynamicTexture,
 } from '../babylon'
 
 import {
   VERTEX_BOX,
+  VERTEX_PLANE,
 } from '../utils/babylon'
 
 import ObjectBase, {
@@ -18,6 +20,10 @@ import ObjectBase, {
   ObjectTriggerable,
   appendSelectItem,
 } from './object-base'
+
+import {
+  drawIconFont,
+} from '../utils/dom'
 
 export default class Gate extends ObjectBase implements ObjectElementBinder, ObjectTriggerable {
   public direction = 'x' as 'x' | 'z'
@@ -45,6 +51,32 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
 
     setImmediate(() => box.position.copyFrom(this.position))
     return box
+  }
+
+  private getFlagMesh() {
+    const cacheId = 'cache/gate/flag',
+      scene = this.getScene()
+    let cache = scene.getMeshByName(cacheId) as Mesh
+    if (!cache) {
+      cache = new Mesh(cacheId, scene)
+      cache.isVisible = false
+      VERTEX_PLANE.applyToMesh(cache)
+
+      const material = cache.material = new StandardMaterial(cacheId + '/mat', scene)
+      material.disableLighting = true
+      material.emissiveColor = Color3.White()
+
+      const size = 24,
+        texture = material.diffuseTexture =
+          new DynamicTexture(cacheId + '/text', size, scene, false, DynamicTexture.NEAREST_SAMPLINGMODE)
+      texture.hasAlpha = true
+
+      const dc = texture.getContext()
+      dc.fillStyle = new Color3(1, 0.5, 0.5).toHexString()
+      drawIconFont(dc, 'fa fa-check-square-o', 0, 0, size)
+      texture.update()
+    }
+    return cache
   }
 
   constructor(name: string, opts: ObjectOptions) {
@@ -120,5 +152,18 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
 
   onTrigger(isOn: boolean) {
     this.isOpen = isOn
+
+    const flagId = this.name + '/flag'
+    let flag = this.getScene().getMeshByName(flagId)
+    if (isOn && !flag) {
+        flag = this.getFlagMesh().createInstance(flagId)
+        flag.position.y = 2 + flag.scaling.y / 2
+        flag.isVisible = true
+        flag.parent = this
+        flag.billboardMode = Mesh.BILLBOARDMODE_Y
+    }
+    if (flag) {
+      flag.isVisible = isOn
+    }
   }
 }

@@ -20,9 +20,9 @@ const CURSOR_NORMALS = [
 
 export function getMousePickOnMesh(scene: Scene, px: number, py: number, filter: (mesh: Mesh) => boolean) {
   const ray = scene.createPickingRay(px, py, null, scene.activeCamera),
-    pick = scene.pickWithRay(ray, filter),
-    [position, normal] = pick.hit ?
-      [pick.pickedPoint, pick.getNormal(true, false)] :
+    picked = scene.pickWithRay(ray, filter),
+    [position, normal] = picked.hit && picked.pickedPoint.y > -0.1 ?
+      [picked.pickedPoint, picked.getNormal(true, false)] :
       [ray.origin.add(ray.direction.scale(-ray.origin.y / ray.direction.y)), new Vector3(0, 1, 0)]
   position.copyFromFloats(Math.floor(position.x + 0.5), Math.floor(position.y + 0.5), Math.floor(position.z + 0.5))
 
@@ -62,8 +62,8 @@ export default class Cursor extends LinesMesh {
   readonly start = Vector3.Zero()
 
   private _direction = ''
-  private _isKeyDown = false
 
+  private _isKeyDown = false
   get isKeyDown() {
     return this._isKeyDown
   }

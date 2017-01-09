@@ -11,10 +11,13 @@ import {
 
 import {
   ObjectPlayListener,
+  ObjectElementBinder,
   ObjectUsable,
 } from './object-base'
 
 import Sprite from './sprite'
+
+const USABLE_MARKS = new WeakMap<BABYLON.Canvas2D, BABYLON.Group2D>()
 
 export default class Box extends InstancedMesh implements ObjectUsable {
   static readonly BOX_TAG = 'generated-box'
@@ -39,8 +42,10 @@ export default class Box extends InstancedMesh implements ObjectUsable {
       if (threshold > 0) {
         const velocity = v.multiplyByFloats(1, 0.5, 1).length()
         if (velocity < threshold) {
-          const f = Math.sqrt(velocity / threshold), vf = 0.1 + 0.9 * f,
-            af = 0.9 + 0.1 * vf, ay = 0.1 + 0.9 * vf
+          const f = Math.sqrt(velocity / threshold),
+            vf = 0.1 + 0.9 * f,
+            af = 0.9 + 0.1 * vf,
+            ay = 0.1 + 0.9 * vf
           v.multiplyInPlace(new Vector3(vf, 1, vf))
           a.multiplyInPlace(new Vector3(af, ay, af))
         }
@@ -55,6 +60,32 @@ export default class Box extends InstancedMesh implements ObjectUsable {
     return mesh.name === 'flandre'
   }
 
+  displayUsable(_mesh: AbstractMesh, show: boolean) {
+    const canvas = this.generator.opts.canvas2d
+    let mark = USABLE_MARKS.get(canvas)
+    if (!mark) {
+      mark = new BABYLON.Group2D({
+        position: new BABYLON.Vector2(-10000, -10000),
+        parent: canvas,
+        children: [
+          new BABYLON.Rectangle2D({
+            width: 150,
+            height: 30,
+            fill: '#404080FF',
+            children: [
+              new BABYLON.Text2D('press [ E ] to kick', {
+                marginAlignment: 'v: center, h: center'
+              })
+            ]
+          })
+        ]
+      })
+      USABLE_MARKS.set(canvas, mark)
+    }
+    mark.trackedNode = this
+    mark.levelVisible = show
+  }
+
   useFrom(mesh: AbstractMesh) {
     if (mesh.name === 'flandre') {
       const direction = this.position.subtract(mesh.position).multiplyByFloats(1, 0, 1).normalize()
@@ -63,7 +94,7 @@ export default class Box extends InstancedMesh implements ObjectUsable {
   }
 }
 
-export class BoxGenerator extends Sprite implements ObjectPlayListener {
+export class BoxGenerator extends Sprite implements ObjectPlayListener, ObjectElementBinder {
   public boxMass = 5
   public velocityThreshold = 0
 
@@ -92,5 +123,9 @@ export class BoxGenerator extends Sprite implements ObjectPlayListener {
   stopPlaying() {
     this.getScene().getMeshesByTags(Box.BOX_TAG).forEach(mesh => mesh.dispose())
     this.spriteBody.isVisible = true
+  }
+
+  bindToElement(_container: HTMLElement, _save: (args: Partial<BoxGenerator>) => void) {
+    // do nothing
   }
 }

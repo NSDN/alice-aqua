@@ -26,25 +26,22 @@ export default class Sprite extends ObjectBase implements ObjectElementBinder {
     this.spriteBody.scaling.copyFromFloats(width, height, width)
   }
 
-  private createSpriteCache(cacheId: string) {
-    const { material, texSize } = this.opts.icon,
-      sprite = new Mesh(cacheId, this.getScene())
-
-    getPlaneVertexDataFromRegion(texSize, this.opts.icon).applyToMesh(sprite)
-    sprite.position.y = 0.5
-    sprite.material = material
-    sprite.isVisible = false
-
-    return sprite
-  }
-
   constructor(name: string, opts: ObjectOptions) {
     super(name, opts)
 
-    const { texSize, offsetX, offsetY } = opts.icon,
-      cacheId = ['cache/sprite', texSize, offsetX, offsetY].join('/'),
-      cache = (this.getScene().getMeshByName(cacheId) as Mesh) || this.createSpriteCache(cacheId),
-      sprite = this.spriteBody = cache.createInstance(name + '/sprite')
+    const { texSize, offsetX, offsetY, material } = opts.icon,
+      cacheId = ['cache/sprite', material.name, texSize, offsetX, offsetY].join('/')
+
+    let cache = this.getScene().getMeshByName(cacheId) as Mesh
+    if (!cache) {
+      cache = new Mesh(cacheId, this.getScene())
+      getPlaneVertexDataFromRegion(texSize, opts.icon).applyToMesh(cache)
+      cache.position.y = 0.5
+      cache.material = material
+      cache.isVisible = false
+    }
+
+    const sprite = this.spriteBody = cache.createInstance(name + '/sprite')
     sprite.billboardMode = Mesh.BILLBOARDMODE_Y
     sprite.parent = this
   }

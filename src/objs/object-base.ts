@@ -50,6 +50,7 @@ export interface ObjectTriggerable {
 
 export interface ObjectUsable {
   canBeUsedBy(mesh: AbstractMesh): boolean
+  displayUsable(mesh: AbstractMesh, show: boolean): void
   useFrom(mesh: AbstractMesh): void
 }
 

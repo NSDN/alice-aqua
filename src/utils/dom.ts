@@ -21,8 +21,10 @@ export function drawIconFont(dc: CanvasRenderingContext2D, className: string, x:
     style = getComputedStyle(span, ':before'),
     text = (style.content || '').replace(/"/g, '')
   dc.save()
+  dc.textAlign = 'center'
+  dc.textBaseline = 'middle'
   dc.font = style.font
-  dc.fillText(text, x, y)
+  dc.fillText(text, x + size / 2, y + size / 2)
   dc.restore()
   span.parentNode.removeChild(span)
 }

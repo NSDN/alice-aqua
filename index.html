@@ -229,12 +229,17 @@
        <a href="javascript:void(0)" id="playSetCameraAlphaInc"
          title="rotate right"><i class="fa fa-angle-double-right"></i></a>
       </span>
-      <span class="hidden ui-panel panel-brushes panel-objects">
-        /
+      <span class="hidden ui-panel panel-brushes panel-objects"> /
         <a class="disabled" href="javascript:void(0)" id="docActionUndo"
           title="undo (ctrl+Z)"><i class="fa fa-undo"></i></a>
         <a class="disabled" href="javascript:void(0)" id="docActionRedo"
           title="redo (ctrl+Y)"><i class="fa fa-repeat"></i></a>
+      </span>
+      <span class="hidden ui-panel panel-brushes"> /
+        <span id="brushHoverInfo"></span>
+      </span>
+      <span class="hidden ui-panel panel-objects"> /
+        <span id="objectHoverInfo"></span>
       </span>
       <div class="ui-top-right">
         <span id="fpsCounterText"></span> /
@@ -255,12 +260,13 @@
       <div class="float-right">
         <a href="javascript:void(0)" id="docHideHelp"><i class="fa fa-close"></i></a>
       </div>
-      <h2>Build {{BUILD_HASH}}</h2>
+      <h2>Build 4efff72553269460f7dd</h2>
       <ul>
-        <li>trigger 对象支持定时重置（可以制作单向通过的门，或者配合斜坡延时）</li>
         <li>新的“跳台”</li>
+        <li>trigger 对象支持延迟重置（可以制作单向通过的门，或者配合斜坡延时）</li>
+        <li>gate 对象会在顶部显示开启图标</li>
         <li>绘制地图时的指针提示</li>
-        <li>新的载入屏幕</li>
+        <li>载入屏幕</li>
       </ul>
       <hr>
 

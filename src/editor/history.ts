@@ -1,124 +1,17 @@
-import Chunks from './utils/chunks'
+import Chunks from '../utils/chunks'
 
 import {
   Vector3,
-  Color3,
-  Scene,
   AbstractMesh,
-  LinesMesh,
-  Mesh,
-  StandardMaterial,
-  DynamicTexture,
-  Texture,
-  VertexData,
-} from './babylon'
+} from '../babylon'
 
 import {
   ObjectSaveData,
-} from './game'
-
-import {
-  VERTEX_GROUND,
-  getBoundingVertexData,
-} from './utils/babylon'
-
-import {
-  appendElement,
-  drawIconFont,
-} from './utils/dom'
+} from '../game'
 
 import {
   EventEmitter,
-} from './utils'
-
-export function createDataURLFromIconFontAndSub(mainClass: string, subClass: string, size: number = 32, color = '#333') {
-  const attrs = { width: size, height: size },
-    canvas = appendElement('canvas', attrs) as HTMLCanvasElement,
-    dc = canvas.getContext('2d')
-  dc.fillStyle = color
-  dc.textAlign = 'center'
-  dc.textBaseline = 'middle'
-
-  drawIconFont(dc, mainClass, size * 0.5, size * 0.5, size * 0.8)
-  if (subClass) {
-    drawIconFont(dc, subClass, size * 0.25, size * 0.25, size * 0.5)
-  }
-
-  const url = canvas.toDataURL()
-  canvas.parentNode.removeChild(canvas)
-  return url
-}
-
-export class SelectionBox extends LinesMesh {
-  constructor(name: string, scene: Scene) {
-    super(name, scene)
-    this.scaling.copyFromFloats(0, 0, 0)
-    getBoundingVertexData(0.3, 0.3, 0.3, false).applyToMesh(this)
-    this.color = new Color3(1, 0.5, 0.5)
-    this.renderingGroupId = 1
-  }
-}
-
-export class ObjectBoundary extends Mesh {
-  constructor(name: string, scene: Scene) {
-    super(name, scene)
-
-    const positions = [
-       0.5, -0.01,  0.5,
-       0.5, -0.01, -0.5,
-      -0.5, -0.01, -0.5,
-      -0.5, -0.01,  0.5,
-    ]
-    const indices = [
-      0, 1, 2,
-      1, 2, 3,
-      2, 3, 0,
-      3, 0, 1,
-    ]
-    Object.assign(new VertexData(), { positions, indices }).applyToMesh(this)
-
-    const material = this.material = new StandardMaterial(name + '/mat', scene)
-    material.wireframe = true
-    material.emissiveColor = new Color3(1, 0.5, 0.5)
-    material.disableLighting = true
-
-    this.isVisible = false
-  }
-}
-
-export class GridPlane extends Mesh {
-  constructor(name: string, scene: Scene, count: number) {
-    super(name, scene)
-    const pixel = 32, size = count * pixel, repeat = 2
-
-    VERTEX_GROUND.applyToMesh(this)
-    this.scaling.copyFromFloats(count * repeat, 1, count * repeat)
-
-    const material = this.material = new StandardMaterial(name + '/grid', scene)
-    material.disableLighting = true
-    material.emissiveColor = Color3.White()
-
-    const texture = material.diffuseTexture = new DynamicTexture(name + '/grid', size, scene, true),
-      dc = texture.getContext()
-    dc.strokeStyle = '#aaaaaa'
-    dc.lineWidth = 3
-    dc.strokeRect(0, 0, size, size)
-    dc.strokeStyle = '#666666'
-    dc.lineWidth = 1
-    for (let v = 0; v < size; v += pixel) {
-      dc.moveTo(0, v)
-      dc.lineTo(size, v)
-      dc.stroke()
-      dc.moveTo(v, 0)
-      dc.lineTo(v, size)
-      dc.stroke()
-    }
-    texture.hasAlpha = true
-    texture.uScale = texture.vScale = repeat
-    texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
-    texture.update()
-  }
-}
+} from '../utils'
 
 export interface EditorAction {
   exec(): void
@@ -144,11 +37,22 @@ export class EditorHistory extends EventEmitter<{ 'change': void }> {
     }
     this.emit('change', null)
   }
-  push(actions: EditorAction[]) {
-    this.dones.push(actions.slice())
-    this.todos.length = 0
-    this.emit('change', null)
+
+  private current = [ ] as EditorAction[]
+  push(action: EditorAction) {
+    this.current.push(action)
   }
+  commit(action?: EditorAction) {
+    if (action) {
+      this.current.push(action)
+    }
+    if (this.current.length) {
+      this.dones.push(this.current.slice())
+      this.todos.length = this.current.length = 0
+      this.emit('change', null)
+    }
+  }
+
   get canUndo() {
     return this.dones.length > 0
   }
@@ -194,7 +98,7 @@ export class UpdateObjectAction implements EditorAction {
   constructor(private readonly objectsData: { [key: string]: ObjectSaveData },
     object: AbstractMesh, update: any,
     private readonly newArgs = JSON.parse(JSON.stringify(update)),
-    private readonly oldArgs = JSON.parse(JSON.stringify(objectsData[object.name])),
+    private readonly oldArgs = JSON.parse(JSON.stringify(objectsData[object.name].args)),
     private readonly repArgs = { },
     private readonly id = object.name,
     private readonly scene = object.getScene()) {
@@ -206,11 +110,11 @@ export class UpdateObjectAction implements EditorAction {
     this.exec()
   }
   exec() {
-    Object.assign(this.objectsData[this.id], this.newArgs)
+    Object.assign(this.objectsData[this.id].args, this.newArgs)
     Object.assign(this.scene.getMeshByName(this.id), this.newArgs)
   }
   revert() {
-    this.objectsData[this.id] = this.oldArgs
+    this.objectsData[this.id].args = this.oldArgs
     Object.assign(this.scene.getMeshByName(this.id), this.oldArgs, this.repArgs)
   }
 }

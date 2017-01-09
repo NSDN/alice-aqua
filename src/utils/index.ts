@@ -96,12 +96,10 @@ function each2(a: N[], b: N[], n: N,
     }
   }
 }
-export function getBlocksFromHeightMap(heights: N[], n: N) {
+export function getBlocksFromHeightMap(heights: N[], n: N, h: N) {
   const blocks = [ ] as N[][],
-    hMin = Math.min.apply(Math, heights),
-    h = Math.max(hMin - 1, 0),
-    a = heights,
-    b = Array(heights.length).fill(h)
+    a = heights.map(h => h),
+    b = heights.map(_ => h)
 
   let f = find2(a, b, n, 0, n, 0, n, (a, b) => a > b)
   while (f) {

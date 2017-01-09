@@ -114,7 +114,7 @@ export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, 
   [ 2, 'imAssetTile1',   0, 1504, 64, 64, 'sprite', { spriteHeight: 4 }],
   [ 3, 'imAssetTile1', 192, 1344, 64, 64, 'sprite', { spriteHeight: 4 }],
   [ 4, 'imAssetTile1', 512,  256, 64, 64, 'box',    { spriteHeight: 2, boxMass: 5 }],
-  [33, 'imAssetTile1', 768,   32, 64, 64, 'box',    { spriteHeight: 2, boxMass: 50, velocityThreshold: 0.5 }],
+  [33, 'imAssetTile1', 768,   32, 64, 64, 'box',    { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }],
   [ 5, 'imAssetTile1', 160, 1024, 32, 64, 'sprite', { spriteHeight: 4 }],
   [ 6, 'imAssetTile1', 128, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
   [ 7, 'imAssetTile1',   0, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
@@ -140,7 +140,7 @@ export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, 
   [27, 'imAssetTile1', 160, 1696, 32, 32, 'sprite', { spriteHeight: 1 }],
   [28, 'imAssetTile1',   0,   32, 32, 32, 'gate',    { }],
   [29, 'imAssetTile1',   0,   32, 32, 32, 'slope',   { }],
-  [34, 'imAssetTile1',   0,   32, 32, 32, 'jump', { listenTags: [Box.BOX_TAG, Player.PLAYER_BODY_TAG] }],
+  [34, 'imAssetTile1',   0,   32, 32, 32, 'jump',    { listenTags: [Player.PLAYER_BODY_TAG] }],
   [30, 'objectIcons1',  64,    0, 32, 32, 'trigger', { listenTags: [Box.BOX_TAG, Player.PLAYER_BODY_TAG] }],
   [31, 'objectIcons1',   0,    0, 32, 32, 'player',  { playerName: 'remilia' }],
   [32, 'objectIcons1',  32,    0, 32, 32, 'player',  { playerName: 'flandre' }],
@@ -355,7 +355,7 @@ export function createSkyBox(scene: Scene) {
   const clouds = createSkyClouds(box),
     mounts = createSkyFarMountains(box)
 
-  box.registerAfterRender(_ => {
+  box.registerBeforeRender(_ => {
     const { x, z } = (scene.activeCamera as FollowCamera).target.multiplyByFloats(1, 0, 1)
     box.position.x = x
     box.position.z = z
@@ -437,7 +437,7 @@ export async function loadSavedMap() {
   }, 1000)
 
   const reset = () => {
-    localStorage.setItem('saved-map', '{}')
+    localStorage.setItem('saved-map', '{ }')
   }
 
   let dataToLoad: string
@@ -458,5 +458,6 @@ export async function loadSavedMap() {
     savedMap = { } as SavedMap
   }
 
+  savedMap = Object.assign({ chunksData: { }, objectsData: { } } as SavedMap, savedMap)
   return { saveDebounced, reset, toJSON, ...savedMap }
 }
