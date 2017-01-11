@@ -22,8 +22,8 @@ import ObjectBase, {
   ObjectTriggerable,
   ObjectPlayListener,
   appendElement,
-  appendConfigItem,
-} from './object-base'
+  appendConfigElem,
+} from './'
 
 const TRIGGER_ON_COLOR = new Color3(1, 0.5, 0.5),
   TRIGGER_OFF_COLOR = new Color3(0.8, 0.8, 0.8)
@@ -152,7 +152,7 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
 
   bindToElement(container: HTMLElement, save: (args: Partial<Trigger>) => void) {
     const attrs = { type: 'number', style: { width: '100px' } },
-      resetInput = appendConfigItem('autoReset(ms):', 'input', attrs, container)
+      resetInput = appendConfigElem('autoReset(ms):', 'input', attrs, container)
     resetInput.value = this.autoResetTimeout
     resetInput.addEventListener('change', _ => save({ autoResetTimeout: parseInt(resetInput.value) || 0 }))
 

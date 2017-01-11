@@ -13,7 +13,7 @@ import {
   ObjectPlayListener,
   ObjectElementBinder,
   ObjectUsable,
-} from './object-base'
+} from './'
 
 import Sprite from './sprite'
 

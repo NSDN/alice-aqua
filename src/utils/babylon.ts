@@ -25,7 +25,7 @@ export function getPlaneVertexDataFromRegion(texSize: N, region: { offsetX: N, o
     v0 = 1 - (offsetY + height) / texSize,
     u1 = u0 + width / texSize,
     v1 = v0 + height / texSize
-  return Object.assign(new VertexData(), getPlaneVertexDataWithUV(u0, u1, v0, v1))
+  return getPlaneVertexDataWithUV(u0, u1, v0, v1)
 }
 
 export function getPlaneVertexDataWithUV(u0: N, u1: N, v0: N, v1: N) {

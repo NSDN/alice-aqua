@@ -26,14 +26,18 @@ export interface ObjectOptions {
 
 export { appendElement } from '../utils/dom'
 
-export function appendConfigItem(label: string, tag: string, attrs: any, container: HTMLElement) {
+export function appendConfigItem(container: HTMLElement) {
+  return appendElement('div', { className: 'config-item' }, container)
+}
+
+export function appendConfigElem(label: string, tag: string, attrs: any, container: HTMLElement) {
   const item = appendElement('div', { className: 'config-item' }, container)
   appendElement('label', { innerText: label }, item)
   return appendElement(tag, attrs, item)
 }
 
-export function appendSelectItem(label: string, val: string, options: any, container: HTMLElement) {
-  const select = appendConfigItem(label, 'select', { }, container) as HTMLSelectElement
+export function appendSelectElem(label: string, val: string, options: any, container: HTMLElement) {
+  const select = appendConfigElem(label, 'select', { }, container) as HTMLSelectElement
   if (Array.isArray(options)) {
     options.forEach(innerHTML => appendElement('option', { innerHTML }, select))
   }

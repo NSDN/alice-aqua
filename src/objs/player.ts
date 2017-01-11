@@ -18,7 +18,7 @@ import {
   ObjectPlayListener,
   ObjectUsable,
   ObjectElementBinder,
-} from './object-base'
+} from './'
 
 import {
   VERTEX_PLANE,
@@ -37,7 +37,7 @@ const DEFAULT_CONFIG = {
   friction: 0,
   restitution: 0,
   moveForce: 0.7,
-  jumpForce: 4,
+  jumpForce: 3.5,
   minimumY: -5,
   angularDamping: 0.9,
   linearDamping: 0.98,

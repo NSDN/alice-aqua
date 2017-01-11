@@ -22,9 +22,8 @@ import {
 import ObjectBase, {
   ObjectElementBinder,
   ObjectOptions,
-  appendElement,
-  appendConfigItem,
-} from './object-base'
+  appendSelectElem,
+} from './'
 
 export default class Slope extends ObjectBase implements ObjectElementBinder {
   static readonly TARGET_TAG = 'slope-target'
@@ -124,7 +123,7 @@ export default class Slope extends ObjectBase implements ObjectElementBinder {
       if (!targetMesh || targetMesh.name !== this.targetName) {
         targetMesh = this.targetName && scene.getMeshByName(this.targetName)
       }
-      if (targetMesh) {
+      if (targetMesh && !targetMesh._isDisposed) {
         watchTargetMeshChange(targetMesh)
       }
       else if (this.groundMesh || this.groundImpostor) {
@@ -141,23 +140,15 @@ export default class Slope extends ObjectBase implements ObjectElementBinder {
   }
 
   bindToElement(container: HTMLElement, save: (args: Partial<Slope>) => void) {
-    {
-      const select = appendConfigItem('target: ', 'select', { }, container) as HTMLSelectElement
-      appendElement('option', { innerHTML: '--', value: '' }, select)
-      this.getScene().getMeshesByTags(Slope.TARGET_TAG, (mesh: Slope) => {
-        if (mesh !== this && mesh.targetName !== this.name) {
-          appendElement('option', { innerHTML: mesh.name }, select)
-        }
-      })
-      select.value = this.targetName
-      select.addEventListener('change', _ => save({ targetName: select.value }))
-    }
-    {
-      const select = appendConfigItem('direction: ', 'select', { }, container) as HTMLSelectElement
-      appendElement('option', { innerHTML: 'x', value: 'x' }, select)
-      appendElement('option', { innerHTML: 'z', value: 'z' }, select)
-      select.value = this.direction
-      select.addEventListener('change', _ => save({ direction: select.value as any }))
-    }
+    const options = { '': '--' }
+    this.getScene().getMeshesByTags(Slope.TARGET_TAG, (mesh: Slope) => {
+      mesh !== this && mesh.targetName !== this.name && (options[mesh.name] = mesh.name)
+    })
+
+    const tarSel = appendSelectElem('target: ', this.targetName, options, container)
+    tarSel.addEventListener('change', _ => save({ targetName: tarSel.value }))
+
+    const dirSel = appendSelectElem('direction: ', this.direction, ['x', 'z'], container)
+    dirSel.addEventListener('change', _ => save({ direction: dirSel.value as any }))
   }
 }

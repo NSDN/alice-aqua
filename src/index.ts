@@ -1,4 +1,4 @@
-import { ObjectElementBinder, ObjectPlayListener } from './objs/object-base'
+import { ObjectElementBinder, ObjectPlayListener } from './objs'
 import Player, { PlayerGenerator } from './objs/player'
 import Cursor from './editor/cursor'
 import Chunks, { ChunkData } from './utils/chunks'
@@ -515,7 +515,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
     ],
     play: [
       () => {
-        const minBeta = Math.PI * 0.38
+        const minBeta = Math.PI * 0.35
         if (camera.beta < minBeta - 1e-3 && !cursor.isKeyDown) {
           camera.beta = camera.beta * 0.9 + minBeta * 0.1
         }

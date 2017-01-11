@@ -15,7 +15,8 @@ import {
   ObjectTriggerable,
   appendElement,
   appendConfigItem,
-} from './object-base'
+  appendConfigElem,
+} from './'
 
 import {
   drawIconFont,
@@ -94,11 +95,11 @@ export default class Jump extends Trigger implements ObjectElementBinder, Object
 
   bindToElement(container: HTMLElement, save: (args: Partial<Jump>) => void) {
     const attrs = { type: 'number', min: 0, style: { width: '100px' } },
-      up = appendConfigItem('up:', 'input', attrs, container) as HTMLInputElement
+      up = appendConfigElem('up:', 'input', attrs, container) as HTMLInputElement
     up.value = this.upForce as any
     up.addEventListener('change', _ => save({ upForce: parseFloat(up.value) || 0 }))
 
-    const item = appendElement('div', { className: 'config-item' }, container)
+    const item = appendConfigItem(container)
 
     const dirSel = appendElement('select', { }, item) as HTMLSelectElement
     'x/-x/z/-z'.split('/').forEach(innerHTML => appendElement('option', { innerHTML }, dirSel))

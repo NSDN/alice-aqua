@@ -17,6 +17,7 @@ import {
   Texture,
   StandardMaterial,
   DynamicTexture,
+  VertexData,
 } from './babylon'
 
 import {
@@ -37,8 +38,6 @@ import {
   FollowCamera,
   getPlaneVertexDataFromRegion,
 } from './utils/babylon'
-
-import ObjectBase from './objs/object-base'
 
 export interface ObjectSaveData {
   x: number,
@@ -144,6 +143,7 @@ export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, 
   [30, 'objectIcons1',  64,    0, 32, 32, 'trigger', { listenTags: [Box.BOX_TAG, Player.PLAYER_BODY_TAG] }],
   [31, 'objectIcons1',   0,    0, 32, 32, 'player',  { playerName: 'remilia' }],
   [32, 'objectIcons1',  32,    0, 32, 32, 'player',  { playerName: 'flandre' }],
+  [35, 'objectIcons1', 128,    0, 64, 32, 'sprite',  { spriteHeight: 1 }],
 ]
 
 export const KEY_MAP = {
@@ -254,8 +254,9 @@ const random = (b, e) => Math.random() * (e - b) + b
 function createSkyClouds(box: Mesh) {
   const scene = box.getScene(),
     cloud = new Mesh('cache/sky/cloud', scene),
-    region = { offsetX: 1, offsetY: 0, width: 174, height: 143 }
-  getPlaneVertexDataFromRegion(512, region).applyToMesh(cloud)
+    region = { offsetX: 1, offsetY: 0, width: 174, height: 143 },
+    vertexData = getPlaneVertexDataFromRegion(512, region)
+  Object.assign(new VertexData(), vertexData).applyToMesh(cloud)
   cloud.isVisible = false
   const cloudMaterial = cloud.material = new StandardMaterial('cloud', scene)
   cloudMaterial.disableLighting = true
@@ -409,7 +410,7 @@ export async function loadAssets(scene: Scene) {
 
   const classes = ASSET_CLASSES.map(([clsId, srcId, offsetX, offsetY, width, height, clsName, args]) => {
     const src = document.getElementById(srcId) as HTMLImageElement,
-      cls = OBJECT_CLASSES[clsName] as typeof ObjectBase,
+      cls = OBJECT_CLASSES[clsName],
       { material, texSize } = materials[srcId],
       icon = { material, offsetX, offsetY, width, height, texSize }
     return { clsName, clsId, src, args, icon, cls }

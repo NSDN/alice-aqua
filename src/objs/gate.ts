@@ -18,8 +18,8 @@ import ObjectBase, {
   ObjectOptions,
   ObjectElementBinder,
   ObjectTriggerable,
-  appendSelectItem,
-} from './object-base'
+  appendSelectElem,
+} from './'
 
 import {
   drawIconFont,
@@ -146,7 +146,7 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
   }
 
   bindToElement(container: HTMLElement, save: (args: Partial<Gate>) => void) {
-    const select = appendSelectItem('direction: ', this.direction, ['x', 'z'], container)
+    const select = appendSelectElem('direction: ', this.direction, ['x', 'z'], container)
     select.addEventListener('change', _ => save({ direction: select.value as any }))
   }
 
