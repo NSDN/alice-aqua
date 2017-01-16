@@ -24,7 +24,7 @@ export function getMousePickOnMesh(scene: Scene, px: number, py: number, filter:
     [position, normal] = picked.hit && picked.pickedPoint.y > -0.1 ?
       [picked.pickedPoint, picked.getNormal(true, false)] :
       [ray.origin.add(ray.direction.scale(-ray.origin.y / ray.direction.y)), new Vector3(0, 1, 0)]
-  position.copyFromFloats(Math.floor(position.x + 0.5), Math.floor(position.y + 0.5), Math.floor(position.z + 0.5))
+  position.copyFromFloats(Math.floor(position.x + 0.001), Math.floor(position.y + 0.001), Math.floor(position.z + 0.001))
 
   const { x, y, z } = normal,
     max = Math.max(Math.abs(x), Math.abs(y), Math.abs(z)),
@@ -36,7 +36,7 @@ export function getMousePickOnPlane(scene: Scene, px: number, py: number, axis: 
   const ray = scene.createPickingRay(px, py, null, scene.activeCamera),
     scale = (val - ray.origin[axis]) / ray.direction[axis],
     position = ray.origin.add(ray.direction.scale(scale))
-  position.copyFromFloats(Math.floor(position.x + 0.5), Math.floor(position.y + 0.5), Math.floor(position.z + 0.5))
+  position.copyFromFloats(Math.floor(position.x + 0.001), Math.floor(position.y + 0.001), Math.floor(position.z + 0.001))
   return { position }
 }
 

@@ -24,7 +24,7 @@ import {
   VERTEX_PLANE,
   VERTEX_GROUND,
   VERTEX_SPHERE,
-  VERTEX_DUMMY,
+//  VERTEX_DUMMY,
   FollowCamera,
 } from '../utils/babylon'
 
@@ -33,11 +33,10 @@ import Sprite from './sprite'
 const DEFAULT_CONFIG = {
   width: 1,
   height: 1.8,
-  mass: 1,
-  friction: 0,
+  mass: 5,
   restitution: 0,
-  moveForce: 0.7,
-  jumpForce: 3.5,
+  moveForce: 3.5,
+  jumpForce: 16,
   minimumY: -5,
   angularDamping: 0.9,
   linearDamping: 0.98,
@@ -45,25 +44,34 @@ const DEFAULT_CONFIG = {
 
 export default class Player extends Mesh {
   static readonly PLAYER_TAG = 'player-tag'
-  static readonly PLAYER_BODY_TAG = 'player-body'
 
   readonly spriteBody: Mesh
-  readonly playerBody: Mesh
   readonly shadow: Mesh
   readonly lastShadowDropPosition = Vector3.Zero()
 
   private isPlayerAnimating = false
   private isPlayerOnGround = false
-  private isPlayerActive = false
   private forwardDirection = new Vector3(0, 0, 1)
   private usableObject = null as ObjectUsable
 
+  private _isPlayerActive = false
+  get isPlayerActive() {
+    return this._isPlayerActive
+  }
+  set isPlayerActive(val) {
+    if (val !== this._isPlayerActive) {
+      this.physicsImpostor.setParam('friction', val ? 0 : 1)
+      this.physicsImpostor.forceUpdate()
+    }
+    this._isPlayerActive = val
+  }
+
   private canJumpFromPickedMesh(mesh: Mesh) {
     return mesh.isVisible && mesh.visibility === 1 &&
-      mesh.parent !== this && mesh !== this.shadow
+      mesh !== this && mesh.parent !== this && mesh !== this.shadow
   }
   private pickFromBottom(dist = 0.1) {
-    const origin = this.position.add(new Vector3(0, dist, 0)),
+    const origin = this.position.add(new Vector3(0, dist - this.opts.width / 2, 0)),
       ray = new Ray(origin, new Vector3(0, -1, 0)),
       pick = this.getScene().pickWithRay(ray, mesh => this.canJumpFromPickedMesh(mesh), false)
     return pick
@@ -74,13 +82,13 @@ export default class Player extends Mesh {
     return mesh.isVisible && usable.canBeUsedBy && usable.canBeUsedBy(this)
   }
   private pickUsableFromCenter() {
-    const origin = new Vector3(0, this.opts.height / 2, 0),
+    const origin = new Vector3(0, this.opts.height / 2 - this.opts.width / 2, 0),
       ray = Ray.Transform(new Ray(origin, new Vector3(0, 0, 1), this.opts.width * 0.6), this.worldMatrixFromCache),
       pick = this.getScene().pickWithRay(ray, mesh => this.canUsePickedMesh(mesh), false)
     return pick
   }
 
-  constructor(name: string, scene: Scene, private opts: {
+  constructor(name: string, scene: Scene, private opts: Partial<typeof DEFAULT_CONFIG> & {
     canvas2d: ScreenSpaceCanvas2D
     keys: {
       moveLeft: boolean
@@ -91,24 +99,18 @@ export default class Player extends Mesh {
       switch: boolean
       use: boolean
     }
-    width?: number
-    height?: number
-    mass?: number
-    friction?: number
-    restitution?: number
-    moveForce?: number
-    jumpForce?: number
-    minimumY?: number
-    angularDamping?: number
-    linearDamping?: number
   }) {
     super(name, scene)
 
     opts = this.opts = Object.assign({ }, DEFAULT_CONFIG, opts)
 
-    this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.ParticleImpostor, {
+    VERTEX_SPHERE.applyToMesh(this)
+    this.scaling.copyFromFloats(opts.width, opts.width, opts.width)
+    this.isVisible = false
+
+    this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.SphereImpostor, {
       mass: opts.mass,
-      friction: opts.friction,
+      friction: 0,
       restitution: opts.restitution,
     })
 
@@ -116,7 +118,7 @@ export default class Player extends Mesh {
       const angularDamping = impostor.getAngularVelocity().multiplyByFloats(0, opts.angularDamping, 0)
       impostor.setAngularVelocity(angularDamping)
 
-      const groundDamping = this.isPlayerOnGround ? 0.8 : 1,
+      const groundDamping = this.isPlayerOnGround ? 0.7 : 1,
         linearDamping = impostor.getLinearVelocity().scale(opts.linearDamping).multiplyByFloats(groundDamping, 1, groundDamping)
       impostor.setLinearVelocity(linearDamping)
 
@@ -133,11 +135,6 @@ export default class Player extends Mesh {
           camera.followTarget.copyFrom(this.position)
         }
         setImmediate(_ => this.update())
-      }
-    })
-    this.physicsImpostor.registerAfterPhysicsStep(impostor => {
-      if (this.isDisposed()) {
-        setImmediate(() => impostor.dispose())
       }
     })
 
@@ -158,7 +155,7 @@ export default class Player extends Mesh {
     const sprite = this.spriteBody = new Mesh(name + '/sprite', scene)
     VERTEX_PLANE.applyToMesh(sprite)
     sprite.billboardMode = Mesh.BILLBOARDMODE_Y
-    sprite.position.copyFromFloats(0, opts.height / 2, 0)
+    sprite.position.copyFromFloats(0, opts.height / 2 - opts.width / 2, 0)
     sprite.scaling.copyFromFloats(size.x, size.y, size.x)
     sprite.material = material
     sprite.parent = this
@@ -198,22 +195,16 @@ export default class Player extends Mesh {
       }
     })
 
+    /*
     const head = new Mesh(name + '/head', scene)
     VERTEX_DUMMY.applyToMesh(head)
-    head.position.copyFromFloats(0, opts.height - opts.width * Math.sqrt(2) / 2, 0)
+    head.position.copyFromFloats(0, opts.height - opts.width * Math.sqrt(2) / 2 - opts.width / 2, 0)
     head.scaling.copyFromFloats(opts.width, opts.width, opts.width)
     head.rotation.x = Math.PI / 4
+    head.isVisible = false
     head.parent = this
     head.physicsImpostor = new PhysicsImpostor(head, PhysicsImpostor.BoxImpostor)
-
-    const body = this.playerBody = new Mesh(name + '/body', scene)
-    VERTEX_SPHERE.applyToMesh(body)
-    body.position.copyFromFloats(0, opts.width / 2 + 1e-4, 0)
-    body.scaling.copyFromFloats(opts.width, opts.width, opts.width)
-    body.isVisible = false
-    body.parent = this
-    body.physicsImpostor = new PhysicsImpostor(body, PhysicsImpostor.SphereImpostor)
-    Tags.AddTagsTo(body, Player.PLAYER_BODY_TAG)
+    */
 
     this.physicsImpostor.forceUpdate()
 
@@ -226,15 +217,11 @@ export default class Player extends Mesh {
     const shadowTexture = shadowMaterial.diffuseTexture = new Texture('assets/shadow.png', scene)
     shadowTexture.hasAlpha = true
 
-    // FIXME: babylonjs issue
-    // shadow.parent = this
-    shadow.registerAfterRender(_ => {
-      if (this.isDisposed()) {
-        if (this.usableObject) {
-          this.usableObject.displayUsable(this, false)
-        }
-        shadow.dispose()
+    this.onDisposeObservable.add(_ => {
+      if (this.usableObject) {
+        this.usableObject.displayUsable(this, false)
       }
+      shadow.dispose()
     })
 
     const allPlayers = scene.getMeshesByTags(Player.PLAYER_TAG)
@@ -263,39 +250,36 @@ export default class Player extends Mesh {
 
     this.isPlayerAnimating = this.isPlayerActive &&
       (keys.moveLeft || keys.moveRight || keys.moveForward || keys.moveBack || keys.jump)
-    if (!this.isPlayerAnimating) {
-      return
-    }
+    if (this.isPlayerAnimating) {
+      const vc = this.forwardDirection,
+        mf = this.opts.moveForce * (this.isPlayerOnGround ? 1 : 0.08),
+        dz = keys.moveForward ? 1 : keys.moveBack ? -1 : 0,
+        dx = keys.moveLeft ? -1 : keys.moveRight ? 1 : 0,
+        ay = Math.atan2(dx, dz) + Math.atan2(vc.x, vc.z),
+        fx = dx || dz ? mf * Math.sin(ay) : 0,
+        fz = dx || dz ? mf * Math.cos(ay) : 0,
+        im = this.physicsImpostor
 
-    const
-      vc = this.forwardDirection,
-      mf = this.opts.moveForce * (this.isPlayerOnGround ? 1 : 0.08),
-      dz = keys.moveForward ? 1 : keys.moveBack ? -1 : 0,
-      dx = keys.moveLeft ? -1 : keys.moveRight ? 1 : 0,
-      ay = Math.atan2(dx, dz) + Math.atan2(vc.x, vc.z),
-      fx = dx || dz ? mf * Math.sin(ay) : 0,
-      fz = dx || dz ? mf * Math.cos(ay) : 0,
-      im = this.physicsImpostor
-
-    let fy = 0
-    if (keys.jump) {
-      const pick = this.pickFromBottom()
-      if (pick.hit && pick.pickedMesh &&
-          pick.distance < 0.2 && im.getLinearVelocity().y < 0.01) {
-        im.setLinearVelocity(im.getLinearVelocity().multiplyByFloats(1, 0, 1))
-        fy = this.opts.jumpForce
-        keys.jump = false
+      let fy = 0
+      if (keys.jump) {
+        const pick = this.pickFromBottom()
+        if (pick.hit && pick.pickedMesh &&
+            pick.distance < 0.2 && im.getLinearVelocity().y < 0.01) {
+          im.setLinearVelocity(im.getLinearVelocity().multiplyByFloats(1, 0, 1))
+          fy = this.opts.jumpForce
+          keys.jump = false
+        }
       }
-    }
 
-    if (fx || fy || fz) {
-      this.applyImpulse(new Vector3(fx, fy, fz), this.position)
-    }
+      if (fx || fy || fz) {
+        this.applyImpulse(new Vector3(fx, fy, fz), this.position)
+      }
 
-    // rotate to face to the right direction
-    if (dx || dz) {
-      const qc = Quaternion.RotationAxis(new Vector3(0, 1, 0), ay)
-      this.rotationQuaternion = Quaternion.Slerp(this.rotationQuaternion, qc, 0.1)
+      // rotate to face to the right direction
+      if (dx || dz) {
+        const qc = Quaternion.RotationAxis(new Vector3(0, 1, 0), ay)
+        this.rotationQuaternion = Quaternion.Slerp(this.rotationQuaternion, qc, 0.1)
+      }
     }
   }
 }
@@ -314,7 +298,7 @@ export class PlayerGenerator extends Sprite implements ObjectPlayListener, Objec
       this.player.dispose()
     }
     this.player = new Player(this._playerName, this.getScene(), this.opts)
-    this.player.position.copyFrom(this.position.add(new Vector3(0, 2, 0)))
+    this.player.position.copyFrom(this.position.add(new Vector3(0, 3, 0)))
     this.spriteBody.isVisible = false
   }
   stopPlaying() {

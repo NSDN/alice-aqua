@@ -8,12 +8,14 @@ import {
   DynamicTexture,
   Texture,
   Scene,
+  Tags,
 } from '../babylon'
 
 import {
   VERTEX_SPHERE,
   VERTEX_BOX,
   VERTEX_PLANE,
+  ColorNoLightingMaterial,
 } from '../utils/babylon'
 
 import ObjectBase, {
@@ -22,11 +24,12 @@ import ObjectBase, {
   ObjectTriggerable,
   ObjectPlayListener,
   appendElement,
-  appendConfigElem,
+  appendConfigLine,
+  appendConfigElement,
 } from './'
 
 const TRIGGER_ON_COLOR = new Color3(1, 0.5, 0.5),
-  TRIGGER_OFF_COLOR = new Color3(0.8, 0.8, 0.8)
+  TRIGGER_OFF_COLOR = Color3.White().scale(0.8)
 
 class TriggerLocker extends Mesh {
   private timeBegin = 0
@@ -88,7 +91,17 @@ class TriggerLocker extends Mesh {
 }
 
 export default class Trigger extends ObjectBase implements ObjectElementBinder, ObjectPlayListener {
-  public targetName = ''
+  static readonly TRIGGER_ON_TAG = 'mesh-trigger-on'
+
+  private _targetName = ''
+  get targetName() {
+    return this._targetName
+  }
+  set targetName(val) {
+    this._targetName = val
+    setImmediate(_ => this.clearTriggered())
+  }
+
   public autoResetTimeout = 0
   public listenTags = [] as string[]
 
@@ -127,9 +140,7 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
       VERTEX_BOX.applyToMesh(box)
       box.isVisible = false
       box.scaling.copyFromFloats(1, 0.1, 1)
-      const material = box.material = new StandardMaterial('cache/trigger/box/on', this.getScene())
-      material.disableLighting = true
-      material.emissiveColor = TRIGGER_ON_COLOR
+      box.material = ColorNoLightingMaterial.getCached(this.getScene(), TRIGGER_ON_COLOR)
     }
 
     let boxOff = this.getScene().getMeshByName(cacheId = 'cache/trigger/box/off') as Mesh
@@ -138,9 +149,7 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
       VERTEX_BOX.applyToMesh(boxOff)
       box.isVisible = false
       box.scaling.copyFromFloats(1, 0.2, 1)
-      const material = box.material = new StandardMaterial('cache/trigger/box/off', this.getScene())
-      material.disableLighting = true
-      material.emissiveColor = TRIGGER_OFF_COLOR
+      box.material = ColorNoLightingMaterial.getCached(this.getScene(), TRIGGER_OFF_COLOR)
     }
 
     this.triggerOnBox = boxOn.createInstance(this.name + '/box')
@@ -152,13 +161,15 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
 
   bindToElement(container: HTMLElement, save: (args: Partial<Trigger>) => void) {
     const attrs = { type: 'number', style: { width: '100px' } },
-      resetInput = appendConfigElem('autoReset(ms):', 'input', attrs, container)
+      resetDiv = appendConfigElement('reset: ', 'div', { }, container),
+      resetInput = appendElement('input', attrs, resetDiv)
+    appendElement('span', { innerHTML: ' ms' }, resetDiv)
     resetInput.value = this.autoResetTimeout
     resetInput.addEventListener('change', _ => save({ autoResetTimeout: parseInt(resetInput.value) || 0 }))
 
-    const selectionContainer = appendElement('div', { }, container)
+    const rows = [ ] as HTMLElement[]
     const saveTargetName = () => {
-      const targetName = [].map.call(selectionContainer.querySelectorAll('.config-item'), (elem: HTMLDivElement) => {
+      const targetName = rows.map(elem => {
         const name = (elem.querySelector('select.name') as HTMLSelectElement).value,
           isNe = (elem.querySelector('select.is-ne') as HTMLSelectElement).value
         return name && (isNe + name)
@@ -166,26 +177,31 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
       save({ targetName })
     }
     const updateSelections = () => {
-      selectionContainer.innerHTML = ''
+      rows.forEach(elem => elem.parentNode.removeChild(elem))
+      rows.length = 0
+
       const availNames = this.getScene().meshes.filter(mesh => (mesh as any as ObjectTriggerable).onTrigger).map(mesh => mesh.name),
         savedTargets = (this.targetName || '').split(',').filter(target => !!target).concat('')
       while (availNames.length && savedTargets.length) {
         const target = savedTargets.shift(),
           isNe = target[0] === '!' ? '!' : '',
-          name = isNe ? target.substr(1) : target,
-          item = appendElement('div', { className: 'config-item' }, selectionContainer)
+          name = isNe ? target.substr(1) : target
 
-        const isNeSel = appendElement('select', { className: 'is-ne' }, item) as HTMLSelectElement
+        const isNeSel = appendElement('select', { className: 'is-ne' }, null) as HTMLSelectElement
         appendElement('option', { innerHTML: 'on', value: '' }, isNeSel)
         appendElement('option', { innerHTML: 'off', value: '!' }, isNeSel)
         isNeSel.value = isNe
         isNeSel.addEventListener('change', _ => saveTargetName())
 
-        const nameSel = appendElement('select', { className: 'name' }, item) as HTMLSelectElement
+        const nameSel = appendElement('select', { className: 'name' }, null) as HTMLSelectElement
         availNames.forEach(name => appendElement('option', { innerHTML: name }, nameSel))
         appendElement('option', { innerHTML: '--', value: '' }, nameSel)
         nameSel.value = name
         nameSel.addEventListener('change', _ => (saveTargetName(), updateSelections()))
+
+        const tr = appendConfigLine(isNeSel, nameSel, container) as HTMLTableRowElement
+        tr.classList.add('.trigger-config-line')
+        rows.push(tr)
 
         availNames.splice(availNames.indexOf(target), 1)
       }
@@ -200,7 +216,7 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
     }
     this.triggerOnBox.isVisible = isOn
     this.triggerOffBox.isVisible = !isOn
-    ; (this.targetName || '').split(',').forEach(target => {
+    ; (this._targetName || '').split(',').forEach(target => {
       const isNe = target[0] === '!',
         name = isNe ? target.substr(1) : target,
         mesh = this.getScene().getMeshByName(name) as any as ObjectTriggerable
@@ -218,19 +234,18 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
     }
   }
 
-  protected triggerMeshes = [] as AbstractMesh[]
   private checkTrigger(mesh: AbstractMesh, isOn: boolean) {
-    const lastLength = this.triggerMeshes.length
-    if (isOn && this.triggerMeshes.indexOf(mesh) === -1) {
-      this.triggerMeshes = this.triggerMeshes.concat(mesh)
-    }
-    else if (!isOn && this.triggerMeshes.indexOf(mesh) !== -1) {
-      this.triggerMeshes = this.triggerMeshes.filter(m => m !== mesh)
-    }
-    this.triggerMeshes = this.triggerMeshes.filter(m => !m._isDisposed)
-    if ((lastLength === 0 && this.triggerMeshes.length > 0) || (lastLength > 0 && this.triggerMeshes.length === 0)) {
+    const triggered = this.getScene().getMeshesByTags(Trigger.TRIGGER_ON_TAG)
+    isOn ? Tags.AddTagsTo(mesh, Trigger.TRIGGER_ON_TAG) : Tags.RemoveTagsFrom(mesh, Trigger.TRIGGER_ON_TAG)
+    if ((triggered.length === 0 && isOn) || (triggered.length === 1 && triggered[0] === mesh && !isOn)) {
       this.fireTrigger(isOn)
     }
+  }
+  private clearTriggered() {
+    this.getScene().getMeshesByTags(Trigger.TRIGGER_ON_TAG).forEach(mesh => {
+      Tags.RemoveTagsFrom(mesh, Trigger.TRIGGER_ON_TAG)
+    })
+    this.fireTrigger(false)
   }
   private registerTrigger() {
     this.getScene().getMeshesByTags(this.listenTags.join(' || ')).forEach(mesh => {
@@ -251,6 +266,6 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
   }
 
   stopPlaying() {
-    this.triggerMeshes.slice().forEach(mesh => this.checkTrigger(mesh, false))
+    this.clearTriggered()
   }
 }

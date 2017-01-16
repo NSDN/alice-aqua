@@ -294,11 +294,11 @@ const appendCursorStyle = memo((cursorClass: string) => {
   attachDragable(evt => {
     return evt.target === canvas && ui.activePanel === 'objects' && !keys.ctrlKey && !keys.shiftKey
   }, _ => {
-    objectToolbar.style.display = 'none'
+    objectToolbar.classList.add('dragging')
   }, _ => {
     // mouse move
   }, _ => {
-    objectToolbar.style.display = selectedObject ? 'block' : 'none'
+    objectToolbar.classList.remove('dragging')
   })
 
   attachDragable(objectToolbar.querySelector('.move-object') as HTMLElement, evt => {
@@ -478,7 +478,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
     watch(() => {
       return ui.activePanel === 'objects' && selectedObject
     }, (newObject, oldObject) => {
-      objectToolbar.style.display = newObject ? 'block' : 'none'
+      newObject ? objectToolbar.classList.remove('hidden') : objectToolbar.classList.add('hidden')
       if (oldObject) {
         oldObject.showBoundingBox = false
         oldObject.getChildMeshes().forEach(child => child.showBoundingBox = false)
@@ -491,7 +491,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
         container.innerHTML = `<div><b>#${newObject.name}</b></div>`
 
         const binder = newObject as any as ObjectElementBinder,
-          elem = appendElement('div', { }, container)
+          elem = appendElement('table', { }, container)
         binder.bindToElement && binder.bindToElement(elem, update => {
           editorHistory.push(new UpdateObjectAction(map.objectsData, newObject, update))
           map.saveDebounced(chunks)
@@ -504,7 +504,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
   const panelListeners = {
     objects: [
       () => {
-        if (selectedObject && !toolbarDragStarted && objectToolbar.style.display === 'block') {
+        if (selectedObject && !toolbarDragStarted) {
           const src = selectedObject.position,
             viewport = camera.viewport.toGlobal(canvas.width, canvas.height),
             pos = Vector3.Project(src, Matrix.Identity(), scene.getTransformMatrix(), viewport)

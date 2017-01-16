@@ -28,8 +28,8 @@ export default class Box extends InstancedMesh implements ObjectUsable {
     const origin = generator.position.add(new Vector3(0, 2, 0))
     this.position.copyFrom(origin)
 
-    const params = { mass: generator.boxMass, friction: 0 }
-    this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.BoxImpostor, params),
+    const params = { mass: generator.boxMass, friction: 1 }
+    this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.BoxImpostor, params)
     this.physicsImpostor.registerBeforePhysicsStep(impostor => {
       const v = impostor.getLinearVelocity(), a = impostor.getAngularVelocity()
 

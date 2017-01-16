@@ -2,8 +2,10 @@ import {
   VertexData,
   Scene,
   Vector3,
+  Color3,
   PhysicsImpostor,
   ArcRotateCamera,
+  StandardMaterial,
 } from '../babylon'
 
 export function Vector3Map(vec: Vector3, fn: (x: number) => number) {
@@ -177,9 +179,25 @@ export function getBoundingVertexData(sx: N, sy: N, sz: N, addCross: boolean) {
 export class StaticBoxImpostor extends PhysicsImpostor {
   constructor(opts: { position: Vector3, scaling: Vector3, rotation?: Vector3 }, scene: Scene) {
     // https://github.com/BabylonJS/Babylon.js/blob/master/src/Physics/babylon.physicsImpostor.ts#L174
+    const position = opts.position.clone(),
+      scaling = opts.scaling.clone(),
+      rotation = opts.rotation ? opts.rotation.clone() : Vector3.Zero()
     PhysicsImpostor.DEFAULT_OBJECT_SIZE.copyFrom(opts.scaling)
     // https://github.com/BabylonJS/Babylon.js/blob/master/src/Physics/babylon.physicsImpostor.ts#L70
-    super(opts as any, PhysicsImpostor.BoxImpostor, { mass: 0 }, scene)
+    super({ position, scaling, rotation } as any, PhysicsImpostor.BoxImpostor, { mass: 0, friction: 0 }, scene)
+  }
+}
+
+export class ColorNoLightingMaterial extends StandardMaterial {
+  static getCached(scene: Scene, color: Color3) {
+    const name = 'cache/nolighting/' + color.toHexString(),
+      dict = scene as any as { [color: string]: ColorNoLightingMaterial }
+    return dict[name] || (dict[name] = new ColorNoLightingMaterial(name, scene, color))
+  }
+  constructor(name: string, scene: Scene, color: Color3) {
+    super(name, scene)
+    this.disableLighting = true
+    this.emissiveColor = color
   }
 }
 

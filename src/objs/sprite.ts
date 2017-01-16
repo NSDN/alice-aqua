@@ -14,7 +14,7 @@ import {
 import ObjectBase, {
   ObjectOptions,
   ObjectElementBinder,
-  appendConfigElem,
+  appendConfigElement,
 } from './'
 
 /*
@@ -99,7 +99,7 @@ export default class Sprite extends ObjectBase implements ObjectElementBinder {
   bindToElement(container: HTMLElement, save: (args: Partial<Sprite>) => void) {
     const max = this.opts.icon.height / 32 * 4,
       attrs = { type: 'range', min: 1, max, step: 1 },
-      range = appendConfigElem('height: ', 'input', attrs, container) as HTMLInputElement
+      range = appendConfigElement('height: ', 'input', attrs, container) as HTMLInputElement
     range.value = this.spriteHeight as any
     range.addEventListener('change', _ => save({ spriteHeight: parseFloat(range.value) }))
   }

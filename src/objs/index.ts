@@ -4,6 +4,7 @@ import {
   Material,
   AbstractMesh,
   ScreenSpaceCanvas2D,
+  Vector3,
 } from '../babylon'
 
 import {
@@ -26,18 +27,28 @@ export interface ObjectOptions {
 
 export { appendElement } from '../utils/dom'
 
-export function appendConfigItem(container: HTMLElement) {
-  return appendElement('div', { className: 'config-item' }, container)
+export function appendConfigLine(label: HTMLElement, input: HTMLElement, container: HTMLElement) {
+  const tr = appendElement('tr', { className: 'config-line' }, container)
+
+  const td1 = appendElement('td', { }, tr) as HTMLTableDataCellElement
+  label.parentNode && label.parentNode.removeChild(label)
+  td1.appendChild(label)
+
+  const td2 = appendElement('td', { }, tr) as HTMLTableDataCellElement
+  input.parentNode && input.parentNode.removeChild(label)
+  td2.appendChild(input)
+
+  return tr
 }
 
-export function appendConfigElem(label: string, tag: string, attrs: any, container: HTMLElement) {
-  const item = appendElement('div', { className: 'config-item' }, container)
-  appendElement('label', { innerText: label }, item)
-  return appendElement(tag, attrs, item)
+export function appendConfigElement(label: string, tag: string, attrs: any, container: HTMLElement) {
+  const input = appendElement(tag, attrs, null)
+  appendConfigLine(appendElement('label', { innerText: label }, null), input, container)
+  return input
 }
 
-export function appendSelectElem(label: string, val: string, options: any, container: HTMLElement) {
-  const select = appendConfigElem(label, 'select', { }, container) as HTMLSelectElement
+export function appendSelectOptions(label: string, val: string, options: any, container: HTMLElement) {
+  const select = appendConfigElement(label, 'select', { }, container) as HTMLSelectElement
   if (Array.isArray(options)) {
     options.forEach(innerHTML => appendElement('option', { innerHTML }, select))
   }
@@ -46,6 +57,18 @@ export function appendSelectElem(label: string, val: string, options: any, conta
   }
   select.value = val
   return select
+}
+
+export function appendVectorInputs(label: string, val: Vector3, container: HTMLElement, attrs: any, onChange: (inputs: HTMLInputElement[]) => void) {
+  attrs = { type: 'number', style: { width: '30%', maxWidth: '40px' }, ...attrs }
+  const div = appendConfigElement(label, 'div', { }, container)
+  const inputs = 'x/y/z'.split('/').map(a => {
+    const input = appendElement('input', attrs, div) as HTMLInputElement
+    input.placeholder = a
+    input.value = val[a] + ''
+    input.addEventListener('change', _ => onChange(inputs))
+    return input
+  })
 }
 
 export interface ObjectTriggerable {

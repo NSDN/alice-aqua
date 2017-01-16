@@ -14,8 +14,8 @@ import {
   ObjectElementBinder,
   ObjectTriggerable,
   appendElement,
-  appendConfigItem,
-  appendConfigElem,
+  appendConfigLine,
+  appendConfigElement,
 } from './'
 
 import {
@@ -95,20 +95,20 @@ export default class Jump extends Trigger implements ObjectElementBinder, Object
 
   bindToElement(container: HTMLElement, save: (args: Partial<Jump>) => void) {
     const attrs = { type: 'number', min: 0, style: { width: '100px' } },
-      up = appendConfigElem('up:', 'input', attrs, container) as HTMLInputElement
+      up = appendConfigElement('up:', 'input', attrs, container) as HTMLInputElement
     up.value = this.upForce as any
     up.addEventListener('change', _ => save({ upForce: parseFloat(up.value) || 0 }))
 
-    const item = appendConfigItem(container)
-
-    const dirSel = appendElement('select', { }, item) as HTMLSelectElement
+    const dirSel = appendElement('select', { }, null) as HTMLSelectElement
     'x/-x/z/-z'.split('/').forEach(innerHTML => appendElement('option', { innerHTML }, dirSel))
     dirSel.value = this.sideDirection
     dirSel.addEventListener('change', _ => save({ sideDirection: dirSel.value as any }))
 
-    const side = appendElement('input', attrs, item) as HTMLInputElement
+    const side = appendElement('input', attrs, null) as HTMLInputElement
     side.value = this.sideForce as any
     side.addEventListener('change', _ => save({ sideForce: parseFloat(side.value) || 0 }))
+
+    appendConfigLine(dirSel, side, container)
   }
 
   static readonly SIDE_DIRS = {
@@ -119,7 +119,7 @@ export default class Jump extends Trigger implements ObjectElementBinder, Object
   }
 
   onTrigger(isOn: boolean) {
-    const mesh = this.triggerMeshes[0]
+    const mesh = this.getScene().getMeshesByTags(Jump.TRIGGER_ON_TAG)[0]
     if (isOn && mesh && mesh.physicsImpostor) {
       const name = mesh.parent && mesh.parent.name
       if (name === 'remilia') {

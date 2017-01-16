@@ -33,12 +33,17 @@
       cursor: pointer;
       float: right;
     }
+    .object-toolbar.dragging {
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0s 0.1s, opacity 0.1s linear;
+    }
     .object-toolbar {
       position: absolute;
       background-color: rgba(255, 255, 255, 0.3);
       padding: 5px;
-      display: none;
       user-select: none;
+      transition: opacity 0.1s linear;
     }
     .object-toolbar .move-object {
       cursor: -webkit-grab;
@@ -53,8 +58,6 @@
     }
     .object-toolbar .config-item {
       height: 2em;
-      display: flex;
-      align-items: center;
     }
 
     .ui-toolbar {

@@ -12,13 +12,14 @@ import {
 import {
   VERTEX_BOX,
   VERTEX_PLANE,
+  ColorNoLightingMaterial,
 } from '../utils/babylon'
 
 import ObjectBase, {
   ObjectOptions,
   ObjectElementBinder,
   ObjectTriggerable,
-  appendSelectElem,
+  appendSelectOptions,
 } from './'
 
 import {
@@ -91,9 +92,7 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
       VERTEX_BOX.applyToMesh(cache)
       cache.scaling.copyFromFloats(0.95, 1.8, 0.4)
       cache.isVisible = false
-      const material = cache.material = new StandardMaterial(cacheId + '/mat', this.getScene())
-      material.disableLighting = true
-      material.emissiveColor = Color3.White().scale(0.9)
+      cache.material = ColorNoLightingMaterial.getCached(this.getScene(), Color3.White().scale(0.8))
     }
     this.creatBox('block/left', cache, {
       x: [
@@ -123,9 +122,7 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
       VERTEX_BOX.applyToMesh(cache)
       cache.scaling.copyFromFloats(1, 2, 0.5)
       cache.isVisible = false
-      const material = cache.material = new StandardMaterial(cacheId + '/mat', this.getScene())
-      material.disableLighting = true
-      material.emissiveColor = Color3.White()
+      cache.material = ColorNoLightingMaterial.getCached(this.getScene(), Color3.White())
     }
     this.creatBox('border/left', cache, {
       x: [
@@ -146,7 +143,7 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
   }
 
   bindToElement(container: HTMLElement, save: (args: Partial<Gate>) => void) {
-    const select = appendSelectElem('direction: ', this.direction, ['x', 'z'], container)
+    const select = appendSelectOptions('direction: ', this.direction, ['x', 'z'], container)
     select.addEventListener('change', _ => save({ direction: select.value as any }))
   }
 
