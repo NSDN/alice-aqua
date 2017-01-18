@@ -1,10 +1,7 @@
 import {
   Mesh,
   AbstractMesh,
-//  Scene,
   VertexData,
-//  Tags,
-//  SubMesh,
 } from '../babylon'
 
 import {
@@ -16,23 +13,6 @@ import ObjectBase, {
   ObjectElementBinder,
   appendConfigElement,
 } from './'
-
-/*
-function getSpriteVertexData(scene: Scene, name: string): {
-  positions: number[]
-  indices: number[]
-  normals: number[]
-  uvs: number[]
-} {
-  const cacheKey = 'cache/sprite/vertex/' + name
-  return scene[cacheKey] || (scene[cacheKey] = {
-    positions: [],
-    indices: [],
-    normals: [],
-    uvs: [],
-  })
-}
-*/
 
 export default class Sprite extends ObjectBase implements ObjectElementBinder {
   readonly spriteBody: AbstractMesh
@@ -52,36 +32,10 @@ export default class Sprite extends ObjectBase implements ObjectElementBinder {
 
     const { texSize, offsetX, offsetY, material } = opts.icon,
       scene = this.getScene(),
-      matTag = ['cache/sprite', material.name].join('/'),
-      cacheId = [matTag, texSize, offsetX, offsetY].join('/')
+      cacheId = ['cache/sprite', material.name, texSize, offsetX, offsetY].join('/')
 
     let cache = scene.getMeshByName(cacheId) as Mesh
     if (!cache) {
-      /*
-      const vd = getSpriteVertexData(scene, material.name),
-        vertexStart = vd.positions.length / 3,
-        faceStart = vd.indices.length / 3,
-        push = [ ].push,
-        { positions, indices, normals, uvs } = getPlaneVertexDataFromRegion(texSize, opts.icon)
-      push.apply(vd.positions, positions)
-      push.apply(vd.indices, indices.map(i => vertexStart + i))
-      push.apply(vd.normals, normals)
-      push.apply(vd.uvs, uvs)
-
-      const vertexData = Object.assign(new VertexData(), vd)
-      cache = new Mesh(cacheId, scene)
-      vertexData.applyToMesh(cache)
-      cache.subMeshes = [ ]
-
-      const subMesh = new SubMesh(0, 0, vd.positions.length / 3, faceStart, indices.length / 3, cache)
-      cache.subMeshes.push(subMesh)
-      cache.position.y = 0.5
-      cache.material = material
-      cache.isVisible = false
-
-      scene.getMeshesByTags(matTag).forEach(mesh => vertexData.applyToMesh(mesh))
-      Tags.AddTagsTo(cache, matTag)
-      */
       cache = new Mesh(cacheId, scene)
       cache.position.y = 0.5
       cache.material = material

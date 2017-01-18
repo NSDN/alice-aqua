@@ -16,9 +16,12 @@ import ObjectBase, {
   ObjectElementBinder,
   ObjectTriggerable,
   appendVectorInputs,
+  appendConfigElement,
 } from './'
 
 export default class Block extends ObjectBase implements ObjectElementBinder, ObjectTriggerable {
+  public triggerSpeed = 0.02
+
   private _blockSize = new Vector3(1, 1, 1)
   get blockSize() {
     const { x, y, z } = this._blockSize
@@ -79,7 +82,7 @@ export default class Block extends ObjectBase implements ObjectElementBinder, Ob
     block.physicsImpostor = new PhysicsImpostor(block, PhysicsImpostor.BoxImpostor, { mass: 0, friction: 1 })
     block.physicsImpostor.registerBeforePhysicsStep(_ => {
       if (this.currentProgress !== this.targetProgress) {
-        const progress = this.currentProgress + Math.sign(this.targetProgress - this.currentProgress) / 50
+        const progress = this.currentProgress + Math.sign(this.targetProgress - this.currentProgress) * this.triggerSpeed
         this.currentProgress = Math[progress > this.currentProgress ? 'min' : 'max'](this.targetProgress, progress)
         setImmediate(this.updateBlockPosition)
       }
@@ -90,6 +93,10 @@ export default class Block extends ObjectBase implements ObjectElementBinder, Ob
   }
 
   bindToElement(container: HTMLElement, save: (args: Partial<Block>) => void) {
+    const attrs = { type: 'number', min: 0.005, max: 0.05, step: 0.005 },
+      input = appendConfigElement('speed', 'input', attrs, container) as HTMLInputElement
+    input.value = this.triggerSpeed + ''
+    input.addEventListener('change', _ => save({ triggerSpeed: parseFloat(input.value) }))
     appendVectorInputs('size: ', this._blockSize, container, { min: 1, step: 1 }, inputs => {
       save({ blockSize: inputs.map(i => i.value = Math.max(parseInt(i.value), 1) as any) })
     })
