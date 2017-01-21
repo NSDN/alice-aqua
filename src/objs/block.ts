@@ -11,15 +11,19 @@ import {
   ColorNoLightingMaterial,
 } from '../utils/babylon'
 
-import ObjectBase, {
-  ObjectOptions,
-  ObjectElementBinder,
-  ObjectTriggerable,
+import {
   appendVectorInputs,
-  appendConfigElement,
+  appendConfigInput,
+} from '../utils/dom'
+
+import {
+  ObjectBase,
+  ObjectOptions,
+  ObjectEditable,
+  ObjectTriggerable,
 } from './'
 
-export default class Block extends ObjectBase implements ObjectElementBinder, ObjectTriggerable {
+export default class Block extends ObjectBase implements ObjectEditable, ObjectTriggerable {
   public triggerSpeed = 0.02
 
   private _blockSize = new Vector3(1, 1, 1)
@@ -92,11 +96,9 @@ export default class Block extends ObjectBase implements ObjectElementBinder, Ob
     this.onDisposeObservable.add(_ => block.dispose())
   }
 
-  bindToElement(container: HTMLElement, save: (args: Partial<Block>) => void) {
-    const attrs = { type: 'number', min: 0.005, max: 0.05, step: 0.005 },
-      input = appendConfigElement('speed', 'input', attrs, container) as HTMLInputElement
-    input.value = this.triggerSpeed + ''
-    input.addEventListener('change', _ => save({ triggerSpeed: parseFloat(input.value) }))
+  attachEditorContent(container: HTMLElement, save: (args: Partial<Block>) => void) {
+    const attrs = { type: 'number', min: 0.005, max: 0.05, step: 0.005 }
+    appendConfigInput('speed', this.triggerSpeed, attrs, container, val => save({ triggerSpeed: parseInt(val) }))
     appendVectorInputs('size: ', this._blockSize, container, { min: 1, step: 1 }, inputs => {
       save({ blockSize: inputs.map(i => i.value = Math.max(parseInt(i.value), 1) as any) })
     })

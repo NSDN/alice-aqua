@@ -1,4 +1,4 @@
-import Chunks from '../utils/chunks'
+import Chunks from '../game/chunks'
 
 import {
   Vector3,

@@ -8,13 +8,17 @@ import {
   getPlaneVertexDataFromRegion,
 } from '../utils/babylon'
 
-import ObjectBase, {
+import {
+  appendConfigInput,
+} from '../utils/dom'
+
+import {
+  ObjectBase,
   ObjectOptions,
-  ObjectElementBinder,
-  appendConfigElement,
+  ObjectEditable,
 } from './'
 
-export default class Sprite extends ObjectBase implements ObjectElementBinder {
+export default class Sprite extends ObjectBase implements ObjectEditable {
   readonly spriteBody: AbstractMesh
 
   get spriteHeight() {
@@ -50,11 +54,8 @@ export default class Sprite extends ObjectBase implements ObjectElementBinder {
     sprite.parent = this
   }
 
-  bindToElement(container: HTMLElement, save: (args: Partial<Sprite>) => void) {
-    const max = this.opts.icon.height / 32 * 4,
-      attrs = { type: 'range', min: 1, max, step: 1 },
-      range = appendConfigElement('height: ', 'input', attrs, container) as HTMLInputElement
-    range.value = this.spriteHeight as any
-    range.addEventListener('change', _ => save({ spriteHeight: parseFloat(range.value) }))
+  attachEditorContent(container: HTMLElement, save: (args: Partial<Sprite>) => void) {
+    const attrs = { type: 'range', min: 1, max: this.opts.icon.height / 32 * 4, step: 1 }
+    appendConfigInput('height: ', this.spriteHeight, attrs, container, val => save({ spriteHeight: parseFloat(val) }))
   }
 }

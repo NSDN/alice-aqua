@@ -15,18 +15,22 @@ import {
   ColorNoLightingMaterial,
 } from '../utils/babylon'
 
-import ObjectBase, {
-  ObjectOptions,
-  ObjectElementBinder,
-  ObjectTriggerable,
+import {
   appendSelectOptions,
+} from '../utils/dom'
+
+import {
+  ObjectBase,
+  ObjectOptions,
+  ObjectEditable,
+  ObjectTriggerable,
 } from './'
 
 import {
   drawIconFont,
 } from '../utils/dom'
 
-export default class Gate extends ObjectBase implements ObjectElementBinder, ObjectTriggerable {
+export default class Gate extends ObjectBase implements ObjectEditable, ObjectTriggerable {
   public direction = 'x' as 'x' | 'z'
   public isOpen = false
 
@@ -142,7 +146,7 @@ export default class Gate extends ObjectBase implements ObjectElementBinder, Obj
     })
   }
 
-  bindToElement(container: HTMLElement, save: (args: Partial<Gate>) => void) {
+  attachEditorContent(container: HTMLElement, save: (args: Partial<Gate>) => void) {
     const select = appendSelectOptions('direction: ', this.direction, ['x', 'z'], container)
     select.addEventListener('change', _ => save({ direction: select.value as any }))
   }

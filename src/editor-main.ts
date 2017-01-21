@@ -1,7 +1,7 @@
-import { ObjectElementBinder, ObjectPlayListener } from './objs'
+import { ObjectEditable, ObjectPlayListener } from './objs'
 import Player, { PlayerGenerator } from './objs/player'
 import Cursor from './editor/cursor'
-import Chunks, { ChunkData } from './utils/chunks'
+import Chunks, { ChunkData } from './game/chunks'
 
 import {
   Mesh,
@@ -15,24 +15,18 @@ import {
 } from './babylon'
 
 import {
-  UI
-} from './ui'
-
-import {
   createScene,
-  createFpsCounter,
-  createKeyStates,
-  createSkyBox,
   loadAssets,
-  loadSavedMap,
-  TAGS,
 } from './game'
+
+import SkyBox from './game/skybox'
 
 import {
   SelectionBox,
   GridPlane,
   ObjectBoundary,
   createDataURLFromIconFontAndSub,
+  loadSavedMap,
 } from './editor'
 
 import {
@@ -45,14 +39,22 @@ import {
 } from './editor/history'
 
 import {
+  UI
+} from './editor/ui'
+
+import {
   watch,
   memo,
+  randomBytes,
+  fpsCounter,
 } from './utils'
 
 import {
   appendElement,
   attachDragable,
   LocationSearch,
+  LoadingScreen,
+  KeyEmitter,
 } from './utils/dom'
 
 const pixelHeightNames = {
@@ -79,20 +81,36 @@ const appendCursorStyle = memo((cursorClass: string) => {
   return appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` })
 })
 
+export const TAGS = {
+  object: 'tag-object',
+  block: 'tag-block',
+}
+
+const KEY_MAP = {
+  ctrlKey: 'CTRL',
+  shiftKey: 'SHIFT',
+  showCursor: 'CTRL | SHIFT',
+  focus: 'SHIFT + F',
+  undo: 'CTRL + Z',
+  redo: 'CTRL + Y',
+}
+
 ; (async function() {
-  const { scene, camera, canvas2d } = createScene(),
-    { keys } = createKeyStates(),
+  const { scene, camera, canvas2d, clock } = createScene(),
+    keyInput = new KeyEmitter(KEY_MAP),
+    keys = keyInput.state,
     canvas = scene.getEngine().getRenderingCanvas(),
 
     map = await loadSavedMap(),
-    assets = await loadAssets(scene),
+    assets = await loadAssets(scene, (index, total, progress) =>
+      LoadingScreen.update(`Loading Assets ${~~(progress * 100)}% (${index + 1}/${total})`)),
 
     source = new ObjectBoundary('frame', scene),
 
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
     lastSelection = new SelectionBox('select', scene),
 
-    chunks = new Chunks(scene, assets.tiles, map.chunksData),
+    chunks = new Chunks('chunk', scene, assets.tiles, map.chunksData),
     grid = new GridPlane('grids', scene, chunks.chunkSize),
 
     ui = new UI(assets.tiles, assets.classes.map(cls => ({ ...cls, ...cls.icon }))),
@@ -106,7 +124,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
         if (clsFound) {
           const { icon, cls } = clsFound,
             args = Object.assign({ }, clsFound.args, restoreArgs),
-            object = new cls(id, { icon, keys, source, canvas2d })
+            object = new cls(id, { icon, source, canvas2d, clock })
           object.position.copyFrom(position)
           Object.assign(object, args)
 
@@ -203,11 +221,17 @@ const appendCursorStyle = memo((cursorClass: string) => {
     return evt.target === canvas && ui.activePanel === 'objects' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
     const clsId = ui.selectedClassIndex,
-      { clsName } = assets.classes.find(c => c.clsId === clsId),
-      rnd = Math.floor(Math.random() * 0xffffffff + 0x100000000).toString(16).slice(1),
-      id = ['object', clsName, rnd].join('/'),
-      pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
+      { clsName, args } = assets.classes.find(c => c.clsId === clsId),
+      id = ['object', clsName, randomBytes()].join('/'),
+      pos = cursor.hover.add(new Vector3(0.5, 0, 0.5)),
+      uniqueTag = args.objectSingletonId as string
+    if (uniqueTag) scene.getMeshesByTags(uniqueTag).forEach(object => {
+      editorHistory.push(new RemoveObjectAction(objectManager, object, map.objectsData[object.name]))
+    })
     editorHistory.push(new CreateObjectAction(objectManager, id, clsId, pos))
+    if (uniqueTag) {
+      Tags.AddTagsTo(scene.getMeshByName(id), uniqueTag)
+    }
   }, _ => {
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
     editorHistory.push(new MoveObjectAction(chunks, selectedObject.name, pos))
@@ -242,7 +266,7 @@ const appendCursorStyle = memo((cursorClass: string) => {
   })
 
   ui.on('tile-selected', () => {
-    if (keys.ctrlKey || keys.shiftKey) {
+    if (keys.showCursor) {
       const { position, scaling } = lastSelection,
         minimum = position.subtract(scaling.scale(0.5)),
         maximum = position.add(scaling.scale(0.5)),
@@ -256,12 +280,14 @@ const appendCursorStyle = memo((cursorClass: string) => {
     }
   })
 
+  camera.lowerBetaSoftLimit = camera.lowerBetaLimit
+  camera.upperRadiusSoftLimit = camera.upperRadiusLimit
   ui.on('panel-changed', (oldPanel: string) => {
     if (ui.activePanel === 'play') {
       if (scene.getMeshesByTags(PlayerGenerator.PLAYER_GENERATOR_TAG).length === 0) {
         const { x, z } = camera.target,
           { h } = chunks.getPixel(x, z),
-          player = new Player('remilia', scene, { keys, canvas2d })
+          player = new Player('remilia', scene, { })
         player.position.copyFromFloats(x, h + 2, z)
         Tags.AddTagsTo(player, 'auto-generated-player')
         console.warn('creating player from camera position...')
@@ -271,6 +297,8 @@ const appendCursorStyle = memo((cursorClass: string) => {
         const listener = mesh as any as ObjectPlayListener
         listener.startPlaying && listener.startPlaying()
       })
+      camera.lowerBetaSoftLimit = Math.PI * 0.35
+      camera.upperRadiusSoftLimit = 40
     }
 
     if (oldPanel === 'play') {
@@ -282,6 +310,8 @@ const appendCursorStyle = memo((cursorClass: string) => {
         const listener = mesh as any as ObjectPlayListener
         listener.stopPlaying && listener.stopPlaying()
       })
+      camera.lowerBetaSoftLimit = camera.lowerBetaLimit
+      camera.upperRadiusSoftLimit = camera.upperRadiusLimit
     }
 
     grid.isVisible = ui.activePanel === 'brushes' || ui.activePanel === 'objects'
@@ -340,7 +370,8 @@ const appendCursorStyle = memo((cursorClass: string) => {
   configDisplaySSAO.checked && new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
   const configDisplaySkyBox = document.getElementById('configDisplaySkyBox') as HTMLInputElement
   configDisplaySkyBox.checked = !!localStorage.getItem('config-display-skybox')
-  const sky = configDisplaySkyBox.checked && createSkyBox(scene)
+  const sky = configDisplaySkyBox.checked && new SkyBox('sky', scene)
+  sky.setIsVisible(false)
   document.getElementById('configApplyDisplay').addEventListener('click', _ => {
     localStorage.setItem('config-display-ssao', configDisplaySSAO.checked ? '1' : '')
     localStorage.setItem('config-display-skybox', configDisplaySkyBox.checked ? '1' : '')
@@ -435,14 +466,13 @@ const appendCursorStyle = memo((cursorClass: string) => {
   })
 
   cursor.isVisible = false
-  camera.attachControl(canvas, true)
-  keys.on('change', watch(() => {
-    return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && (keys.ctrlKey || keys.shiftKey)
+  keyInput.any.on('change', watch(() => {
+    return grid.isVisible && keys.showCursor
   }, shouldDetachCamera => {
     (cursor.isVisible = shouldDetachCamera) ? camera.detachControl(canvas) : camera.attachControl(canvas, true)
   }, false))
 
-  keys.on('change', watch(() => [
+  keyInput.any.on('change', watch(() => [
     ui.activePanel === 'brushes' ? pixelHeightNames[ui.selectedTilePixel.h] : ui.activePanel,
     keys.ctrlKey ? '-ctrl' : '',
     keys.shiftKey ? '-shift' : ''
@@ -456,23 +486,9 @@ const appendCursorStyle = memo((cursorClass: string) => {
     }
   }))
 
-  keys.on('change', watch(() => {
-    return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.shiftKey && keys.focus
-  }, focusCameraToCursor => {
-    focusCameraToCursor && camera.followTarget.copyFrom(cursor.hover)
-  }, false))
-
-  keys.on('change', watch(() => {
-    return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.ctrlKey && keys.undo
-  }, keyDown => {
-    keyDown && editorHistory.undo()
-  }, false))
-
-  keys.on('change', watch(() => {
-    return (ui.activePanel === 'brushes' || ui.activePanel === 'objects') && keys.ctrlKey && keys.redo
-  }, keyDown => {
-    keyDown && editorHistory.redo()
-  }, false))
+  keyInput.ondown('focus', () => grid.isVisible && camera.followTarget.copyFrom(cursor.hover))
+  keyInput.ondown('undo',  () => grid.isVisible && editorHistory.undo())
+  keyInput.ondown('redo',  () => grid.isVisible && editorHistory.redo())
 
   const renderListeners = [
     watch(() => {
@@ -490,50 +506,30 @@ const appendCursorStyle = memo((cursorClass: string) => {
         const container = objectToolbar.querySelector('.object-settings')
         container.innerHTML = `<div><b>#${newObject.name}</b></div>`
 
-        const binder = newObject as any as ObjectElementBinder,
-          elem = appendElement('table', { }, container)
-        binder.bindToElement && binder.bindToElement(elem, update => {
+        const binder = newObject as any as ObjectEditable,
+          content = appendElement('table', { }, container)
+        binder.attachEditorContent && binder.attachEditorContent(content, update => {
           editorHistory.push(new UpdateObjectAction(map.objectsData, newObject, update))
           map.saveDebounced(chunks)
         })
       }
       editorHistory.commit()
     }),
+    () => {
+      if (ui.activePanel === 'objects' && selectedObject && !toolbarDragStarted) {
+        const src = selectedObject.position,
+          viewport = camera.viewport.toGlobal(canvas.width, canvas.height),
+          pos = Vector3.Project(src, Matrix.Identity(), scene.getTransformMatrix(), viewport)
+        objectToolbar.style.left = pos.x + 'px'
+        objectToolbar.style.top = pos.y + 'px'
+      }
+    }
   ]
 
-  const panelListeners = {
-    objects: [
-      () => {
-        if (selectedObject && !toolbarDragStarted) {
-          const src = selectedObject.position,
-            viewport = camera.viewport.toGlobal(canvas.width, canvas.height),
-            pos = Vector3.Project(src, Matrix.Identity(), scene.getTransformMatrix(), viewport)
-          objectToolbar.style.left = pos.x + 'px'
-          objectToolbar.style.top = pos.y + 'px'
-        }
-      },
-    ],
-    play: [
-      () => {
-        const minBeta = Math.PI * 0.35
-        if (camera.beta < minBeta - 1e-3 && !cursor.isKeyDown) {
-          camera.beta = camera.beta * 0.9 + minBeta * 0.1
-        }
-        const maxRadius = 40
-        if (camera.radius > maxRadius + 1e-3 && !cursor.isKeyDown) {
-          camera.radius = camera.radius * 0.9 + maxRadius * 0.1
-        }
-      },
-    ]
-  }
-
   const fpsCounterText = document.getElementById('fpsCounterText'),
-    computeFps = createFpsCounter()
+    computeFps = fpsCounter()
   scene.registerBeforeRender(() => {
     renderListeners.forEach(poll => poll())
-
-    const cbs = panelListeners[ui.activePanel as keyof typeof panelListeners]
-    cbs && cbs.forEach(poll => poll())
 
     fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
 
@@ -554,5 +550,5 @@ const appendCursorStyle = memo((cursorClass: string) => {
   selectedObject = null
 
   await new Promise(resolve => setTimeout(resolve, 800))
-  document.body.classList.add('doc-loaded')
+  LoadingScreen.hide()
 })()

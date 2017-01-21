@@ -14,13 +14,17 @@ import {
   StaticBoxImpostor,
 } from '../utils/babylon'
 
-import ObjectBase, {
-  ObjectElementBinder,
-  ObjectOptions,
+import {
   appendSelectOptions,
+} from '../utils/dom'
+
+import {
+  ObjectBase,
+  ObjectEditable,
+  ObjectOptions,
 } from './'
 
-export default class Slope extends ObjectBase implements ObjectElementBinder {
+export default class Slope extends ObjectBase implements ObjectEditable {
   static readonly TARGET_TAG = 'slope-target'
   static readonly GROUND_TAG = 'slope-ground'
 
@@ -112,7 +116,7 @@ export default class Slope extends ObjectBase implements ObjectElementBinder {
     })
   }
 
-  bindToElement(container: HTMLElement, save: (args: Partial<Slope>) => void) {
+  attachEditorContent(container: HTMLElement, save: (args: Partial<Slope>) => void) {
     const options = { '': '--' }
     this.getScene().getMeshesByTags(Slope.TARGET_TAG, (mesh: Slope) => {
       mesh !== this && mesh.targetName !== this.name && (options[mesh.name] = mesh.name)

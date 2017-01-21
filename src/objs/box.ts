@@ -11,13 +11,11 @@ import {
 
 import {
   ObjectPlayListener,
-  ObjectElementBinder,
+  ObjectEditable,
   ObjectUsable,
 } from './'
 
 import Sprite from './sprite'
-
-const USABLE_MARKS = new WeakMap<BABYLON.Canvas2D, BABYLON.Group2D>()
 
 export default class Box extends InstancedMesh implements ObjectUsable {
   static readonly BOX_TAG = 'generated-box'
@@ -62,26 +60,23 @@ export default class Box extends InstancedMesh implements ObjectUsable {
 
   displayUsable(_mesh: AbstractMesh, show: boolean) {
     const canvas = this.generator.opts.canvas2d
-    let mark = USABLE_MARKS.get(canvas)
-    if (!mark) {
-      mark = new BABYLON.Group2D({
-        position: new BABYLON.Vector2(-10000, -10000),
-        parent: canvas,
-        children: [
-          new BABYLON.Rectangle2D({
-            width: 150,
-            height: 30,
-            fill: '#404080FF',
-            children: [
-              new BABYLON.Text2D('press [ E ] to kick', {
-                marginAlignment: 'v: center, h: center'
-              })
-            ]
-          })
-        ]
-      })
-      USABLE_MARKS.set(canvas, mark)
-    }
+
+    const mark = canvas['box-mark-cache'] || (canvas['box-mark-cache'] = new BABYLON.Group2D({
+      position: new BABYLON.Vector2(-10000, -10000),
+      parent: canvas,
+      children: [
+        new BABYLON.Rectangle2D({
+          width: 150,
+          height: 30,
+          fill: '#404080FF',
+          children: [
+            new BABYLON.Text2D('press [ E ] to kick', {
+              marginAlignment: 'v: center, h: center'
+            })
+          ]
+        })
+      ]
+    }))
     mark.trackedNode = this
     mark.levelVisible = show
   }
@@ -94,7 +89,7 @@ export default class Box extends InstancedMesh implements ObjectUsable {
   }
 }
 
-export class BoxGenerator extends Sprite implements ObjectPlayListener, ObjectElementBinder {
+export class BoxGenerator extends Sprite implements ObjectPlayListener, ObjectEditable {
   public boxMass = 5
   public velocityThreshold = 0
 
@@ -125,7 +120,7 @@ export class BoxGenerator extends Sprite implements ObjectPlayListener, ObjectEl
     this.spriteBody.isVisible = true
   }
 
-  bindToElement(_container: HTMLElement, _save: (args: Partial<BoxGenerator>) => void) {
+  attachEditorContent(_container: HTMLElement, _save: (args: Partial<BoxGenerator>) => void) {
     // do nothing
   }
 }

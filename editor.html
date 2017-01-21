@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
+  <link rel="stylesheet" type="text/css" href="assets/screen.css">
+  <meta charset="utf-8">
+  <style>
+    .hidden {
+      display: none;
+    }
+    .disabled {
+      opacity: 0.2;
+    }
+    .clear-both {
+      width: 100%;
+      clear: both;
+    }
+    .float-right {
+      float: right;
+    }
+
+    .show-debug-layer {
+      cursor: pointer;
+      float: right;
+    }
+    .object-toolbar.dragging {
+      visibility: hidden;
+      opacity: 0;
+      transition: visibility 0s 0.1s, opacity 0.1s linear;
+    }
+    .object-toolbar {
+      position: absolute;
+      background-color: rgba(255, 255, 255, 0.3);
+      padding: 5px;
+      user-select: none;
+      transition: opacity 0.1s linear;
+    }
+    .object-toolbar .move-object {
+      cursor: -webkit-grab;
+    }
+    .object-toolbar .focus-object,
+    .object-toolbar .remove-object,
+    .object-toolbar .cancel-select {
+      cursor: pointer;
+    }
+    .object-toolbar .cancel-select {
+      float: right;
+    }
+    .object-toolbar .config-item {
+      height: 2em;
+    }
+
+    .ui-toolbar {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 120px;
+      padding-top: 2em;
+      background-color: rgba(255, 255, 255, 0.3);
+      overflow: hidden;
+      user-select: none;
+    }
+    .ui-panels {
+      height: 100%;
+      overflow: auto;
+      padding: 10px;
+      padding-top: 2px;
+    }
+    .ui-list-item {
+      float: left;
+      padding: 2px;
+    }
+    .ui-list-item > * {
+      display: block;
+      cursor: default;
+    }
+    .ui-list-item span {
+      width: 32px;
+      height: 32px;
+      line-height: 32px;
+      background: #ccc;
+      text-align: center;
+    }
+    .ui-list-item.selected {
+      background: white;
+    }
+    .ui-head {
+      position: absolute;
+      width: 100%;
+      height: 2em;
+      line-height: 2em;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .ui-top {
+      padding: 0 10px;
+      color: #eee;
+    }
+    .ui-top-right {
+      float: right;
+    }
+    .ui-top a {
+      color: #eee;
+    }
+
+    .game-config {
+      min-width: 120px;
+      float: left;
+      padding: 0 10px;
+    }
+
+    .doc-help {
+      display: none;
+      position: absolute;
+      left: 20px;
+      top: 170px;
+      right: 20px;
+      bottom: 20px;
+      overflow: auto;
+      background: rgba(255, 255, 255, 0.6);
+    }
+    .doc-help .content {
+      color: #333;
+      padding: 10px;
+    }
+    .doc-help .content a {
+      color: #333;
+    }
+    .show-help .doc-help {
+      display: block;
+    }
+
+    .on-panel-play .ui-toolbar {
+      display: none;
+    }
+    .on-panel-play .doc-help {
+      top: 40px;
+    }
+  </style>
+</head>
+<body>
+  <div class="ui-toolbar">
+    <div class="ui-panels">
+      <div class="hidden ui-panel panel-brushes">
+        <div class="ui-brushes">
+          <div class="ui-list-item" tid="?">
+            <span title="use tile from start"><i class="fa fa-question"></i></span>
+          </div>
+          <div class="ui-list-item" tid="">
+            <span title="none"><i class="fa fa-ban"></i></span>
+          </div>
+        </div>
+      </div>
+      <div class="hidden ui-panel panel-objects">
+        <div class="ui-classes"></div>
+      </div>
+      <div class="hidden ui-panel panel-game">
+        <div class="game-config">
+          <h3>display</h3>
+          <label><input id="configDisplaySSAO" type="checkbox" />enable AO</label><br />
+          <label><input id="configDisplaySkyBox" type="checkbox" />show skybox</label><br />
+          <button id="configApplyDisplay">Apply Display Settings</button>
+        </div>
+        <div class="game-config">
+          <h3>map</h3>
+          <button id="configDownloadMap">download map</button>
+          <button id="configUploadMap">upload map</button>
+          <button id="configResetMap">reset map</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="ui-head">
+    <div class="ui-top">
+      <select class="ui-panel-selector"></select>
+      <span class="hidden ui-panel panel-brushes">
+        <select class="ui-brush-height">
+          <option value="+1">shift up</option>
+          <option value="-1">shift down</option>
+          <option value="0">flatten</option>
+          <option value="">none</option>
+        </select>
+      </span>
+      <span class="hidden ui-panel panel-play"> /
+       <a href="javascript:void(0)" id="playSetCameraAlphaDec"
+         title="rotate left"><i class="fa fa-angle-double-left"></i></a>
+       <a href="javascript:void(0)" id="playResetCameraAlpha"
+         title="camera"><i class="fa fa-street-view"></i></a>
+       <a href="javascript:void(0)" id="playSetCameraAlphaInc"
+         title="rotate right"><i class="fa fa-angle-double-right"></i></a>
+      </span>
+      <span class="hidden ui-panel panel-brushes panel-objects"> /
+        <a class="disabled" href="javascript:void(0)" id="docActionUndo"
+          title="undo (ctrl+Z)"><i class="fa fa-undo"></i></a>
+        <a class="disabled" href="javascript:void(0)" id="docActionRedo"
+          title="redo (ctrl+Y)"><i class="fa fa-repeat"></i></a>
+      </span>
+      <span class="hidden ui-panel panel-brushes"> /
+        <span id="brushHoverInfo"></span>
+      </span>
+      <span class="hidden ui-panel panel-objects"> /
+        <span id="objectHoverInfo"></span>
+      </span>
+      <div class="ui-top-right">
+        <span id="fpsCounterText"></span> /
+        <a href="javascript:void(0)" id="docShowDebug" title="debug"><i class="fa fa-info"></i></a> /
+        <a href="javascript:void(0)" id="docShowHelp" title="help"><i class="fa fa-question"></i></a>
+      </div>
+    </div>
+  </div>
+  <div id="objectToolbar" class="object-toolbar">
+    <i class="move-object fa fa-arrows" title="drag to move"></i>
+    <i class="focus-object fa fa-crosshairs" title="look at this"></i>
+    <i class="remove-object fa fa-trash" title="remove"></i>
+    <i class="cancel-select fa fa-close" title="cancel"></i>
+    <div class="object-settings"></div>
+  </div>
+  <div class="doc-help">
+    <div class="content">
+      <div class="float-right">
+        <a href="javascript:void(0)" id="docHideHelp"><i class="fa fa-close"></i></a>
+      </div>
+      <h2>Build 602bd0338b1ca9a64698</h2>
+      <ul>
+        <li>新的"可触发方块"！（可用于门，移动的平台或<b>蕾喵振荡器</b>）</li>
+        <li>s1-3 地图测试</li>
+      </ul>
+      <hr>
+
+      <h2>Build 4efff72553269460f7dd</h2>
+      <ul>
+        <li>新的“跳台”！</li>
+        <li>trigger 对象支持延迟重置（可以制作单向通过的门，或者配合斜坡延时）</li>
+        <li>gate 对象会在顶部显示开启图标</li>
+        <li>绘制地图时的指针提示</li>
+        <li>载入屏幕</li>
+      </ul>
+      <hr>
+
+      <h2>Build 268e9bbe8e5baa6d19e0da46f75ab036</h2>
+      <ul>
+        <li>新的“石头”！</li>
+        <li>新的“门”！</li>
+        <li>地形侧面贴图</li>
+        <li>trigger 对象可支持正反触发无限多的目标</li>
+        <li>在 #game 面板中可设置图形选项</li>
+        <li>在 #play 面板上增加控制摄像机的按钮</li>
+        <li>（开启 SkyBox 后）像茄子一样的云和像柱子一样的山！</li>
+      </ul>
+      <hr>
+
+      <h2>General</h2>
+      <ul>
+        <li>按住鼠标拖动以调整视角</li>
+        <li>按 shift+f 将视野中心移动到光标位置</li>
+        <li>编辑时可用 ctrl+z 撤销，ctrl+y 重做</li>
+      </ul>
+      <hr>
+
+      <h2>In #brushes panel</h2>
+      <ul>
+        <li>先在上方选择绘制时对地形的操作（提升，下沉，平整，无），在下方选择绘制时要覆盖的图案</li>
+        <li>按住 ctrl 并拖动可自由绘制每个图块，按住 shift 并拖动可以绘制整块区域</li>
+        <li>按住 shift 并点击图案可以对红色框选区域进行重复操作</li>
+      </ul>
+      <hr>
+
+      <h2>In #objects panel</h2>
+      <ul>
+        <li>在上方选择要放置的对象</li>
+        <li>按 ctrl 点击将新对象放置到地图上</li>
+        <li>按 shift 可框选已放置的对象</li>
+        <li>在选中对象的工具栏上可移动或者删除对象，某些对象具有有可编辑的属性</li>
+      </ul>
+      <hr>
+
+      <h2>In #game panel</h2>
+      <ul>
+        <li>开启 SSAO 和 SkyBox</li>
+        <li>上传 / 下载地图</li>
+      </ul>
+      <hr>
+
+      <h2>In #play panel</h2>
+      <ul>
+        <li>使用 W / S / A / D 移动，Q 切换角色</li>
+      </ul>
+    </div>
+  </div>
+  <script src="build/screen.bundle.js"></script>
+  <script src="//localhost:8080/webpack-dev-server.js"></script>
+  <script src="node_modules/babylonjs/dist/cannon.js"></script>
+  <script src="node_modules/babylonjs/dist/babylon.2.5.max.js"></script>
+  <script src="node_modules/babylonjs/dist/babylon.2.5.canvas2d.max.js"></script>
+  <script src="build/editor.bundle.js"></script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+html, body {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  font-size: small;
+}
+    
+.screen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: #eee;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+  font-size: 150%;
+  flex-direction: column;
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 0.2s, opacity 0.2s linear;
+}
+.screen.loading {
+  visibility: visible;
+  opacity: 1;
+}
+.screen .loading-dot:before {
+  content: '-';
+}
+.screen .loading-dot {
+  color: #666;
+  font-size: 200%;
+  transition: all 0.3s;
+}
+.screen .loading-dot.active {
+  color: #aaa;
+  font-size: 100%;
+}

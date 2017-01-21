@@ -8,33 +8,32 @@ import {
   Color3,
   PhysicsImpostor,
   VertexData,
-  AbstractMesh,
 } from '../babylon'
 
 import {
   getAutoTileImage,
   AUTO_TILE_NEIGHBORS,
-} from './tiles'
+} from '../utils/tiles'
 
 import {
   getChunkGroundVertexData,
   getChunkSideVertexData,
   StaticBoxImpostor,
-} from './babylon'
+} from '../utils/babylon'
 
 import {
   throttle,
   memo,
   getBlocksFromHeightMap,
   EventEmitter,
-} from './'
+} from '../utils'
 
 export interface ChunkData {
   tiles: number[]
   heights: number[]
   top: Mesh
   side: Mesh
-  blocks: { [id: string]: PhysicsImpostor | AbstractMesh }
+  blocks: { [id: string]: PhysicsImpostor }
   texture: DynamicTexture
   i: number
   j: number
@@ -72,7 +71,7 @@ export default class Chunks extends EventEmitter<{
   private readonly tilesDefine: { [id: number]: TileDefine }
   private readonly data: { [key: string]: ChunkData } = { }
 
-  constructor(readonly scene: Scene,
+  constructor(readonly name: string, readonly scene: Scene,
     tilesDefine: TileDefine[],
     saveData = { } as { [key: string]: SaveData },
     readonly position = Vector3.Zero(),
@@ -88,12 +87,16 @@ export default class Chunks extends EventEmitter<{
     // index tiles with tileId
     tilesDefine.forEach(tile => this.tilesDefine[tile.tileId] = tile)
 
-    const sideMaterial = this.sideMaterial = new StandardMaterial('side', scene)
-    sideMaterial.disableLighting = true
-    sideMaterial.emissiveColor = Color3.White()
-    const texture = sideMaterial.diffuseTexture = new Texture('assets/chunk_side.png', scene)
-    texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
-    texture.uScale = texture.vScale = this.chunkUnits
+    const sideMaterialId = 'cache/chunk/side/' + this.chunkUnits
+    this.sideMaterial = scene.getMaterialByName(sideMaterialId) as StandardMaterial
+    if (!this.sideMaterial) {
+      const sideMaterial = this.sideMaterial = new StandardMaterial(sideMaterialId, scene)
+      sideMaterial.disableLighting = true
+      sideMaterial.emissiveColor = Color3.White()
+      const texture = sideMaterial.diffuseTexture = new Texture('assets/chunk_side.png', scene)
+      texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
+      texture.uScale = texture.vScale = this.chunkUnits
+    }
 
     Object.keys(saveData).forEach(k => {
       const { tiles, heights } = saveData[k]
@@ -107,22 +110,22 @@ export default class Chunks extends EventEmitter<{
     const [i, j] = k.split('/').map(parseFloat),
       { chunkUnits, scene, chunkSize, textureSize } = this
 
-    const top = new Mesh('chunk/top/' + k, scene),
+    const top = new Mesh(this.name + '/top/' + k, scene),
       { x, y, z } = this.position
     top.position.copyFromFloats(i * chunkSize + x, y, j * chunkSize + z)
 
-    const side = new Mesh('chunk/side/' + k, scene)
+    const side = new Mesh(this.name + '/side/' + k, scene)
     side.material = this.sideMaterial
     side.parent = top
 
     const blocks = { }
 
-    const material = top.material = new StandardMaterial('chunk/mat/' + k, scene)
+    const material = top.material = new StandardMaterial(this.name + '/mat/' + k, scene)
     material.disableLighting = true
     material.emissiveColor = new Color3(1, 1, 1)
 
     const texture = material.diffuseTexture =
-      new DynamicTexture('chunk/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
+      new DynamicTexture(this.name + '/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
 
     setImmediate(() => {
       for (let u = 0; u < chunkUnits; u ++) {
@@ -336,5 +339,16 @@ export default class Chunks extends EventEmitter<{
       saveData[k] = { tiles, heights }
     })
     return saveData
+  }
+
+  dispose() {
+    Object.keys(this.data).forEach(k => {
+      const { top, side, texture, blocks } = this.data[k]
+      top.dispose()
+      side.dispose()
+      texture.dispose()
+      Object.keys(blocks).forEach(id => blocks[id].dispose())
+      delete this.data[k]
+    })
   }
 }

@@ -1,7 +1,3 @@
-import {
-  ArrayHash
-} from './index'
-
 export const AUTO_TILE_MAP = [
   {
     dst: [0, 0],
@@ -40,28 +36,30 @@ function getMaskBits(neighbors: number, mask: number[]) {
   return mask.reduce((s, i, j) => s + (neighbors & (1 << i) ? (1 << j) : 0), 0)
 }
 
-const tileCaches = new ArrayHash<HTMLImageElement, { [offset: string]: {
-  canvas: HTMLCanvasElement,
-  dict: { [key: string]: boolean }
-} }>()
+type TileCache = {
+  [offset: string]: {
+    canvas: HTMLCanvasElement,
+    hasUsed: { [key: string]: boolean }
+  }
+}
 
 // the size of autotile should be 2*3 tileSize
 export function getAutoTileImage(source: HTMLImageElement,
     offsetX: number, offsetY: number,
     tileSize: number, neighbors: number) {
-  const cache = tileCaches.get(source) || tileCaches.set(source, { }),
+  const cache = source['auto-tile-cache'] = (source['auto-tile-cache'] || { }) as TileCache,
     key = [offsetX, offsetY, tileSize].join('/')
   if (!cache[key]) {
     const canvas = document.createElement('canvas')
     canvas.width = tileSize
     canvas.height = 256 * tileSize
-    const dict = { }
-    cache[key] = { canvas, dict }
+    const hasUsed = { }
+    cache[key] = { canvas, hasUsed }
   }
 
-  const { canvas, dict } = cache[key],
+  const { canvas, hasUsed } = cache[key],
     hw = tileSize / 2
-  if (!dict[key + neighbors]) {
+  if (!hasUsed[neighbors]) {
     const dc = canvas.getContext('2d')
     AUTO_TILE_MAP.forEach(({ dst, mask, src }) => {
       const b = getMaskBits(neighbors, mask),
@@ -73,7 +71,7 @@ export function getAutoTileImage(source: HTMLImageElement,
         dy = n * hw + neighbors * tileSize
       dc.drawImage(source, sx, sy, hw, hw, dx, dy, hw, hw)
     })
-    dict[key + neighbors] = true
+    hasUsed[neighbors] = true
   }
 
   return { im: canvas, sx: 0, sy: neighbors * tileSize }

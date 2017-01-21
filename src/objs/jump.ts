@@ -1,4 +1,5 @@
 import Trigger from './trigger'
+import Player from './player'
 
 import {
   Color3,
@@ -11,18 +12,17 @@ import {
 
 import {
   ObjectOptions,
-  ObjectElementBinder,
+  ObjectEditable,
   ObjectTriggerable,
-  appendElement,
-  appendConfigLine,
-  appendConfigElement,
 } from './'
 
 import {
   drawIconFont,
+  appendElement,
+  appendConfigInput,
 } from '../utils/dom'
 
-export default class Jump extends Trigger implements ObjectElementBinder, ObjectTriggerable {
+export default class Jump extends Trigger implements ObjectEditable, ObjectTriggerable {
   get upForce() {
     return this._upForce
   }
@@ -93,22 +93,15 @@ export default class Jump extends Trigger implements ObjectElementBinder, Object
     arrow.parent = this
   }
 
-  bindToElement(container: HTMLElement, save: (args: Partial<Jump>) => void) {
-    const attrs = { type: 'number', min: 0, style: { width: '100px' } },
-      up = appendConfigElement('up:', 'input', attrs, container) as HTMLInputElement
-    up.value = this.upForce as any
-    up.addEventListener('change', _ => save({ upForce: parseFloat(up.value) || 0 }))
+  attachEditorContent(container: HTMLElement, save: (args: Partial<Jump>) => void) {
+    const attrs = { type: 'number', min: 0, style: { width: '100px' } }
+    appendConfigInput('up: ', this.upForce, attrs, container, val => save({ upForce: parseFloat(val) }))
 
     const dirSel = appendElement('select', { }, null) as HTMLSelectElement
     'x/-x/z/-z'.split('/').forEach(innerHTML => appendElement('option', { innerHTML }, dirSel))
     dirSel.value = this.sideDirection
     dirSel.addEventListener('change', _ => save({ sideDirection: dirSel.value as any }))
-
-    const side = appendElement('input', attrs, null) as HTMLInputElement
-    side.value = this.sideForce as any
-    side.addEventListener('change', _ => save({ sideForce: parseFloat(side.value) || 0 }))
-
-    appendConfigLine(dirSel, side, container)
+    appendConfigInput(dirSel, this.sideForce, attrs, container, val => save({ sideForce: parseFloat(val) }))
   }
 
   static readonly SIDE_DIRS = {
@@ -120,15 +113,11 @@ export default class Jump extends Trigger implements ObjectElementBinder, Object
 
   onTrigger(isOn: boolean) {
     const mesh = this.getScene().getMeshesByTags(Jump.TRIGGER_ON_TAG)[0]
-    if (isOn && mesh && mesh.physicsImpostor) {
-      const name = mesh.parent && mesh.parent.name
-      if (name === 'remilia') {
-        mesh.physicsImpostor.setLinearVelocity(Vector3.Zero())
-        const { sideDirection, sideForce, upForce } = this,
-          [x, z] = Jump.SIDE_DIRS[sideDirection],
-          dir = new Vector3(x * sideForce, upForce, z * sideForce)
-        mesh.applyImpulse(dir, mesh.position)
-      }
+    if (isOn && mesh instanceof Player && mesh.name === 'remilia') {
+      mesh.physicsImpostor.setLinearVelocity(Vector3.Zero())
+      const { sideDirection, sideForce, upForce } = this,
+        [x, z] = Jump.SIDE_DIRS[sideDirection]
+      mesh.applyJumpImpulse(new Vector3(x * sideForce, upForce, z * sideForce))
     }
   }
 }

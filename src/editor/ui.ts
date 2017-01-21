@@ -1,14 +1,14 @@
 import {
   appendElement,
-} from './utils/dom'
+} from '../utils/dom'
 
 import {
   TileDefine,
-} from './utils/chunks'
+} from '../game/chunks'
 
 import {
   EventEmitter,
-} from './utils'
+} from '../utils'
 
 export interface ClassDefine {
   clsId: number,

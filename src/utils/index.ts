@@ -1,21 +1,49 @@
-export class ArrayHash<K, V> {
-  data = [ ] as [K, V][]
-  get(key: K) {
-    const find = this.data.filter(([k]) => k === key).pop()
-    return find && find[1]
+export function randomRange(begin, end) {
+  return Math.random() * (end - begin) + begin
+}
+
+export function randomBytes(size = 4) {
+  return Array(size * 2).fill(0).map(_ => Math.floor(Math.random() * 16).toString(16)).join('')
+}
+
+export function softClamp(x: number, min: number, max: number, epsi = 1e-3, fac = 0.1) {
+  if (x < min - epsi * min) {
+    return x * (1 - fac) + min * fac
   }
-  del(key: K) {
-    this.data = this.data.filter(([k]) => k !== key)
+  if (x > max + epsi * min) {
+    return x * (1 - fac) + max * fac
   }
-  set(key: K, val: V) {
-    const find = this.data.filter(([k]) => k === key).pop()
-    if (find) {
-      find[1] = val
-    }
-    else {
-      this.data.push([key, val])
-    }
-    return val
+  return x
+}
+
+interface Task {
+  start: () => Promise<any>
+  resolve: Function
+  reject: Function
+}
+export function queue() {
+  let running = null as Task
+  const waiting = [ ] as Task[]
+  const exec = () => {
+    running = waiting.shift()
+    running && running.start()
+        .then(r => (running.resolve(r), exec()))
+        .catch(e => (running.reject(e), exec()))
+  }
+  return (start: () => Promise<any>) => new Promise((resolve, reject) => {
+    waiting.push({ start, resolve, reject })
+    !running && exec()
+  })
+}
+
+export function fpsCounter(n = 30) {
+  let a = Array(n).fill(0), c = 0
+  return () => {
+    const i = c,
+      j = (c + 1) % a.length,
+      t = (a[i] - a[j]) / (a.length - 1)
+    a[c = j] = Date.now()
+    return 1000 / t
   }
 }
 

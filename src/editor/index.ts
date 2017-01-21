@@ -17,7 +17,18 @@ import {
 import {
   appendElement,
   drawIconFont,
+  LocationSearch,
 } from '../utils/dom'
+
+import {
+  debounce,
+} from '../utils'
+
+import {
+  SavedMap,
+} from '../game'
+
+import Chunks from '../game/chunks'
 
 export function createDataURLFromIconFontAndSub(mainClass: string, subClass: string, size: number = 32, color = '#333') {
   const attrs = { width: size, height: size },
@@ -33,6 +44,50 @@ export function createDataURLFromIconFontAndSub(mainClass: string, subClass: str
   const url = canvas.toDataURL()
   canvas.parentNode.removeChild(canvas)
   return url
+}
+
+export async function loadSavedMap() {
+  const toJSON = function(chunks: Chunks) {
+    const chunksData = chunks.serialize(),
+      objectsData = savedMap.objectsData
+    Object.keys(objectsData).forEach(id => {
+      const { clsId, args } = objectsData[id],
+        { x, y, z } = chunks.scene.getMeshByName(id).position
+      objectsData[id] = { args, clsId, x, y, z }
+    })
+    return JSON.stringify({ objectsData, chunksData })
+  }
+
+  const saveDebounced = debounce((chunks: Chunks) => {
+    const dataToSave = toJSON(chunks)
+    localStorage.setItem('saved-map', dataToSave)
+    console.log(`save chunk data ok (${dataToSave.length} bytes)`)
+  }, 1000)
+
+  const reset = () => {
+    localStorage.setItem('saved-map', '{ }')
+  }
+
+  let dataToLoad: string
+  if (dataToLoad = LocationSearch.get('projSavedMap')) {
+    console.log(`loaded from query string (${dataToLoad.length} bytes)`)
+    history.pushState('', document.title, LocationSearch.get('projRestoreURL'))
+    localStorage.setItem('saved-map', dataToLoad)
+  }
+  else if (dataToLoad = localStorage.getItem('saved-map')) {
+    console.log(`loaded from localStorage (${dataToLoad.length} bytes)`)
+  }
+
+  let savedMap: SavedMap
+  try {
+    savedMap = JSON.parse(dataToLoad)
+  }
+  catch (err) {
+    savedMap = { } as SavedMap
+  }
+
+  savedMap = Object.assign({ chunksData: { }, objectsData: { } } as SavedMap, savedMap)
+  return { saveDebounced, reset, toJSON, ...savedMap }
 }
 
 export class SelectionBox extends LinesMesh {

@@ -8,8 +8,12 @@ import {
   StandardMaterial,
 } from '../babylon'
 
-export function Vector3Map(vec: Vector3, fn: (x: number) => number) {
-  return new Vector3(fn(vec.x), fn(vec.y), fn(vec.z))
+import {
+  softClamp,
+} from './'
+
+export function Vector3Map(vec: Vector3, fn: (x: number, a?: 'x' | 'y' | 'z') => number) {
+  return new Vector3(fn(vec.x, 'x'), fn(vec.y, 'y'), fn(vec.z, 'z'))
 }
 
 export const VERTEX_BOX      = VertexData.CreateBox({ })
@@ -207,31 +211,49 @@ function roundInPi2(a: number) {
   while (a > Pi2) a -= Pi2
   return a
 }
+function nearestAngle(a: number, b: number) {
+  return Math.abs(a - b) <= Math.PI ? a :
+    a > b ? a - Pi2 : b + Pi2
+}
 
 export class FollowCamera extends ArcRotateCamera {
   public readonly followTarget = Vector3.Zero()
+  public readonly followSpeed = new Vector3(0.1, 0.05, 0.1)
   public followAlpha = undefined as number | undefined
+  public lowerBetaSoftLimit = 0
+  public upperBetaSoftLimit = 1 / 0
+  public lowerRadiusSoftLimit = 0
+  public upperRadiusSoftLimit = 1 / 0
+
   constructor(name: string, alpha: number, beta: number, radius: number, target: Vector3, scene: Scene) {
     super(name, alpha, beta, radius, target, scene)
     this.followTarget.copyFrom(target)
+
+    let isMouseDown = false
+    window.addEventListener('mousedown', _ => isMouseDown = true)
+    window.addEventListener('mouseup', _ => isMouseDown = false)
+
     this.getScene().registerAfterRender(() => {
       if (!this.followTarget.equalsWithEpsilon(this.target, 0.1)) {
-        const cameraDirection = this.target.subtract(this.position)
-        this.setTarget(Vector3.Lerp(this.target, this.followTarget, 0.1))
+        const cameraDirection = this.target.subtract(this.position),
+          b = this.target, e = this.followTarget
+        this.setTarget(Vector3Map(this.followSpeed, (f, a) => b[a] * (1 - f) + e[a] * f))
         this.setPosition(this.target.subtract(cameraDirection))
       }
+
       if (this.followAlpha !== undefined) {
-        let alpha = roundInPi2(this.followAlpha),
-          delta = Math.abs(this.alpha - alpha)
-        if (delta > Math.PI) {
-          alpha = alpha > this.alpha ? alpha - Pi2 : alpha + Pi2
-        }
-        if (delta > 1e-2) {
-          this.alpha = roundInPi2(this.alpha * 0.9 + alpha * 0.1)
+        const alpha = roundInPi2(this.followAlpha)
+        if (Math.abs(this.alpha - alpha) > 1e-2) {
+          this.alpha = roundInPi2(this.alpha * 0.9 + nearestAngle(alpha, this.alpha) * 0.1)
         }
         else {
           this.followAlpha = undefined
         }
+      }
+
+      if (!isMouseDown) {
+        this.beta = softClamp(this.beta, this.lowerBetaSoftLimit, this.upperBetaSoftLimit)
+        this.radius = softClamp(this.radius, this.lowerRadiusSoftLimit, this.upperRadiusSoftLimit)
       }
     })
   }

@@ -62,7 +62,6 @@ export default class Cursor extends LinesMesh {
   readonly start = Vector3.Zero()
 
   private _direction = ''
-
   private _isKeyDown = false
   get isKeyDown() {
     return this._isKeyDown
@@ -122,9 +121,5 @@ export default class Cursor extends LinesMesh {
     this.position.copyFrom(this.minimum.add(this.maximum).scale(0.5))
     const scaling = this.maximum.subtract(this.minimum)
     this.scaling.copyFromFloats(scaling[i], scaling[j], scaling[k])
-  }
-
-  resetKeyDown() {
-    this._isKeyDown = false
   }
 }

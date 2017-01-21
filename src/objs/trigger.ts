@@ -18,14 +18,18 @@ import {
   ColorNoLightingMaterial,
 } from '../utils/babylon'
 
-import ObjectBase, {
+import {
+  appendElement,
+  appendConfigRow,
+  appendConfigElement,
+} from '../utils/dom'
+
+import {
+  ObjectBase,
   ObjectOptions,
-  ObjectElementBinder,
+  ObjectEditable,
   ObjectTriggerable,
   ObjectPlayListener,
-  appendElement,
-  appendConfigLine,
-  appendConfigElement,
 } from './'
 
 const TRIGGER_ON_COLOR = new Color3(1, 0.5, 0.5),
@@ -35,12 +39,12 @@ class TriggerLocker extends Mesh {
   private timeBegin = 0
   private timeEnd = 0
   setTimeout(timeout: number) {
-    this.timeBegin = Date.now()
+    this.timeBegin = this.opts.clock.now()
     this.timeEnd = this.timeBegin + timeout
     this.isVisible = true
   }
 
-  constructor(name: string, scene: Scene) {
+  constructor(name: string, scene: Scene, private opts: ObjectOptions) {
     super(name, scene)
     VERTEX_PLANE.applyToMesh(this)
     this.billboardMode = Mesh.BILLBOARDMODE_Y
@@ -60,7 +64,7 @@ class TriggerLocker extends Mesh {
     texture.hasAlpha = true
     this.registerBeforeRender(_ => {
       if (this.timeEnd > this.timeBegin) {
-        const now = Date.now()
+        const now = this.opts.clock.now()
         if (now > this.timeEnd) {
           this.timeEnd = this.timeBegin
         }
@@ -90,7 +94,7 @@ class TriggerLocker extends Mesh {
   }
 }
 
-export default class Trigger extends ObjectBase implements ObjectElementBinder, ObjectPlayListener {
+export default class Trigger extends ObjectBase implements ObjectEditable, ObjectPlayListener {
   static readonly TRIGGER_ON_TAG = 'mesh-trigger-on'
 
   private _targetName = ''
@@ -111,7 +115,8 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
 
   private showLockerSprite(timeout: number) {
     const spriteId = 'trigger/lock/sprite',
-      sprite = (this.getScene().getMeshByName(spriteId) as TriggerLocker) || new TriggerLocker(spriteId, this.getScene())
+      sprite = (this.getScene().getMeshByName(spriteId) as TriggerLocker) ||
+        new TriggerLocker(spriteId, this.getScene(), this.opts)
     sprite.position.copyFrom(this.position)
     sprite.position.y += 2
     sprite.setTimeout(timeout)
@@ -159,12 +164,12 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
     this.triggerOnBox.parent = this.triggerOffBox.parent = this
   }
 
-  bindToElement(container: HTMLElement, save: (args: Partial<Trigger>) => void) {
+  attachEditorContent(container: HTMLElement, save: (args: Partial<Trigger>) => void) {
     const attrs = { type: 'number', style: { width: '100px' } },
       resetDiv = appendConfigElement('reset: ', 'div', { }, container),
-      resetInput = appendElement('input', attrs, resetDiv)
+      resetInput = appendElement('input', attrs, resetDiv) as HTMLInputElement
     appendElement('span', { innerHTML: ' ms' }, resetDiv)
-    resetInput.value = this.autoResetTimeout
+    resetInput.value = this.autoResetTimeout + ''
     resetInput.addEventListener('change', _ => save({ autoResetTimeout: parseInt(resetInput.value) || 0 }))
 
     const rows = [ ] as HTMLElement[]
@@ -199,7 +204,7 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
         nameSel.value = name
         nameSel.addEventListener('change', _ => (saveTargetName(), updateSelections()))
 
-        const tr = appendConfigLine(isNeSel, nameSel, container) as HTMLTableRowElement
+        const tr = appendConfigRow(isNeSel, nameSel, container) as HTMLTableRowElement
         tr.classList.add('.trigger-config-line')
         rows.push(tr)
 
@@ -221,13 +226,13 @@ export default class Trigger extends ObjectBase implements ObjectElementBinder, 
         name = isNe ? target.substr(1) : target,
         mesh = this.getScene().getMeshByName(name) as any as ObjectTriggerable
       if (mesh && mesh.onTrigger) {
-        mesh.onTrigger(isNe ? !isOn : isOn)
+        mesh.onTrigger(isNe ? !isOn : isOn, this)
       }
     })
     if (isOn && this.autoResetTimeout > 0) {
       this.isTriggerLocked = true
       this.showLockerSprite(this.autoResetTimeout)
-      setTimeout(_ => {
+      this.opts.clock.timeout(_ => {
         this.isTriggerLocked = false
         this.fireTrigger(false)
       }, this.autoResetTimeout)

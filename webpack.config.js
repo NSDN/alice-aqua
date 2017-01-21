@@ -3,10 +3,18 @@ const webpack = require("webpack"),
 
 module.exports = {
   debug: true,
-  entry: isDevServer ? ['./src'] : ['babel-polyfill', './src'],
   devtool: isDevServer && 'source-map',
+  entry: isDevServer ? {
+    game: './src/game-main',
+    editor: './src/editor-main',
+    screen: './src/loading-screen'
+  } : {
+    game: ['babel-polyfill', './src/game-main'],
+    editor: ['babel-polyfill', './src/editor-main'],
+    screen: './src/loading-screen'
+  },
   output: {
-    filename: 'build/bundle.js'
+    filename: 'build/[name].bundle.js'
   },
   resolve: {
     extensions: ['', '.js', '.ts']

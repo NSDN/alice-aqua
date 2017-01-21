@@ -27,6 +27,7 @@
     "webpack-dev-server": "^1.16.2"
   },
   "dependencies": {
+    "@types/whatwg-fetch": "0.0.33",
     "babylonjs": "git+https://github.com/BabylonJS/Babylon.js",
     "font-awesome": "^4.6.3"
   }
