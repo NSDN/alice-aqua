@@ -30,10 +30,20 @@ export function queue() {
         .then(r => (running.resolve(r), exec()))
         .catch(e => (running.reject(e), exec()))
   }
-  return (start: () => Promise<any>) => new Promise((resolve, reject) => {
+  return <T>(start: () => Promise<T>) => new Promise((resolve, reject) => {
     waiting.push({ start, resolve, reject })
     !running && exec()
   })
+}
+
+export function holdon(fn: (p: Promise<any>) => Promise<any>) {
+  let resolve = null,
+    next = new Promise(res => resolve = res),
+    done = fn(next)
+  return () => {
+    resolve()
+    return done
+  }
 }
 
 export function fpsCounter(n = 30) {

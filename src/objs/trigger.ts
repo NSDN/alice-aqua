@@ -95,8 +95,6 @@ class TriggerLocker extends Mesh {
 }
 
 export default class Trigger extends ObjectBase implements ObjectEditable, ObjectPlayListener {
-  static readonly TRIGGER_ON_TAG = 'mesh-trigger-on'
-
   private _targetName = ''
   get targetName() {
     return this._targetName
@@ -112,6 +110,7 @@ export default class Trigger extends ObjectBase implements ObjectEditable, Objec
   protected readonly triggerSensor: AbstractMesh
   protected readonly triggerOnBox: AbstractMesh
   protected readonly triggerOffBox: AbstractMesh
+  protected readonly triggerOnTag: string
 
   private showLockerSprite(timeout: number) {
     const spriteId = 'trigger/lock/sprite',
@@ -162,6 +161,7 @@ export default class Trigger extends ObjectBase implements ObjectEditable, Objec
     this.triggerOffBox = boxOff.createInstance(this.name + '/box')
     this.triggerOffBox.isVisible = true
     this.triggerOnBox.parent = this.triggerOffBox.parent = this
+    this.triggerOnTag = 'mesh-trigger-on' + this.name
   }
 
   attachEditorContent(container: HTMLElement, save: (args: Partial<Trigger>) => void) {
@@ -240,15 +240,15 @@ export default class Trigger extends ObjectBase implements ObjectEditable, Objec
   }
 
   private checkTrigger(mesh: AbstractMesh, isOn: boolean) {
-    const triggered = this.getScene().getMeshesByTags(Trigger.TRIGGER_ON_TAG)
-    isOn ? Tags.AddTagsTo(mesh, Trigger.TRIGGER_ON_TAG) : Tags.RemoveTagsFrom(mesh, Trigger.TRIGGER_ON_TAG)
+    const triggered = this.getScene().getMeshesByTags(this.triggerOnTag)
+    isOn ? Tags.AddTagsTo(mesh, this.triggerOnTag) : Tags.RemoveTagsFrom(mesh, this.triggerOnTag)
     if ((triggered.length === 0 && isOn) || (triggered.length === 1 && triggered[0] === mesh && !isOn)) {
       this.fireTrigger(isOn)
     }
   }
   private clearTriggered() {
-    this.getScene().getMeshesByTags(Trigger.TRIGGER_ON_TAG).forEach(mesh => {
-      Tags.RemoveTagsFrom(mesh, Trigger.TRIGGER_ON_TAG)
+    this.getScene().getMeshesByTags(this.triggerOnTag).forEach(mesh => {
+      Tags.RemoveTagsFrom(mesh, this.triggerOnTag)
     })
     this.fireTrigger(false)
   }

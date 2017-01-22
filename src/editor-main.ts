@@ -113,7 +113,7 @@ const KEY_MAP = {
     chunks = new Chunks('chunk', scene, assets.tiles, map.chunksData),
     grid = new GridPlane('grids', scene, chunks.chunkSize),
 
-    ui = new UI(assets.tiles, assets.classes.map(cls => ({ ...cls, ...cls.icon }))),
+    ui = new UI(assets.tiles, assets.classes.map(cls => cls.ui)),
     editorHistory = new EditorHistory(),
 
     // TODO: wrap this into new class
@@ -224,7 +224,7 @@ const KEY_MAP = {
       { clsName, args } = assets.classes.find(c => c.clsId === clsId),
       id = ['object', clsName, randomBytes()].join('/'),
       pos = cursor.hover.add(new Vector3(0.5, 0, 0.5)),
-      uniqueTag = args.objectSingletonId as string
+      uniqueTag = args.editorSingletonId as string
     if (uniqueTag) scene.getMeshesByTags(uniqueTag).forEach(object => {
       editorHistory.push(new RemoveObjectAction(objectManager, object, map.objectsData[object.name]))
     })
@@ -371,7 +371,7 @@ const KEY_MAP = {
   const configDisplaySkyBox = document.getElementById('configDisplaySkyBox') as HTMLInputElement
   configDisplaySkyBox.checked = !!localStorage.getItem('config-display-skybox')
   const sky = configDisplaySkyBox.checked && new SkyBox('sky', scene)
-  sky.setIsVisible(false)
+  sky && sky.setIsVisible(false)
   document.getElementById('configApplyDisplay').addEventListener('click', _ => {
     localStorage.setItem('config-display-ssao', configDisplaySSAO.checked ? '1' : '')
     localStorage.setItem('config-display-skybox', configDisplaySkyBox.checked ? '1' : '')

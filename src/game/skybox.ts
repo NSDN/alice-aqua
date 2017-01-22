@@ -117,6 +117,7 @@ export default class Skybox extends Mesh {
         t = randomRange(0.0, 100),
         w = randomRange(0.1, 0.3),
         h = randomRange(0.02, 0.08)
+      c.position.copyFromFloats(q * Math.sin(t), y, q * Math.cos(t))
       c.scaling.copyFromFloats(w, h, 1)
       c.parent = this
       this.clouds.push(c)

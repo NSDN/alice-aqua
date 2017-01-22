@@ -15,6 +15,10 @@ import {
   ObjectUsable,
 } from './'
 
+import {
+  randomBytes,
+} from '../utils'
+
 import Sprite from './sprite'
 
 export default class Box extends InstancedMesh implements ObjectUsable {
@@ -92,6 +96,7 @@ export default class Box extends InstancedMesh implements ObjectUsable {
 export class BoxGenerator extends Sprite implements ObjectPlayListener, ObjectEditable {
   public boxMass = 5
   public velocityThreshold = 0
+  private boxName = ''
 
   startPlaying() {
     const { material, texSize, offsetX, offsetY, width, height } = this.opts.icon,
@@ -110,13 +115,17 @@ export class BoxGenerator extends Sprite implements ObjectPlayListener, ObjectEd
       cache.isVisible = false
     }
 
-    Tags.AddTagsTo(new Box(this.name + '/box', cache, this), Box.BOX_TAG)
+    const box = this.getScene().getMeshByName(this.boxName)
+    box && box.dispose()
+    this.boxName = 'box/' + randomBytes()
+    Tags.AddTagsTo(new Box(this.boxName, cache, this), Box.BOX_TAG)
 
     this.spriteBody.isVisible = false
   }
 
   stopPlaying() {
-    this.getScene().getMeshesByTags(Box.BOX_TAG).forEach(mesh => mesh.dispose())
+    const box = this.getScene().getMeshByName(this.boxName)
+    box && box.dispose()
     this.spriteBody.isVisible = true
   }
 

@@ -112,7 +112,7 @@ export default class Jump extends Trigger implements ObjectEditable, ObjectTrigg
   }
 
   onTrigger(isOn: boolean) {
-    const mesh = this.getScene().getMeshesByTags(Jump.TRIGGER_ON_TAG)[0]
+    const mesh = this.getScene().getMeshesByTags(this.triggerOnTag)[0]
     if (isOn && mesh instanceof Player && mesh.name === 'remilia') {
       mesh.physicsImpostor.setLinearVelocity(Vector3.Zero())
       const { sideDirection, sideForce, upForce } = this,

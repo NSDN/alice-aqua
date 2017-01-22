@@ -10,52 +10,91 @@
       font-family: PixelMplus10-Regular;
       src: url('assets/PixelMplus10-Regular.ttf') format("truetype");
     }
-    .play-options {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      background: rgba(255, 255, 255, 0.5);
-      transition: visibility 0s 0.2s, opacity 0.2s linear;
-      visibility: hidden;
-      opacity: 0;
+    body {
+      font-family: PixelMplus10-Regular;
     }
-    .game-paused .play-options {
-      transition: visibility 0s 0s, opacity 0.2s linear;
-      visibility: visible;
+    .menu-list {
+      padding: 10px;
+    }
+    .menu-list .menu-item {
+      padding: 5px;
+      opacity: 0.5;
+      font-size: 150%;
+    }
+    .menu-list .menu-item.active {
       opacity: 1;
     }
-    .play-options .content {
+    .menu-item.active:before {
+      content: '▶';
+    }
+    .screen .title {
+      font-size: 250%;
+    }
+
+    .game-play.game-main .screen-main {
+      visibility: hidden;
+    }
+    .screen-main .title {
+      font-size: 150%;
+    }
+    .screen-main .content {
+      min-width: 200px;
+    }
+    
+    .screen-pause {
+      background: rgba(255, 255, 255, 0.5);
+      transition: visibility 0s 0.2s, opacity 0.2s linear;
+      opacity: 0;
+    }
+    .game-pause .screen-pause {
+      transition: visibility 0s 0s, opacity 0.2s linear;
+      opacity: 1;
+    }
+    .screen-pause .content {
       position: absolute;
       right: 0;
       bottom: 0;
       padding: 20px;
     }
-
-    .pause-menu {
-      font-family: PixelMplus10-Regular;
+    .screen-pause .menu-list {
       text-align: right;
-      padding: 10px;
     }
-    .pause-menu .menu-item {
-      padding: 5px;
-      opacity: 0.5;
-      font-size: 150%;
-    }
-    .pause-menu .menu-item.active {
-      opacity: 1;
-    }
-    .pause-menu .menu-item.active:before {
-      content: '▶';
+
+    .screen-config .content {
+      width: 90%;
+      height: 65%;
+      max-width: 640px;
+      background: #eee;
+      border: 1px solid #aaa;
     }
   </style>
 </head>
 <body>
-  <div class="play-options">
+  <div class="screen-main screen">
+    <div class="title">Alice-Aqua {{BUILD_HASH}}</div>
     <div class="content">
-      <div class="pause-menu menu-list">
-        <div class="menu-item" action="game-continue">Continue</div>
-        <div class="menu-item">Options</div>
-        <div class="menu-item">Main Screen</div>
+      <div class="menu-main menu-list">
+        <div class="menu-item" goto="play">Continue</div>
+        <div class="menu-item" goto="play:'assets/stage/startup.json'">New Adventure</div>
+        <div class="menu-item" goto="config">Options</div>
+      </div>
+    </div>
+  </div>
+  <div class="screen-pause screen">
+    <div class="title">PAUSE</div>
+    <div class="content">
+      <div class="menu-pause menu-list can-escape">
+        <div class="menu-item" goto="..">Continue</div>
+        <div class="menu-item" goto="../../play">Restart</div>
+        <div class="menu-item" goto="config">Options</div>
+        <div class="menu-item" goto="../..">Main Screen</div>
+      </div>
+    </div>
+  </div>
+  <div class="screen-config screen">
+    <div class="content">
+      Options Here
+      <div class="menu-config menu-list can-escape">
       </div>
     </div>
   </div>

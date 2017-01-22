@@ -8,7 +8,7 @@ SRC_DIRS=(
 )
 
 mkdir -p $TMP_DIR &&\
-sed -i -e "s/{{BUILD_HASH}}/$BUILD_HASH/" index.html &&\
+sed -i -e "s/{{BUILD_HASH}}/$BUILD_HASH/" editor.html &&\
 cp *.html $TMP_DIR/ &&\
 cp -r assets $TMP_DIR/ &&\
 cp -r build $TMP_DIR/ &&\

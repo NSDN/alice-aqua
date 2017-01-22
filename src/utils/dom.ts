@@ -4,6 +4,9 @@ import {
 
 export function appendElement(tag: string, attrs = { } as any, parent = document.body as string | Element) {
   const elem = Object.assign(document.createElement(tag), attrs) as HTMLElement
+  if (attrs.style) 'width/height/lineHeight/left/top/right/bottom'.split('/').forEach(name => {
+    attrs.style[name] > 0 && (attrs.style[name] = attrs.style[name] + 'px')
+  })
   Object.assign(elem.style, attrs.style)
   if (attrs.attributesToSet) for (const key in attrs.attributesToSet) {
     elem.setAttribute(key, attrs.attributesToSet[key])
@@ -152,27 +155,29 @@ function checkLoaded() {
 const $ = appendElement
 export const LoadingScreen = {
   show() {
-    $('div', { className: 'screen loading', childrenToAdd: [
-      $('div', { className: 'loading-text' }, null) as HTMLDivElement,
-      $('div', { childrenToAdd: [
-        $('span', { className: 'loading-dot' }, null),
-        $('span', { className: 'loading-dot' }, null),
-        $('span', { className: 'loading-dot' }, null),
-        $('span', { className: 'loading-dot' }, null),
-        $('span', { className: 'loading-dot' }, null),
-      ]})
-    ]}, document.body)
+    if (!document.querySelector('.loading-screen')) {
+      $('div', { className: 'loading-screen screen loading', childrenToAdd: [
+        $('div', { className: 'loading-text' }, null) as HTMLDivElement,
+        $('div', { childrenToAdd: [
+          $('span', { className: 'loading-dot' }, null),
+          $('span', { className: 'loading-dot' }, null),
+          $('span', { className: 'loading-dot' }, null),
+          $('span', { className: 'loading-dot' }, null),
+          $('span', { className: 'loading-dot' }, null),
+        ]})
+      ]}, document.body)
+    }
 
     loadingTimeout = loadingTimeout || setTimeout(checkLoaded, 300)
   },
   update(message: string) {
-    document.querySelector('.screen .loading-text').innerHTML = message
+    document.querySelector('.loading-screen .loading-text').innerHTML = message
   },
   hide() {
     clearTimeout(loadingTimeout)
     loadingTimeout = 0
 
-    document.querySelector('.screen').classList.remove('loading')
+    document.querySelector('.loading-screen').classList.remove('loading')
   },
 }
 
@@ -184,10 +189,11 @@ export const MenuManager = {
     const listElem = document.querySelector(list)
     if (listElem) {
       listElem.classList.add('active')
+      const lastActive = listElem.querySelector('.menu-item.active')
       for (const elem of listElem.querySelectorAll('.menu-item.active')) {
         elem.classList.remove('active')
       }
-      const listItem = item ? listElem.querySelector(item) : listElem.querySelectorAll('.menu-item')[0]
+      const listItem = item ? listElem.querySelector(item) : (lastActive || listElem.querySelectorAll('.menu-item')[0])
       if (listItem) {
         listItem.classList.add('active')
       }
@@ -211,14 +217,14 @@ export const MenuManager = {
   }
 }
 
-export function loadWithXHR(src: string,
+export function loadWithXHR<T>(src: string, opts: any,
     onProgress?: (progress: number) => void) {
-  return new Promise<Blob>((onload, onerror) => {
+  return new Promise<T>((onload, onerror) => {
     const xhr = new XMLHttpRequest()
     xhr.addEventListener('error', onerror)
     xhr.addEventListener('load', _ => onload(xhr.response))
     xhr.addEventListener('progress', evt => onProgress && onProgress(evt.loaded / evt.total))
-    xhr.responseType = 'blob'
+    Object.assign(xhr, opts)
     xhr.open('get', src)
     xhr.send()
   })
@@ -233,6 +239,10 @@ export function readAsDataURL(blob: Blob) {
   })
 }
 
+export async function loadDataURLWithXHR(src: string, onProgress?: (progress: number) => void) {
+  const blob = await loadWithXHR<Blob>(src, { responseType: 'blob' }, onProgress)
+  return await readAsDataURL(blob)
+}
 
 const SPECIAL_KEYS = {
   [13]: 'RETURN',

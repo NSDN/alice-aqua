@@ -4,10 +4,10 @@ import Gate from '../objs/gate'
 import Trigger from '../objs/trigger'
 import Jump from '../objs/jump'
 import Block from '../objs/block'
-import StageLoader from '../objs/stage-loader'
 import Box, { BoxGenerator } from '../objs/box'
 import Player, { PlayerGenerator } from '../objs/player'
 import { SaveData as ChunkSaveData } from '../game/chunks'
+import { StageEntry, StageLoader } from '../objs/stage'
 
 import {
   SKY_THEME_COLOR
@@ -26,8 +26,7 @@ import {
 
 import {
   appendElement,
-  loadWithXHR,
-  readAsDataURL,
+  loadDataURLWithXHR,
 } from '../utils/dom'
 
 import {
@@ -56,12 +55,12 @@ const OBJECT_CLASSES = {
   jump: Jump,
   player: PlayerGenerator,
   block: Block,
-  stage: StageLoader,
+  stageEntry: StageEntry,
+  stageLoader: StageLoader,
 }
 
 export const ASSET_IMAGES = {
   imAssetTile1: 'assets/rpg_maker_vx_rtp_tileset_by_telles0808.png',
-  objectIcons1: 'assets/object_icons.png',
 }
 
 export const ASSET_TILES: [number, keyof typeof ASSET_IMAGES, number, number, number, boolean][] = [
@@ -99,44 +98,45 @@ export const ASSET_TILES: [number, keyof typeof ASSET_IMAGES, number, number, nu
   [33, 'imAssetTile1',  960,  320, 32, true],
 ]
 
-export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, number, number, keyof typeof OBJECT_CLASSES, any][] = [
-  [ 0, 'imAssetTile1',  96, 1632, 64, 96, 'sprite', { spriteHeight: 4 }],
-  [ 1, 'imAssetTile1',   0, 1440, 64, 64, 'sprite', { spriteHeight: 4 }],
-  [ 2, 'imAssetTile1',   0, 1504, 64, 64, 'sprite', { spriteHeight: 4 }],
-  [ 3, 'imAssetTile1', 192, 1344, 64, 64, 'sprite', { spriteHeight: 4 }],
-  [ 4, 'imAssetTile1', 512,  256, 64, 64, 'box',    { spriteHeight: 2, boxMass: 5 }],
-  [33, 'imAssetTile1', 768,   32, 64, 64, 'box',    { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }],
-  [ 5, 'imAssetTile1', 160, 1024, 32, 64, 'sprite', { spriteHeight: 4 }],
-  [ 6, 'imAssetTile1', 128, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
-  [ 7, 'imAssetTile1',   0, 1120, 32, 64, 'sprite', { spriteHeight: 4 }],
-  [ 8, 'imAssetTile1', 160, 1408, 32, 64, 'sprite', { spriteHeight: 4 }],
-  [ 9, 'imAssetTile1',  64, 1408, 32, 64, 'sprite', { spriteHeight: 4 }],
-  [10, 'imAssetTile1',   0, 1376, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [11, 'imAssetTile1',  32, 1376, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [12, 'imAssetTile1',   0, 1408, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [13, 'imAssetTile1',   0,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [14, 'imAssetTile1',  32,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [15, 'imAssetTile1', 288,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [16, 'imAssetTile1', 320,  992, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [17, 'imAssetTile1',   0, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [18, 'imAssetTile1',  32, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [19, 'imAssetTile1',  64, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [20, 'imAssetTile1',  96, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [21, 'imAssetTile1', 128, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [22, 'imAssetTile1', 160, 1344, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [23, 'imAssetTile1', 160, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [24, 'imAssetTile1', 192, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [25, 'imAssetTile1', 224, 1632, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [26, 'imAssetTile1', 160, 1664, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [27, 'imAssetTile1', 160, 1696, 32, 32, 'sprite', { spriteHeight: 1 }],
-  [28, 'imAssetTile1',   0,   32, 32, 32, 'gate',    { }],
-  [29, 'imAssetTile1',   0,   32, 32, 32, 'slope',   { }],
-  [36, 'imAssetTile1',   0,   32, 32, 32, 'block',   { blockSize: [2, 1, 2], blockOffset: [0, 0, 0], triggerOffset: [0, 0, 0] }],
-  [34, 'imAssetTile1',   0,   32, 32, 32, 'jump',    { listenTags: [Player.PLAYER_TAG] }],
-  [30, 'objectIcons1',  64,    0, 32, 32, 'trigger', { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }],
-  [31, 'objectIcons1',   0,    0, 32, 32, 'player',  { objectSingletonId: 'player/remilia', playerName: 'remilia' }],
-  [32, 'objectIcons1',  32,    0, 32, 32, 'player',  { objectSingletonId: 'player/flandre', playerName: 'flandre' }],
-  [35, 'objectIcons1', 128,    0, 64, 32, 'stage',   { objectSingletonId: 'stage/loader', spriteHeight: 1 }],
+export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, number, number, keyof typeof OBJECT_CLASSES, any, any][] = [
+  [ 0, 'imAssetTile1',   96, 1632, 64, 96, 'sprite', { spriteHeight: 4 }, { }],
+  [ 1, 'imAssetTile1',    0, 1440, 64, 64, 'sprite', { spriteHeight: 4 }, { }],
+  [ 2, 'imAssetTile1',    0, 1504, 64, 64, 'sprite', { spriteHeight: 4 }, { }],
+  [ 3, 'imAssetTile1',  192, 1344, 64, 64, 'sprite', { spriteHeight: 4 }, { }],
+  [ 4, 'imAssetTile1',  512,  256, 64, 64, 'box',    { spriteHeight: 2, boxMass: 5 }, { }],
+  [33, 'imAssetTile1',  768,   32, 64, 64, 'box',    { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }, { }],
+  [ 5, 'imAssetTile1',  160, 1024, 32, 64, 'sprite', { spriteHeight: 4 }, { }],
+  [ 6, 'imAssetTile1',  128, 1120, 32, 64, 'sprite', { spriteHeight: 4 }, { }],
+  [ 7, 'imAssetTile1',    0, 1120, 32, 64, 'sprite', { spriteHeight: 4 }, { }],
+  [ 8, 'imAssetTile1',  160, 1408, 32, 64, 'sprite', { spriteHeight: 4 }, { }],
+  [ 9, 'imAssetTile1',   64, 1408, 32, 64, 'sprite', { spriteHeight: 4 }, { }],
+  [10, 'imAssetTile1',    0, 1376, 32, 32, 'sprite', { }, { }],
+  [11, 'imAssetTile1',   32, 1376, 32, 32, 'sprite', { }, { }],
+  [12, 'imAssetTile1',    0, 1408, 32, 32, 'sprite', { }, { }],
+  [13, 'imAssetTile1',    0,  992, 32, 32, 'sprite', { }, { }],
+  [14, 'imAssetTile1',   32,  992, 32, 32, 'sprite', { }, { }],
+  [15, 'imAssetTile1',  288,  992, 32, 32, 'sprite', { }, { }],
+  [16, 'imAssetTile1',  320,  992, 32, 32, 'sprite', { }, { }],
+  [17, 'imAssetTile1',    0, 1344, 32, 32, 'sprite', { }, { }],
+  [18, 'imAssetTile1',   32, 1344, 32, 32, 'sprite', { }, { }],
+  [19, 'imAssetTile1',   64, 1344, 32, 32, 'sprite', { }, { }],
+  [20, 'imAssetTile1',   96, 1344, 32, 32, 'sprite', { }, { }],
+  [21, 'imAssetTile1',  128, 1344, 32, 32, 'sprite', { }, { }],
+  [22, 'imAssetTile1',  160, 1344, 32, 32, 'sprite', { }, { }],
+  [23, 'imAssetTile1',  160, 1632, 32, 32, 'sprite', { }, { }],
+  [24, 'imAssetTile1',  192, 1632, 32, 32, 'sprite', { }, { }],
+  [25, 'imAssetTile1',  224, 1632, 32, 32, 'sprite', { }, { }],
+  [26, 'imAssetTile1',  160, 1664, 32, 32, 'sprite', { }, { }],
+  [27, 'imAssetTile1',  160, 1696, 32, 32, 'sprite', { }, { }],
+  [28, 'imAssetTile1', 1024,    0, 32, 32, 'gate',    { }, { title: '可触发的门' }],
+  [29, 'imAssetTile1', 1056,    0, 32, 32, 'slope',   { }, { title: '两个 slope 相连形成斜坡' }],
+  [36, 'imAssetTile1', 1088,    0, 32, 32, 'block',   { }, { title: '可触发移动的方块' }],
+  [34, 'imAssetTile1', 1120,    0, 32, 32, 'jump',    { listenTags: [Player.PLAYER_TAG] }, { title: '跳！' }],
+  [30, 'imAssetTile1', 1152,    0, 32, 32, 'trigger', { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }, { title: '触发器' }],
+  [35, 'imAssetTile1', 1248,    0, 32, 32, 'stageLoader',   { editorSingletonId: 'stage/loader' }, { title: '在此载入新关卡' }],
+  [37, 'imAssetTile1', 1280,    0, 32, 32, 'stageEntry',  { editorSingletonId: 'stage/entry'  }, { title: '关卡载入时使用的原点' }],
+  [31, 'imAssetTile1', 1184,    0, 32, 32, 'player',  { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { }],
+  [32, 'imAssetTile1', 1216,    0, 32, 32, 'player',  { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { }],
 ]
 
 export function createScene() {
@@ -161,9 +161,8 @@ export function createScene() {
   camera.upperRadiusLimit = 100
   camera.lowerBetaLimit = Math.PI * 0.15
   camera.upperBetaLimit = Math.PI * 0.45
-  camera.lowerBetaSoftLimit = Math.PI * 0.35
-  camera.upperRadiusSoftLimit = 40
   camera.attachControl(elem, true)
+  camera.keysUp = camera.keysDown = camera.keysLeft = camera.keysRight = [ ]
 
   let pauseTick = 0
   const ctrl = {
@@ -192,10 +191,11 @@ export function createScene() {
       return Date.now() - timerOffset
     },
     timeout(fn: Function, delay: number) {
-      const until = clock.now() + delay
-      timers.push([fn, until])
+      const until = clock.now() + delay,
+        timer = [fn, until] as [Function, number]
+      timers.push(timer)
       timers.sort((a, b) => a[1] - b[1])
-      return () => timers = timers.filter(t => t[0] !== fn && t[1] !== until)
+      return () => timers.splice(timers.indexOf(timer), 1)
     },
   }
 
@@ -217,8 +217,7 @@ export async function loadAssets(scene: Scene,
     ids = Object.keys(ASSET_IMAGES)
   for (let i = 0; i < ids.length; i ++) {
     const id = ids[i],
-      res = await loadWithXHR(ASSET_IMAGES[id], progress => onProgress(i, ids.length, progress)),
-      src = await readAsDataURL(res),
+      src = await loadDataURLWithXHR(ASSET_IMAGES[id], progress => onProgress(i, ids.length, progress)),
       img = appendElement('img', { id, src }) as HTMLImageElement,
       texSize = 2 ** Math.ceil(Math.log2(Math.max(img.width, img.height)))
 
@@ -230,8 +229,11 @@ export async function loadAssets(scene: Scene,
       base64Src = canvas.toDataURL()
     }
 
-    const texture = Texture.CreateFromBase64String(base64Src,
-      id, scene, false, true, Texture.NEAREST_SAMPLINGMODE)
+    let texture: Texture
+    await new Promise<Texture>((resolve, reject) => {
+      texture = Texture.CreateFromBase64String(base64Src,
+        id, scene, false, true, Texture.NEAREST_SAMPLINGMODE, resolve, reject)
+    })
     texture.hasAlpha = true
 
     const material = new StandardMaterial(id + '/mat', scene)
@@ -246,12 +248,13 @@ export async function loadAssets(scene: Scene,
     return { tileId, src, offsetX, offsetY, size, isAutoTile }
   })
 
-  const classes = ASSET_CLASSES.map(([clsId, srcId, offsetX, offsetY, width, height, clsName, args]) => {
+  const classes = ASSET_CLASSES.map(([clsId, srcId, offsetX, offsetY, width, height, clsName, args, editorClass]) => {
     const src = document.getElementById(srcId) as HTMLImageElement,
       cls = OBJECT_CLASSES[clsName],
       { material, texSize } = materials[srcId],
-      icon = { material, offsetX, offsetY, width, height, texSize }
-    return { clsName, clsId, src, args, icon, cls }
+      icon = { material, offsetX, offsetY, width, height, texSize },
+      ui = { clsId, clsName, src, offsetX, offsetY, width, height, ...editorClass }
+    return { cls, clsName, clsId, args, icon, ui }
   })
 
   return { tiles, classes }
