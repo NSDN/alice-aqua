@@ -28,7 +28,8 @@
   },
   "dependencies": {
     "@types/whatwg-fetch": "0.0.33",
-    "babylonjs": "git+https://github.com/BabylonJS/Babylon.js",
+    "babylonjs": "^2.5.0",
+    "cannon": "^0.6.2",
     "font-awesome": "^4.6.3"
   }
 }

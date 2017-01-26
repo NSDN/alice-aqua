@@ -198,7 +198,7 @@ export default class Player extends Mesh {
     ps.direction1 = new Vector3(0, 0, 1)
     ps.direction1 = new Vector3(1, 0, 0)
 
-    const onKeyChange = key => {
+    const onKeyChange = (key: { name: keyof typeof KEY_MAP, down: boolean }) => {
       if (this.isPlayerActive) {
         this.updatePlayerFromKey(key.name, key.down)
       }

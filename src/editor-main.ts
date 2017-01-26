@@ -57,13 +57,13 @@ import {
   KeyEmitter,
 } from './utils/dom'
 
-const pixelHeightNames = {
+const pixelHeightNames: { [key: string]: string } = {
   '+1': 'up',
   '-1': 'down',
   '0': 'flat',
   '': 'none',
 }
-const iconClassFromCursorClass = {
+const iconClassFromCursorClass: { [key: string]: string } = {
   'cursor-up-ctrl' : 'fa fa-pencil/fa fa-arrow-up',
   'cursor-down-ctrl' : 'fa fa-pencil/fa fa-arrow-down',
   'cursor-flat-ctrl' : 'fa fa-pencil/fa fa-arrows-h',

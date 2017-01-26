@@ -47,7 +47,8 @@ type TileCache = {
 export function getAutoTileImage(source: HTMLImageElement,
     offsetX: number, offsetY: number,
     tileSize: number, neighbors: number) {
-  const cache = source['auto-tile-cache'] = (source['auto-tile-cache'] || { }) as TileCache,
+  const srcCache = source as any as { autoTileCache: TileCache },
+    cache = srcCache.autoTileCache = (srcCache.autoTileCache || { }),
     key = [offsetX, offsetY, tileSize].join('/')
   if (!cache[key]) {
     const canvas = document.createElement('canvas')

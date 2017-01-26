@@ -117,7 +117,7 @@ export default class Slope extends ObjectBase implements ObjectEditable {
   }
 
   attachEditorContent(container: HTMLElement, save: (args: Partial<Slope>) => void) {
-    const options = { '': '--' }
+    const options = { '': '--' } as { [key: string]: string }
     this.getScene().getMeshesByTags(Slope.TARGET_TAG, (mesh: Slope) => {
       mesh !== this && mesh.targetName !== this.name && (options[mesh.name] = mesh.name)
     })

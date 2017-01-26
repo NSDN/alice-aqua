@@ -1,4 +1,4 @@
-export function randomRange(begin, end) {
+export function randomRange(begin: number, end: number) {
   return Math.random() * (end - begin) + begin
 }
 
@@ -37,7 +37,7 @@ export function queue() {
 }
 
 export function holdon(fn: (p: Promise<any>) => Promise<any>) {
-  let resolve = null,
+  let resolve = null as Function,
     next = new Promise(res => resolve = res),
     done = fn(next)
   return () => {

@@ -65,7 +65,8 @@ export default class Box extends InstancedMesh implements ObjectUsable {
   displayUsable(_mesh: AbstractMesh, show: boolean) {
     const canvas = this.generator.opts.canvas2d
 
-    const mark = canvas['box-mark-cache'] || (canvas['box-mark-cache'] = new BABYLON.Group2D({
+    const markCache = canvas as any as { boxMarkCache: BABYLON.Group2D },
+      mark = markCache.boxMarkCache || (markCache.boxMarkCache = new BABYLON.Group2D({
       position: new BABYLON.Vector2(-10000, -10000),
       parent: canvas,
       children: [

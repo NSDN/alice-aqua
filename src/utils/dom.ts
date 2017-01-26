@@ -12,7 +12,7 @@ export function appendElement(tag: string, attrs = { } as any, parent = document
     elem.setAttribute(key, attrs.attributesToSet[key])
   }
   if (attrs.childrenToAdd && Array.isArray(attrs.childrenToAdd)) {
-    attrs.childrenToAdd.forEach(child => elem.appendChild(child))
+    attrs.childrenToAdd.forEach((child: Element) => elem.appendChild(child))
   }
   if (typeof parent === 'string') {
     document.querySelector(parent).appendChild(elem)
@@ -130,7 +130,7 @@ export function appendVectorInputs(label: string | HTMLElement, val: { x: number
     container: HTMLElement, attrs: any, onChange: (inputs: HTMLInputElement[]) => void) {
   attrs = { type: 'number', style: { width: '30%', maxWidth: '40px' }, ...attrs }
   const div = appendConfigElement(label, 'div', { }, container)
-  const inputs = 'x/y/z'.split('/').map(a => {
+  const inputs = 'x/y/z'.split('/').map((a: 'x' | 'y' | 'z') => {
     const input = appendElement('input', attrs, div) as HTMLInputElement
     input.placeholder = a
     input.value = val[a] + ''
@@ -141,7 +141,7 @@ export function appendVectorInputs(label: string | HTMLElement, val: { x: number
 
 let loadingTimeout = 0
 function checkLoaded() {
-  const dots = [].slice.call(document.querySelectorAll('.screen .loading-dot')),
+  const dots = [].slice.call(document.querySelectorAll('.screen .loading-dot')) as Element[],
     index = dots.findIndex(elem => elem.classList.contains('active'))
   dots.forEach(dot => dot.classList.remove('active'))
   dots[(index + 1) % dots.length].classList.add('active')
@@ -244,7 +244,7 @@ export async function loadDataURLWithXHR(src: string, onProgress?: (progress: nu
   return await readAsDataURL(blob)
 }
 
-const SPECIAL_KEYS = {
+const SPECIAL_KEYS: { [keyCode: number]: string } = {
   [13]: 'RETURN',
   [16]: 'SHIFT',
   [17]: 'CTRL',
@@ -284,12 +284,12 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
     })
 
     window.addEventListener('keydown', evt => {
-      const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which
+      const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which.toString()
       this.all.emit(key, true)
     })
 
     window.addEventListener('keyup', evt => {
-      const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which
+      const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which.toString()
       this.all.emit(key, false)
     })
   }

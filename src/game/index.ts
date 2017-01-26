@@ -147,7 +147,7 @@ export function createScene() {
 
   scene.enablePhysics(new Vector3(0, -3, 0))
   scene.workerCollisions = true
-  scene.clearColor = SKY_THEME_COLOR
+  scene.clearColor = SKY_THEME_COLOR.toColor4()
 
   engine.runRenderLoop(() => {
     scene.render()
@@ -217,7 +217,8 @@ export async function loadAssets(scene: Scene,
     ids = Object.keys(ASSET_IMAGES)
   for (let i = 0; i < ids.length; i ++) {
     const id = ids[i],
-      src = await loadDataURLWithXHR(ASSET_IMAGES[id], progress => onProgress(i, ids.length, progress)),
+      url = ASSET_IMAGES[id as keyof typeof ASSET_IMAGES],
+      src = await loadDataURLWithXHR(url, progress => onProgress(i, ids.length, progress)),
       img = appendElement('img', { id, src }) as HTMLImageElement,
       texSize = 2 ** Math.ceil(Math.log2(Math.max(img.width, img.height)))
 

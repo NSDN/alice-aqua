@@ -99,12 +99,13 @@ export class UpdateObjectAction implements EditorAction {
     object: AbstractMesh, update: any,
     private readonly newArgs = JSON.parse(JSON.stringify(update)),
     private readonly oldArgs = JSON.parse(JSON.stringify(objectsData[object.name].args)),
-    private readonly repArgs = { },
+    private readonly repArgs = { } as any,
     private readonly id = object.name,
     private readonly scene = object.getScene()) {
+    const objArgs = object as any
     for (const k in newArgs) {
       if (!(k in oldArgs)) {
-        repArgs[k] = JSON.parse(JSON.stringify(object[k]))
+        repArgs[k] = JSON.parse(JSON.stringify(objArgs[k]))
       }
     }
     this.exec()
@@ -120,8 +121,8 @@ export class UpdateObjectAction implements EditorAction {
 }
 
 export interface ObjectManager {
-  create(id: string, clsId: number, position: Vector3, restoreArgs?: any)
-  destroy(id: string)
+  create(id: string, clsId: number, position: Vector3, restoreArgs?: any): void
+  destroy(id: string): void
 }
 
 export class CreateObjectAction implements EditorAction {

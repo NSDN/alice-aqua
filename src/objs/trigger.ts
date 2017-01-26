@@ -232,7 +232,7 @@ export default class Trigger extends ObjectBase implements ObjectEditable, Objec
     if (isOn && this.autoResetTimeout > 0) {
       this.isTriggerLocked = true
       this.showLockerSprite(this.autoResetTimeout)
-      this.opts.clock.timeout(_ => {
+      this.opts.clock.timeout(() => {
         this.isTriggerLocked = false
         this.fireTrigger(false)
       }, this.autoResetTimeout)
