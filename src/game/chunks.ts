@@ -46,8 +46,8 @@ export interface SaveData {
 }
 
 export interface TileDefine {
-  tileId: number
   src: HTMLImageElement
+  tileId: number
   offsetX: number
   offsetY: number
   size: number
@@ -192,9 +192,9 @@ export default class Chunks extends EventEmitter<{
 
     const gvd = {
       positions: [ ] as number[],
-      normals: [ ] as number[],
-      indices: [ ] as number[],
-      uvs: [ ] as number[]
+      normals:   [ ] as number[],
+      indices:   [ ] as number[],
+      uvs:       [ ] as number[]
     }
     blks.forEach(([u0, u1, v0, v1, , h1]) => {
       const i0 = gvd.positions.length / 3,
@@ -210,9 +210,9 @@ export default class Chunks extends EventEmitter<{
 
     const svd = {
       positions: [ ] as number[],
-      normals: [ ] as number[],
-      indices: [ ] as number[],
-      uvs: [ ] as number[],
+      normals:   [ ] as number[],
+      indices:   [ ] as number[],
+      uvs:       [ ] as number[],
     }
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
       const g = chunkUnits,

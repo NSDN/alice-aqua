@@ -353,9 +353,7 @@ const KEY_MAP = {
     map.saveDebounced(chunks)
   })
   objectToolbar.querySelector('.focus-object').addEventListener('click', _ => {
-    if (selectedObject) {
-      camera.followTarget.copyFrom(selectedObject.position)
-    }
+    camera.followTarget.copyFrom(selectedObject.position)
   })
   objectToolbar.querySelector('.remove-object').addEventListener('click', _ => {
     editorHistory.commit(new RemoveObjectAction(objectManager, selectedObject, map.objectsData[selectedObject.name]))
@@ -368,10 +366,12 @@ const KEY_MAP = {
   const configDisplaySSAO = document.getElementById('configDisplaySSAO') as HTMLInputElement
   configDisplaySSAO.checked = !!localStorage.getItem('config-display-ssao')
   configDisplaySSAO.checked && new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
+
   const configDisplaySkyBox = document.getElementById('configDisplaySkyBox') as HTMLInputElement
   configDisplaySkyBox.checked = !!localStorage.getItem('config-display-skybox')
   const sky = configDisplaySkyBox.checked && new SkyBox('sky', scene)
   sky && sky.setIsVisible(false)
+
   document.getElementById('configApplyDisplay').addEventListener('click', _ => {
     localStorage.setItem('config-display-ssao', configDisplaySSAO.checked ? '1' : '')
     localStorage.setItem('config-display-skybox', configDisplaySkyBox.checked ? '1' : '')

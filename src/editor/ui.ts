@@ -8,6 +8,7 @@ import {
 
 import {
   EventEmitter,
+  watch,
 } from '../utils'
 
 export interface ClassDefine {
@@ -21,46 +22,44 @@ export interface ClassDefine {
   title: string
 }
 
-const PANELS = {
-  brushes: true,
-  objects: true,
-  game: true,
-  play: true,
-}
-
 export class UI extends EventEmitter<{
   'tile-selected': string,
   'panel-changed': string,
 }> {
-  constructor(tiles: TileDefine[], classes: ClassDefine[],
-      private panel = document.querySelector('.ui-panel-selector') as HTMLSelectElement,
-      private brushHeight = document.querySelector('.ui-brush-height') as HTMLSelectElement) {
+  private updatePanel = watch(x => x, (newPanel, oldPanel) => {
+    for (const elem of document.querySelectorAll('.ui-panel')) {
+      elem.classList.add('hidden')
+    }
+    for (const elem of document.querySelectorAll('.ui-tab')) {
+      elem.classList.remove('active')
+      document.body.classList.remove('on-panel-' + elem.getAttribute('tab-target'))
+    }
+
+    document.body.classList.add('on-panel-' + newPanel)
+    for (const elem of document.querySelectorAll(`.ui-panel.panel-${newPanel}`)) {
+      elem.classList.remove('hidden')
+    }
+    for (const elem of document.querySelectorAll(`.ui-tab[tab-target=${newPanel}]`)) {
+      elem.classList.add('active')
+    }
+
+    this._activePanel = newPanel
+    this.emit('panel-changed', oldPanel)
+  })
+
+  constructor(tiles: TileDefine[], classes: ClassDefine[]) {
     super()
 
-    Object.keys(PANELS).forEach(innerHTML => appendElement('option', { innerHTML }, this.panel))
+    for (const elem of document.querySelectorAll('.ui-tab')) {
+      elem.addEventListener('click', _ => this.updatePanel(elem.getAttribute('tab-target')))
+    }
 
-    this.panel.addEventListener('change', _ => {
-      for (const elem of document.querySelectorAll('.ui-panel')) {
-        elem.classList.add('hidden')
-      }
-      for (const elem of document.querySelectorAll('.ui-panel.panel-' + this.panel.value)) {
-        elem.classList.remove('hidden')
-      }
-      for (const option of this.panel.childNodes) {
-        document.body.classList.remove('on-panel-' + (option as HTMLOptionElement).value)
-      }
-      document.body.classList.add('on-panel-' + this.panel.value)
-
-      if (this.panel['last-value'] !== this.panel.value) {
-        this.emit('panel-changed', this.panel['last-value'])
-        this.panel['last-value'] = this.panel.value
-      }
-    })
+    setTimeout(_ => this.updatePanel('brushes'), 100)
 
     const tileList = document.querySelector('.ui-brushes')
     tiles.forEach(tile => {
       const { tileId, src, offsetX, offsetY, size } = tile,
-        attrs = { className: 'ui-list-item', attributesToSet: { tid: tileId } },
+        attrs = { className: 'ui-list-item', attributes: { tid: tileId } },
         div = appendElement('div', attrs, tileList) as HTMLDivElement,
         [width, height] = [32, 32],
         canvas = appendElement('canvas', { width, height }, div) as HTMLCanvasElement
@@ -70,18 +69,18 @@ export class UI extends EventEmitter<{
     const clsList = document.querySelector('.ui-classes')
     classes.forEach(cls => {
       const { clsId, clsName, src, offsetX, offsetY, width, height, title } = cls,
-        attrs = { className: 'ui-list-item', attributesToSet: { cid: clsId }, title: title || clsName },
+        attrs = { className: 'ui-list-item', attributes: { cid: clsId }, title: title || clsName },
         div = appendElement('div', attrs, clsList) as HTMLDivElement,
         canvas = appendElement('canvas', { width, height }, div) as HTMLCanvasElement
       canvas.getContext('2d').drawImage(src, offsetX, offsetY, width, height, 0, 0, width, height)
     })
 
-    ; [tileList, clsList].forEach(elem => {
+    for (const elem of document.querySelectorAll('.ui-list')) {
       if (!elem.querySelector('.ui-list-item.selected')) {
         const item = elem.querySelector('.ui-list-item')
         item && item.classList.add('selected')
       }
-    })
+    }
 
     for (const elem of document.querySelectorAll('.ui-list-item')) {
       elem.addEventListener('click', _ => {
@@ -92,22 +91,17 @@ export class UI extends EventEmitter<{
         this.emit('tile-selected', elem.getAttribute('tid'))
       })
     }
-
-    setTimeout(_ => this.panel.dispatchEvent(new Event('change')), 100)
   }
 
+  private _activePanel: string
   get activePanel() {
-    return this.panel.value as keyof typeof PANELS
-  }
-
-  set activePanel(val) {
-    this.panel.value = val
-    this.panel.dispatchEvent(new Event('change'))
+    return this._activePanel
   }
 
   get selectedTilePixel() {
-    const div = document.querySelector('.ui-brushes .ui-list-item.selected')
-    return { t: div.getAttribute('tid'), h: this.brushHeight.value }
+    const tile = document.querySelector('.ui-brushes .ui-list-item.selected'),
+      height = document.querySelector('.ui-brushes-height .ui-list-item.selected')
+    return { t: tile.getAttribute('tid'), h: height.getAttribute('height') }
   }
 
   get selectedClassIndex() {

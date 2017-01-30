@@ -2,18 +2,36 @@ import {
   EventEmitter,
 } from './'
 
-export function appendElement(tag: string, attrs = { } as any, parent = document.body as string | Element) {
-  const elem = Object.assign(document.createElement(tag), attrs) as HTMLElement
-  if (attrs.style) 'width/height/lineHeight/left/top/right/bottom'.split('/').forEach(name => {
-    attrs.style[name] > 0 && (attrs.style[name] = attrs.style[name] + 'px')
-  })
-  Object.assign(elem.style, attrs.style)
-  if (attrs.attributesToSet) for (const key in attrs.attributesToSet) {
-    elem.setAttribute(key, attrs.attributesToSet[key])
+export interface ElementAttributes {
+  attributes?: any
+  style?: any
+  [key: string]: any
+}
+
+export function createElement(tag: string, attrs = { } as ElementAttributes, children = [ ] as Element[]) {
+  const elem = document.createElement(tag)
+  if (attrs.style) {
+    'width/height/lineHeight/left/top/right/bottom'.split('/').forEach(name => {
+      attrs.style[name] > 0 && (attrs.style[name] = attrs.style[name] + 'px')
+    })
+    Object.assign(elem.style, attrs.style)
+    delete attrs.style
   }
-  if (attrs.childrenToAdd && Array.isArray(attrs.childrenToAdd)) {
-    attrs.childrenToAdd.forEach((child: Element) => elem.appendChild(child))
+  if (attrs.attributes) {
+    for (const key in attrs.attributes) {
+      elem.setAttribute(key, attrs.attributes[key])
+    }
+    delete attrs.attributes
   }
+  Object.assign(elem, attrs)
+  if (children) {
+    children.forEach((child: Element) => elem.appendChild(child))
+  }
+  return elem
+}
+
+export function appendElement(tag: string, attrs = { } as ElementAttributes, parent = document.body as string | Element) {
+  const elem = createElement(tag, attrs)
   if (typeof parent === 'string') {
     document.querySelector(parent).appendChild(elem)
   }
@@ -152,20 +170,20 @@ function checkLoaded() {
   }
 }
 
-const $ = appendElement
+const $ = createElement
 export const LoadingScreen = {
   show() {
     if (!document.querySelector('.loading-screen')) {
-      $('div', { className: 'loading-screen screen loading', childrenToAdd: [
-        $('div', { className: 'loading-text' }, null) as HTMLDivElement,
-        $('div', { childrenToAdd: [
-          $('span', { className: 'loading-dot' }, null),
-          $('span', { className: 'loading-dot' }, null),
-          $('span', { className: 'loading-dot' }, null),
-          $('span', { className: 'loading-dot' }, null),
-          $('span', { className: 'loading-dot' }, null),
-        ]})
-      ]}, document.body)
+      document.body.appendChild($('div', { className: 'loading-screen screen loading' }, [
+        $('div', { className: 'loading-text' }),
+        $('div', { }, [
+          $('span', { className: 'loading-dot' }),
+          $('span', { className: 'loading-dot' }),
+          $('span', { className: 'loading-dot' }),
+          $('span', { className: 'loading-dot' }),
+          $('span', { className: 'loading-dot' }),
+        ])
+      ]))
     }
 
     loadingTimeout = loadingTimeout || setTimeout(checkLoaded, 300)

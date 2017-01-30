@@ -80,7 +80,7 @@
       width: 32px;
       height: 32px;
       line-height: 32px;
-      background: #ccc;
+      background: #ddd;
       text-align: center;
     }
     .ui-list-item.selected {
@@ -98,11 +98,32 @@
       padding: 0 10px;
       color: #eee;
     }
+    .ui-tabs .ui-tab {
+      padding: 0 5px;
+      text-decoration: none;
+      color: #aaa;
+    }
+    .ui-tabs .ui-tab.active {
+      font-weight: bold;
+      color: #eee;
+    }
     .ui-top-right {
       float: right;
     }
     .ui-top a {
       color: #eee;
+    }
+
+    .ui-brushes {
+      margin-left: 80px;
+    }
+    .ui-brushes-height {
+      position: absolute;
+      width: 80px;
+    }
+    .ui-brushes-height span {
+      color: #ddd;
+      background: #666;
     }
 
     .game-config {
@@ -132,7 +153,8 @@
       display: block;
     }
 
-    .on-panel-play .ui-toolbar {
+    .on-panel-play .ui-toolbar,
+    .on-panel-play .ui-tabs {
       display: none;
     }
     .on-panel-play .doc-help {
@@ -144,7 +166,21 @@
   <div class="ui-toolbar">
     <div class="ui-panels">
       <div class="hidden ui-panel panel-brushes">
-        <div class="ui-brushes">
+        <div class="ui-brushes-height ui-list">
+          <div class="ui-list-item" height="+1">
+            <span title="shift up"><i class="fa fa-arrow-up"></i></span>
+          </div>
+          <div class="ui-list-item" height="-1">
+            <span title="shift down"><i class="fa fa-arrow-down"></i></span>
+          </div>
+          <div class="ui-list-item" height="0">
+            <span title="flatten"><i class="fa fa-arrows-h"></i></span>
+          </div>
+          <div class="ui-list-item" height="">
+            <span title="none"><i class="fa fa-ban"></i></span>
+          </div>
+        </div>
+        <div class="ui-brushes ui-list">
           <div class="ui-list-item" tid="?">
             <span title="use tile from start"><i class="fa fa-question"></i></span>
           </div>
@@ -154,7 +190,7 @@
         </div>
       </div>
       <div class="hidden ui-panel panel-objects">
-        <div class="ui-classes"></div>
+        <div class="ui-classes ui-list"></div>
       </div>
       <div class="hidden ui-panel panel-game">
         <div class="game-config">
@@ -174,16 +210,15 @@
   </div>
   <div class="ui-head">
     <div class="ui-top">
-      <select class="ui-panel-selector"></select>
-      <span class="hidden ui-panel panel-brushes">
-        <select class="ui-brush-height">
-          <option value="+1">shift up</option>
-          <option value="-1">shift down</option>
-          <option value="0">flatten</option>
-          <option value="">none</option>
-        </select>
+      <span class="ui-tabs">
+        <a href="javascript:void(0)" class="ui-tab" tab-target="brushes">brushes</a>
+        <a href="javascript:void(0)" class="ui-tab" tab-target="objects">objects</a>
+        <a href="javascript:void(0)" class="ui-tab" tab-target="game">game</a>
+        <a href="javascript:void(0)" class="ui-tab" tab-target="play">play</a>
       </span>
-      <span class="hidden ui-panel panel-play"> /
+      <span class="hidden ui-panel panel-play">
+       <a href="javascript:void(0)" class="ui-tab" tab-target="game"
+         title="back to editor"><i class="fa fa-arrow-left"></i></a> /
        <a href="javascript:void(0)" id="playSetCameraAlphaDec"
          title="rotate left"><i class="fa fa-angle-double-left"></i></a>
        <a href="javascript:void(0)" id="playResetCameraAlpha"
