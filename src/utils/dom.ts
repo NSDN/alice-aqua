@@ -9,6 +9,7 @@ export interface ElementAttributes {
 }
 
 export function createElement(tag: string, attrs = { } as ElementAttributes, children = [ ] as Element[]) {
+  attrs = { ...attrs }
   const elem = document.createElement(tag)
   if (attrs.style) {
     'width/height/lineHeight/left/top/right/bottom'.split('/').forEach(name => {
