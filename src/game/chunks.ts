@@ -22,6 +22,7 @@ import {
 } from '../utils/babylon'
 
 import {
+  arrayRange,
   throttle,
   memo,
   getBlocksFromHeightMap,
@@ -54,10 +55,6 @@ export interface TileDefine {
   isAutoTile: boolean
 }
 
-function range(begin: number, end: number) {
-  return Array(end - begin).fill(begin).map((b, i) => b + i)
-}
-
 const push = [ ].push,
   getGroundVertexDataWithUVMemo = memo(getChunkGroundVertexData),
   getSideVertexDataMemo = memo(getChunkSideVertexData)
@@ -76,8 +73,8 @@ export default class Chunks extends EventEmitter<{
     saveData = { } as { [key: string]: SaveData },
     readonly position = Vector3.Zero(),
     readonly unitSize = 1,
-    readonly chunkSize = 16,
-    readonly textureSize = 16 * 32,
+    readonly chunkSize = 32,
+    readonly textureSize = chunkSize * 32,
     readonly minimumY = 0,
     readonly chunkUnits = Math.floor(chunkSize / unitSize),
     readonly unitTexSize = Math.floor(textureSize / chunkUnits)) {
@@ -217,10 +214,10 @@ export default class Chunks extends EventEmitter<{
     blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
       const g = chunkUnits,
         sides =
-          (v1 === g || range(u0, u1).some(u => heights[u * g + v1]       < h1) ? 8 : 0) +
-          (u0 === 0 || range(v0, v1).some(v => heights[(u0 - 1) * g + v] < h1) ? 4 : 0) +
-          (v0 === 0 || range(u0, u1).some(u => heights[u * g + (v0 - 1)] < h1) ? 2 : 0) +
-          (u1 === g || range(v0, v1).some(v => heights[u1 * g + v]       < h1) ? 1 : 0),
+          (v1 === g || arrayRange(u0, u1).some(u => heights[u * g + v1]       < h1) ? 8 : 0) +
+          (u0 === 0 || arrayRange(v0, v1).some(v => heights[(u0 - 1) * g + v] < h1) ? 4 : 0) +
+          (v0 === 0 || arrayRange(u0, u1).some(u => heights[u * g + (v0 - 1)] < h1) ? 2 : 0) +
+          (u1 === g || arrayRange(v0, v1).some(v => heights[u1 * g + v]       < h1) ? 1 : 0),
         i0 = svd.positions.length / 3,
         vd = getSideVertexDataMemo(u0, u1, v0, v1, h0, h1, sides)
       push.apply(svd.positions, vd.positions.map(p => p * unitSize))

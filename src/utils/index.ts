@@ -1,3 +1,7 @@
+export function arrayRange(begin: number, end: number) {
+  return Array(end - begin).fill(begin).map((b, i) => b + i)
+}
+
 export function randomRange(begin: number, end: number) {
   return Math.random() * (end - begin) + begin
 }

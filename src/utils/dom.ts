@@ -24,9 +24,7 @@ export function createElement(tag: string, attrs = { } as ElementAttributes, chi
     delete attrs.attributes
   }
   Object.assign(elem, attrs)
-  if (children) {
-    children.forEach((child: Element) => elem.appendChild(child))
-  }
+  children.forEach((child: Element) => elem.appendChild(child))
   return elem
 }
 
@@ -200,39 +198,40 @@ export const LoadingScreen = {
 }
 
 export const MenuManager = {
-  activate(list: string, item?: string) {
-    for (const elem of document.querySelectorAll('.menu-list.active')) {
+  activate(list: string, itemSelector?: string, listClass = 'menu-list', itemClass = 'menu-item') {
+    for (const elem of document.querySelectorAll(`.${listClass}.active`)) {
       elem.classList.remove('active')
     }
-    const listElem = document.querySelector(list)
+    const elem = document.querySelector(list),
+      listElem = elem && (elem.classList.contains(listClass) ? elem : elem.querySelector(`.${listClass}`))
     if (listElem) {
       listElem.classList.add('active')
-      const lastActive = listElem.querySelector('.menu-item.active')
-      for (const elem of listElem.querySelectorAll('.menu-item.active')) {
+      const lastActive = listElem.querySelector(`.${itemClass}.active`)
+      for (const elem of listElem.querySelectorAll(`.${itemClass}.active`)) {
         elem.classList.remove('active')
       }
-      const listItem = item ? listElem.querySelector(item) : (lastActive || listElem.querySelectorAll('.menu-item')[0])
+      const listItem = itemSelector ? listElem.querySelector(itemSelector) : (lastActive || listElem.querySelectorAll(`.${itemClass}`)[0])
       if (listItem) {
         listItem.classList.add('active')
       }
     }
   },
-  selectNext(delta: number) {
-    const activeList = document.querySelector('.menu-list.active')
+  activeList(listClass = 'menu-list') {
+    return document.querySelector(`.${listClass}.active`)
+  },
+  activeItem(listClass = 'menu-list', itemClass = 'menu-item') {
+    return document.querySelector(`.${listClass}.active .${itemClass}.active`)
+  },
+  selectNext(delta: number, listClass = 'menu-list', itemClass = 'menu-item') {
+    const activeList = MenuManager.activeList(listClass)
     if (activeList) {
-      const activeItem = activeList.querySelector('.menu-item.active'),
-        allItems = [].slice.call(activeList.querySelectorAll('.menu-item')) as Element[],
+      const activeItem = MenuManager.activeItem(listClass, itemClass),
+        allItems = [].slice.call(activeList.querySelectorAll(`.${itemClass}`)) as Element[],
         nextItem = allItems[(allItems.indexOf(activeItem) + delta + allItems.length) % allItems.length]
       activeItem && activeItem.classList.remove('active')
       nextItem && nextItem.classList.add('active')
     }
   },
-  activeList() {
-    return document.querySelector('.menu-list.active')
-  },
-  activeItem() {
-    return document.querySelector('.menu-list.active .menu-item.active')
-  }
 }
 
 export function loadWithXHR<T>(src: string, opts: any,

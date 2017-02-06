@@ -38,7 +38,7 @@ const KEY_MAP = {
   down: 'DOWN',
   left: 'LEFT',
   right: 'RIGHT',
-  navigate: 'UP | DOWN | LEFT | RIGHT',
+  navigate: 'UP | DOWN | LEFT | RIGHT'
 }
 
 interface StageOptions {
@@ -147,7 +147,7 @@ const camelCaseToHyphen = (str: string) => str.replace(/[a-z][A-Z]{1}/g, m => m[
   wrapString = (str: string) => str.replace(/'[^']*'/g, m => '\'' + btoa(m.slice(1, -1))),
   unwrapString = (str: string) => str[0] === '\'' ? atob(str.slice(1)) : str
 class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[]) => Promise<any> }> {
-  private stack = [ ] as { name: string, resolve: () => Promise<any> }[]
+  private stack = [ ] as { name: string, next: () => Promise<any> }[]
   private queue = queue()
 
   constructor(private handles: H) {
@@ -162,9 +162,9 @@ class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[])
 
   private async exit() {
     if (this.stack.length > 1) {
-      const { name, resolve } = this.stack.pop()
+      const { name, next } = this.stack.pop()
       document.body.classList.remove('game-' + camelCaseToHyphen(name))
-      await resolve()
+      await next()
       const current = this.current
       MenuManager.activate('.menu-' + camelCaseToHyphen(current))
     }
@@ -172,8 +172,8 @@ class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[])
 
   enter(name: keyof H, ...args: any[]) {
     if (this.handles[name]) {
-      const resolve = holdon(next => this.handles[name](next, ...args))
-      this.stack.push({ name, resolve })
+      const next = holdon(next => this.handles[name](next, ...args))
+      this.stack.push({ name, next })
       document.body.classList.add('game-' + camelCaseToHyphen(name))
       MenuManager.activate('.menu-' + camelCaseToHyphen(name))
     }
@@ -254,7 +254,18 @@ class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[])
   })
 
   keyInput.ondown('navigate', () => {
-    MenuManager.selectNext(keyInput.state.up || keyInput.state.left ? -1 : 1)
+    const activeList = MenuManager.activeList()
+    if (activeList && activeList.classList.contains('menu-config-item')) {
+      if (keyInput.state.up || keyInput.state.down) {
+        MenuManager.selectNext(keyInput.state.up ? -1 : 1, 'menu-config-list', 'menu-config-item')
+      }
+      else {
+        MenuManager.selectNext(keyInput.state.left ? -1 : 1)
+      }
+    }
+    else {
+      MenuManager.selectNext(keyInput.state.up || keyInput.state.left ? -1 : 1)
+    }
   })
 
   await new Promise(resolve => setTimeout(resolve, 1000))

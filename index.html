@@ -18,19 +18,45 @@
     }
     .menu-list .menu-item {
       padding: 5px;
-      opacity: 0.5;
       font-size: 150%;
     }
-    .menu-list .menu-item.active {
-      opacity: 1;
+    .menu-item:before {
+      content: '▶';
+      color: transparent;
     }
     .menu-item.active:before {
-      content: '▶';
+      color: inherit;
     }
+
+    .menu-config-title {
+      padding: 15px 0;
+      text-align: center;
+      font-size: 200%;
+    }
+    .menu-config-item .menu-config-label {
+      display: inline-block;
+      width: 40%;
+      text-align: right;
+      font-size: 120%;
+      opacity: 0.2;
+    }
+    .menu-config-item.active .menu-config-label {
+      opacity: 1;
+    }
+    .menu-config-item .menu-item:before {
+      opacity: 0.2;
+    }
+    .menu-config-item.active .menu-item:before {
+      opacity: 1;
+    }
+
     .screen .title {
       font-size: 250%;
     }
 
+    .screen-main {
+      color: #eee;
+    }
     .game-play.game-main .screen-main {
       visibility: hidden;
     }
@@ -55,9 +81,6 @@
       right: 0;
       bottom: 0;
       padding: 20px;
-    }
-    .screen-pause .menu-list {
-      text-align: right;
     }
 
     .screen-config .content {
@@ -93,9 +116,26 @@
   </div>
   <div class="screen-config screen">
     <div class="content">
-      Options Here
-      <i class="fa fa-question"></i>
-      <div class="menu-config menu-list can-escape">
+      <div class="menu-config-title">Game Options</div>
+      <div class="menu-config-list menu-config active">
+        <div class="menu-config-item menu-list can-escape">
+          <span class="menu-config-label">Language</span>
+          <span class="menu-item active">English</span>
+          <span class="menu-item">Chinese</span>
+        </div>
+        <div class="menu-config-item menu-list can-escape">
+          <span class="menu-config-label">Display Quality</span>
+          <span class="menu-item active">Fine</span>
+          <span class="menu-item">Normal</span>
+        </div>
+        <div class="menu-config-item menu-list can-escape">
+          <span class="menu-config-label">Volume</span>
+          <span class="menu-item active">1</span>
+          <span class="menu-item">2</span>
+          <span class="menu-item">3</span>
+          <span class="menu-item">4</span>
+          <span class="menu-item">5</span>
+        </div>
       </div>
     </div>
   </div>

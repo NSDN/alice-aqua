@@ -443,8 +443,7 @@ const KEY_MAP = {
   })
 
   document.getElementById('docShowDebug').addEventListener('click', _ => {
-    const isDebugShown = (document.getElementById('DebugLayerOptions') || { } as Element).scrollHeight > 0
-    isDebugShown ? scene.debugLayer.hide() : scene.debugLayer.show()
+    scene.debugLayer.isVisible() ? scene.debugLayer.hide() : scene.debugLayer.show()
   })
   document.getElementById('docShowHelp').addEventListener('click', _ => {
     const isHelpShown = document.querySelector('.doc-help').scrollHeight > 0
