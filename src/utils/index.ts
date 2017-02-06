@@ -36,16 +36,25 @@ export function queue() {
   }
   return <T>(start: () => Promise<T>) => new Promise((resolve, reject) => {
     waiting.push({ start, resolve, reject })
-    !running && exec()
+    running || exec()
   })
 }
 
-export function holdon(fn: (p: Promise<any>) => Promise<any>) {
+export function pair() {
   let resolve = null as Function,
-    next = new Promise(res => resolve = res),
-    done = fn(next)
-  return () => {
-    resolve()
+    promise = new Promise(res => resolve = res)
+  return { resolve, promise }
+}
+
+export function step(fn: (p: () => Promise<any>) => Promise<any>) {
+  const start = pair(), stop = pair()
+  const done = fn(async () => {
+    start.resolve()
+    await stop.promise
+  })
+  return async () => {
+    await start.promise
+    stop.resolve()
     return done
   }
 }

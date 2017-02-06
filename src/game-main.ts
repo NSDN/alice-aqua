@@ -24,7 +24,7 @@ import {
 
 import {
   queue,
-  holdon,
+  step,
 } from './utils'
 
 import Chunks, { TileDefine } from './game/chunks'
@@ -146,7 +146,7 @@ class StageManager {
 const camelCaseToHyphen = (str: string) => str.replace(/[a-z][A-Z]{1}/g, m => m[0] + '-' + m[1].toLowerCase()),
   wrapString = (str: string) => str.replace(/'[^']*'/g, m => '\'' + btoa(m.slice(1, -1))),
   unwrapString = (str: string) => str[0] === '\'' ? atob(str.slice(1)) : str
-class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[]) => Promise<any> }> {
+class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: any[]) => Promise<any> }> {
   private stack = [ ] as { name: string, next: () => Promise<any> }[]
   private queue = queue()
 
@@ -170,9 +170,9 @@ class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[])
     }
   }
 
-  enter(name: keyof H, ...args: any[]) {
+  private async enter(name: keyof H, ...args: any[]) {
     if (this.handles[name]) {
-      const next = holdon(next => this.handles[name](next, ...args))
+      const next = await step(next => this.handles[name](next, ...args))
       this.stack.push({ name, next })
       document.body.classList.add('game-' + camelCaseToHyphen(name))
       MenuManager.activate('.menu-' + camelCaseToHyphen(name))
@@ -185,7 +185,7 @@ class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[])
         await this.exit()
       }
       else if (name) {
-        this.enter.apply(this, name.split(':').map(unwrapString))
+        await this.enter.apply(this, name.split(':').map(unwrapString))
       }
     }
   }
@@ -214,32 +214,32 @@ class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[])
   const gameState = new GameState({
     async main(next) {
       // TODO
-      await next
+      await next()
     },
     async play(next, url: string) {
       const stageManager = new StageManager({ scene, classes, tiles }),
         onTrigger = (loader: StageLoader) => stageManager.loadFromLoader(loader)
       StageLoader.eventEmitter.on('trigger', onTrigger)
       await stageManager.loadFromURL(url || StageManager.oldestURL, Vector3.Zero())
-      await next
+      await next()
       StageLoader.eventEmitter.off('trigger', onTrigger)
       stageManager.dispose()
       camera.followTarget.copyFromFloats(0, 0, 0)
     },
     async pause(next) {
       ctrl.pause()
-      await next
+      await next()
       ctrl.resume()
     },
     async config(next) {
       // TODO
-      await next
+      await next()
     },
   })
 
   keyInput.ondown('escape', () => {
     if (gameState.current === 'play') {
-      gameState.enter('pause')
+      gameState.goto('pause')
     }
     else {
       gameState.goto('..')
@@ -249,19 +249,16 @@ class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[])
   keyInput.ondown('return', () => {
     const activeItem = MenuManager.activeItem()
     if (activeItem) {
-      gameState.goto(activeItem.getAttribute('goto'))
+      gameState.goto(activeItem.getAttribute('goto') || '')
     }
   })
 
   keyInput.ondown('navigate', () => {
     const activeList = MenuManager.activeList()
     if (activeList && activeList.classList.contains('menu-config-item')) {
-      if (keyInput.state.up || keyInput.state.down) {
-        MenuManager.selectNext(keyInput.state.up ? -1 : 1, 'menu-config-list', 'menu-config-item')
-      }
-      else {
+      keyInput.state.up || keyInput.state.down ?
+        MenuManager.selectNext(keyInput.state.up ? -1 : 1, 'menu-config-list', 'menu-config-item') :
         MenuManager.selectNext(keyInput.state.left ? -1 : 1)
-      }
     }
     else {
       MenuManager.selectNext(keyInput.state.up || keyInput.state.left ? -1 : 1)
@@ -273,6 +270,6 @@ class GameState<H extends { [name: string]: (next: Promise<any>, ...args: any[])
   camera.lowerBetaSoftLimit = Math.PI * 0.35
   camera.upperRadiusSoftLimit = 40
 
-  gameState.enter('main')
+  gameState.goto('main')
   LoadingScreen.hide()
 })()
