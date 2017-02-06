@@ -256,18 +256,19 @@ export default class Player extends Mesh {
 
   private frameIndex = 0
   private updatePlayerFrame() {
-    const keys = Player.keyInput.state
-    if (this._isPlayerActive &&
-        (keys.moveLeft || keys.moveRight || keys.moveForward || keys.moveBack)) {
+    if (this._isPlayerActive) {
       const material = this.spriteBody.material as StandardMaterial,
         texture = material.diffuseTexture as Texture,
         delta = this.position.subtract(this.getScene().activeCamera.position),
         offset = this.rotationQuaternion.toEulerAngles().y,
         angle = Math.PI * 4 - Math.atan2(delta.z, delta.x) - offset,
-        vIndex = Math.floor(angle / (Math.PI * 2 / 8) + 0.5) + 1,
-        uIndex = Math.floor(this.frameIndex ++ / 10)
+        vIndex = Math.floor(angle / (Math.PI * 2 / 8) + 0.5) + 1
       texture.vOffset = vIndex % 8 * 32 / 256
-      texture.uOffset = uIndex % 4 * 24 / 256
+      const keys = Player.keyInput.state
+      if (keys.moveLeft || keys.moveRight || keys.moveForward || keys.moveBack) {
+        const uIndex = Math.floor(this.frameIndex ++ / 10)
+        texture.uOffset = uIndex % 4 * 24 / 256
+      }
     }
 
     const pickBottom = this.pickFromBottom(),

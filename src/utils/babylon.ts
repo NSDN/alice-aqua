@@ -213,7 +213,7 @@ function roundInPi2(a: number) {
 }
 function nearestAngle(a: number, b: number) {
   return Math.abs(a - b) <= Math.PI ? a :
-    a > b ? a - Pi2 : b + Pi2
+    a > b ? a - Pi2 : a + Pi2
 }
 
 export class FollowCamera extends ArcRotateCamera {
