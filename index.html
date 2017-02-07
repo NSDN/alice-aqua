@@ -13,6 +13,10 @@
     body {
       font-family: PixelMplus10-Regular;
     }
+    .hidden {
+      display: none;
+    }
+
     .menu-list {
       padding: 10px;
     }
@@ -97,11 +101,11 @@
     <div class="title">Alice-Aqua <span class="build-hash">5f5f7f00397c4e0d8f12</span></div>
     <div class="content">
       <div class="menu-main menu-list">
-        <div class="menu-item" goto="play"
+        <div class="menu-item" menu-goto="../play"
           i18n-en="Continue" i18n-zh="继续"></div>
-        <div class="menu-item" goto="play:'assets/stage/startup.json'"
+        <div class="menu-item" menu-goto="../play:'assets/stage/startup.json'"
           i18n-en="New Adventure" i18n-zh="重新开始"></div>
-        <div class="menu-item" goto="config"
+        <div class="menu-item" menu-goto="config"
           i18n-en="Options" i18n-zh="选项"></div>
       </div>
     </div>
@@ -109,14 +113,14 @@
   <div class="screen-pause screen">
     <div class="title" i18n-en="PAUSE" i18n-zh="暂停"></div>
     <div class="content">
-      <div class="menu-pause menu-list can-escape">
-        <div class="menu-item" goto=".."
+      <div class="menu-pause menu-list" menu-escape="..">
+        <div class="menu-item" menu-goto=".."
           i18n-en="Continue" i18n-zh="继续"></div>
-        <div class="menu-item" goto="../../play"
+        <div class="menu-item" menu-goto="../../play"
           i18n-en="Restart" i18n-zh="重来"></div>
-        <div class="menu-item" goto="config"
+        <div class="menu-item" menu-goto="config"
           i18n-en="Options" i18n-zh="选项"></div>
-        <div class="menu-item" goto="../.."
+        <div class="menu-item" menu-goto="../../main"
           i18n-en="Main Screen" i18n-zh="主菜单"></div>
       </div>
     </div>
@@ -126,13 +130,13 @@
       <div class="menu-config-title"
         i18n-en="Game Options" i18n-zh="游戏选项"></div>
       <div class="menu-config-list menu-config active">
-        <div config-key="lang" class="menu-config-item menu-list can-escape">
+        <div config-key="lang" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
             i18n-en="Language" i18n-zh="语言"></span>
           <span config-val="en" class="menu-item active">English</span>
           <span config-val="zh" class="menu-item">中文</span>
         </div>
-        <div config-key="display" class="menu-config-item menu-list can-escape">
+        <div config-key="display" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
             i18n-en="Display Quality" i18n-zh="显示"></span>
           <span config-val="fine" class="menu-item active"
@@ -140,7 +144,7 @@
           <span config-val="normal" class="menu-item"
             i18n-en="Normal" i18n-zh="一般"></span>
         </div>
-        <div config-key="volume" class="menu-config-item menu-list can-escape">
+        <div config-key="volume" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
             i18n-en="Volume" i18n-zh="音量"></span>
           <span config-val="1" class="menu-item">1</span>
@@ -152,6 +156,7 @@
       </div>
     </div>
   </div>
+  <div class="menu-play menu-list hidden" menu-escape="pause"></div>
   <script src="build/screen.bundle.js"></script>
   <script src="//localhost:8080/webpack-dev-server.js"></script>
   <script src="babylonjs/cannon.js"></script>

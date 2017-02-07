@@ -39,7 +39,8 @@ const KEY_MAP = {
   down: 'DOWN',
   left: 'LEFT',
   right: 'RIGHT',
-  navigate: 'UP | DOWN | LEFT | RIGHT'
+  'nav-vertical': 'UP | DOWN',
+  'nav-horizontal': 'LEFT | RIGHT',
 }
 
 interface StageOptions {
@@ -162,12 +163,12 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
   }
 
   private async exit() {
-    if (this.stack.length > 1) {
+    if (this.stack.length > 0) {
       const { name, next } = this.stack.pop()
       document.body.classList.remove('game-' + camelCaseToHyphen(name))
       await next()
       const current = this.current
-      MenuManager.activate('.menu-' + camelCaseToHyphen(current))
+      current && MenuManager.activate('.menu-' + camelCaseToHyphen(current))
     }
   }
 
@@ -277,7 +278,7 @@ function updateLanguage(lang: string) {
 
   const gameState = new GameState({
     async main(next) {
-      // TODO
+      camera.followTarget.copyFromFloats(0, 0, 0)
       await next()
     },
     async play(next, url: string) {
@@ -289,7 +290,6 @@ function updateLanguage(lang: string) {
       await next()
       StageLoader.eventEmitter.off('trigger', onTrigger)
       stageManager.dispose()
-      camera.followTarget.copyFromFloats(0, 0, 0)
     },
     async pause(next) {
       ctrl.pause()
@@ -297,39 +297,41 @@ function updateLanguage(lang: string) {
       ctrl.resume()
     },
     async config(next) {
-      const onChange = keyInput.down('navigate',
-        () => (keyInput.state.left || keyInput.state.right) && configManager.update())
+      const selectNextConfig = (up: boolean) => MenuManager.selectNext(up ? -1 : 1, 'menu-config-list', 'menu-config-item'),
+        changeConfigItem = keyInput.down('nav-vertical', () => selectNextConfig(keyInput.state.up)),
+        changeConfigValue = keyInput.down('nav-horizontal', () => configManager.update())
       await next()
-      keyInput.off('navigate', onChange)
+      keyInput.off('nav-vertical', changeConfigItem)
+      keyInput.off('nav-horizontal', changeConfigValue)
       configManager.save()
     },
   })
 
   keyInput.down('escape', () => {
-    if (gameState.current === 'play') {
-      gameState.goto('pause')
-    }
-    else {
-      gameState.goto('..')
+    const activeList = MenuManager.activeList()
+    if (activeList) {
+      gameState.goto(activeList.getAttribute('menu-escape') || '')
     }
   })
 
   keyInput.down('return', () => {
     const activeItem = MenuManager.activeItem()
     if (activeItem) {
-      gameState.goto(activeItem.getAttribute('goto') || '')
+      gameState.goto(activeItem.getAttribute('menu-goto') || '')
     }
   })
 
-  keyInput.down('navigate', () => {
+  keyInput.down('nav-vertical', () => {
     const activeList = MenuManager.activeList()
-    if (activeList && activeList.classList.contains('menu-config-item')) {
-      keyInput.state.up || keyInput.state.down ?
-        MenuManager.selectNext(keyInput.state.up ? -1 : 1, 'menu-config-list', 'menu-config-item') :
-        MenuManager.selectNext(keyInput.state.left ? -1 : 1)
+    if (activeList && !activeList.classList.contains('menu-horizontal')) {
+      MenuManager.selectNext(keyInput.state.up ? -1 : 1)
     }
-    else {
-      MenuManager.selectNext(keyInput.state.up || keyInput.state.left ? -1 : 1)
+  })
+
+  keyInput.down('nav-horizontal', () => {
+    const activeList = MenuManager.activeList()
+    if (activeList && !activeList.classList.contains('menu-vertical')) {
+      MenuManager.selectNext(keyInput.state.left ? -1 : 1)
     }
   })
 
