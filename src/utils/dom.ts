@@ -312,11 +312,11 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
     })
   }
 
-  ondown(key: keyof KM, cb: () => void) {
-    this.on(key, down => down && cb())
+  down(key: keyof KM, cb: () => void) {
+    return this.on(key, down => down && cb())
   }
 
-  onup(key: keyof KM, cb: () => void) {
-    this.on(key, down => !down && cb())
+  up(key: keyof KM, cb: () => void) {
+    return this.on(key, down => !down && cb())
   }
 }

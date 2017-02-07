@@ -485,9 +485,9 @@ const KEY_MAP = {
     }
   }))
 
-  keyInput.ondown('focus', () => grid.isVisible && camera.followTarget.copyFrom(cursor.hover))
-  keyInput.ondown('undo',  () => grid.isVisible && editorHistory.undo())
-  keyInput.ondown('redo',  () => grid.isVisible && editorHistory.redo())
+  keyInput.down('focus', () => grid.isVisible && camera.followTarget.copyFrom(cursor.hover))
+  keyInput.down('undo',  () => grid.isVisible && editorHistory.undo())
+  keyInput.down('redo',  () => grid.isVisible && editorHistory.redo())
 
   const renderListeners = [
     watch(() => {

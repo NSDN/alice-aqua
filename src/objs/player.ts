@@ -124,24 +124,27 @@ export default class Player extends Mesh {
     })
     this.physicsImpostor.registerBeforePhysicsStep(_ => this.updatePlayerPhysics())
 
-    // TODO: remove these magics
-    const size = new Vector2(opts.height / 26 * 24, opts.height / 26 * 32)
-    const texture =
-      new Texture('assets/' + name + '.png', scene, false, true, Texture.NEAREST_SAMPLINGMODE)
-    texture.hasAlpha = true
-    texture.uScale = 24 / 256
-    texture.vScale = 32 / 256
+    let material = scene.getMaterialByName(name + '/mat') as StandardMaterial
+    if (!material) {
+      const texture =
+        new Texture('assets/' + name + '.png', scene, false, true, Texture.NEAREST_SAMPLINGMODE)
+      texture.hasAlpha = true
+      texture.uScale = 24 / 256
+      texture.vScale = 32 / 256
 
-    const material = new StandardMaterial(name + '/mat', scene)
-    material.alpha = 1
-    material.disableLighting = true
-    material.emissiveColor = new Color3(1, 1, 1)
-    material.diffuseTexture = texture
+      material = new StandardMaterial(name + '/mat', scene)
+      material.alpha = 1
+      material.disableLighting = true
+      material.emissiveColor = new Color3(1, 1, 1)
+      material.diffuseTexture = texture
+    }
 
     const sprite = this.spriteBody = new Mesh(name + '/sprite', scene)
     VERTEX_PLANE.applyToMesh(sprite)
     sprite.billboardMode = Mesh.BILLBOARDMODE_Y
     sprite.position.copyFromFloats(0, opts.height / 2 - opts.width / 2, 0)
+
+    const size = new Vector2(opts.height / 26 * 24, opts.height / 26 * 32)
     sprite.scaling.copyFromFloats(size.x, size.y, size.x)
     sprite.material = material
     sprite.parent = this

@@ -133,10 +133,10 @@ export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, 
   [36, 'imAssetTile1', 1088,    0, 32, 32, 'block',   { }, { title: '可触发移动的方块' }],
   [34, 'imAssetTile1', 1120,    0, 32, 32, 'jump',    { listenTags: [Player.PLAYER_TAG] }, { title: '跳！' }],
   [30, 'imAssetTile1', 1152,    0, 32, 32, 'trigger', { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }, { title: '触发器' }],
-  [35, 'imAssetTile1', 1248,    0, 32, 32, 'stageLoader',   { editorSingletonId: 'stage/loader' }, { title: '在此载入新关卡' }],
+  [35, 'imAssetTile1', 1248,    0, 32, 32, 'stageLoader', { editorSingletonId: 'stage/loader' }, { title: '在此载入新关卡' }],
   [37, 'imAssetTile1', 1280,    0, 32, 32, 'stageEntry',  { editorSingletonId: 'stage/entry'  }, { title: '关卡载入时使用的原点' }],
-  [31, 'imAssetTile1', 1184,    0, 32, 32, 'player',  { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { }],
-  [32, 'imAssetTile1', 1216,    0, 32, 32, 'player',  { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { }],
+  [31, 'imAssetTile1', 1184,    0, 32, 32, 'player',      { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { }],
+  [32, 'imAssetTile1', 1216,    0, 32, 32, 'player',      { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { }],
 ]
 
 export function createScene() {

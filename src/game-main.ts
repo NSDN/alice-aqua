@@ -25,6 +25,7 @@ import {
 import {
   queue,
   step,
+  EventEmitter,
 } from './utils'
 
 import Chunks, { TileDefine } from './game/chunks'
@@ -200,16 +201,79 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
   }
 }
 
+class ConfigManager extends EventEmitter<{ change: string }> {
+  static async load() {
+    const config = new ConfigManager()
+    // TODO: load from somewhere
+    try {
+      Object.assign(config.data, JSON.parse(localStorage.getItem('game-config')))
+    }
+    catch (err) {
+      console.error(err)
+    }
+
+    Object.keys(config.data).forEach(key => {
+      const val = config.data[key],
+        configItem = document.querySelector(`[config-key="${key}"]`)
+      if (configItem) {
+        const allValues = configItem.querySelectorAll('[config-val]')
+        for (const elem of allValues) {
+          elem.classList.remove('active')
+        }
+        const configValue = configItem.querySelector(`[config-val="${val}"]`) || allValues[0]
+        configValue.classList.add('active')
+      }
+    })
+    return config
+  }
+  private constructor(private data = {
+    lang: 'en',
+    display: 'fine',
+    volume: '3',
+  } as { [key: string]: any }) {
+    super()
+  }
+  val(key: string) {
+    return this.data[key]
+  }
+  update() {
+    const activeList = MenuManager.activeList(),
+      key = activeList && activeList.getAttribute('config-key'),
+      activeItem = MenuManager.activeItem(),
+      val = activeItem && activeItem.getAttribute('config-val')
+    this.data[key] = val
+    this.emit('change', key)
+  }
+  save() {
+    localStorage.setItem('game-config', JSON.stringify(this.data))
+  }
+}
+
+function updateLoadingScreenProgress(index: number, total: number, progress: number) {
+  LoadingScreen.update(`Loading Assets ${index + 1}/${total} (${~~(progress * 100)}%)`)
+}
+
+function updateLanguage(lang: string) {
+  for (const elem of document.querySelectorAll(`[i18n-${lang}]`)) {
+    elem.innerHTML = elem.getAttribute(`i18n-${lang}`)
+  }
+}
+
 ; (async function() {
   const { scene, camera, canvas2d, ctrl, clock } = createScene(),
     source = new Mesh('cache/object/source', scene),
-    assets = await loadAssets(scene, (index, total, progress) =>
-      LoadingScreen.update(`Loading Assets ${index + 1}/${total} (${~~(progress * 100)}%)`)),
-    tiles = assets.tiles,
-    classes = assets.classes.map(({ clsId, cls, args, icon }) => ({ clsId, cls, args, opts: { icon, source, canvas2d, clock } })),
+    assets = await loadAssets(scene, updateLoadingScreenProgress),
+    configManager = await ConfigManager.load(),
     keyInput = new KeyEmitter(KEY_MAP)
 
   new SkyBox('sky', scene)
+
+  updateLanguage(configManager.val('lang'))
+  configManager.on('change', key => {
+    if (key === 'lang') {
+      updateLanguage(configManager.val(key))
+    }
+  })
 
   const gameState = new GameState({
     async main(next) {
@@ -217,9 +281,10 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
       await next()
     },
     async play(next, url: string) {
-      const stageManager = new StageManager({ scene, classes, tiles }),
-        onTrigger = (loader: StageLoader) => stageManager.loadFromLoader(loader)
-      StageLoader.eventEmitter.on('trigger', onTrigger)
+      const tiles = assets.tiles,
+        classes = assets.classes.map(({ icon, ...others }) => ({ ...others, opts: { icon, source, canvas2d, clock } })),
+        stageManager = new StageManager({ scene, classes, tiles }),
+        onTrigger = StageLoader.eventEmitter.on('trigger', loader => stageManager.loadFromLoader(loader))
       await stageManager.loadFromURL(url || StageManager.oldestURL, Vector3.Zero())
       await next()
       StageLoader.eventEmitter.off('trigger', onTrigger)
@@ -232,12 +297,15 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
       ctrl.resume()
     },
     async config(next) {
-      // TODO
+      const onChange = keyInput.down('navigate',
+        () => (keyInput.state.left || keyInput.state.right) && configManager.update())
       await next()
+      keyInput.off('navigate', onChange)
+      configManager.save()
     },
   })
 
-  keyInput.ondown('escape', () => {
+  keyInput.down('escape', () => {
     if (gameState.current === 'play') {
       gameState.goto('pause')
     }
@@ -246,14 +314,14 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
     }
   })
 
-  keyInput.ondown('return', () => {
+  keyInput.down('return', () => {
     const activeItem = MenuManager.activeItem()
     if (activeItem) {
       gameState.goto(activeItem.getAttribute('goto') || '')
     }
   })
 
-  keyInput.ondown('navigate', () => {
+  keyInput.down('navigate', () => {
     const activeList = MenuManager.activeList()
     if (activeList && activeList.classList.contains('menu-config-item')) {
       keyInput.state.up || keyInput.state.down ?

@@ -3,12 +3,12 @@
 <head>
   <title></title>
   <link rel="stylesheet" type="text/css" href="node_modules/font-awesome/css/font-awesome.min.css">
-  <link rel="stylesheet" type="text/css" href="assets/screen.css">
+  <link rel="stylesheet" type="text/css" href="assets/css/screen.css">
   <meta charset="utf-8">
   <style>
     @font-face {
       font-family: PixelMplus10-Regular;
-      src: url('assets/PixelMplus10-Regular.ttf') format("truetype");
+      src: url('assets/font/PixelMplus10-Regular.ttf') format("truetype");
     }
     body {
       font-family: PixelMplus10-Regular;
@@ -97,44 +97,57 @@
     <div class="title">Alice-Aqua <span class="build-hash">5f5f7f00397c4e0d8f12</span></div>
     <div class="content">
       <div class="menu-main menu-list">
-        <div class="menu-item" goto="play">Continue</div>
-        <div class="menu-item" goto="play:'assets/stage/startup.json'">New Adventure</div>
-        <div class="menu-item" goto="config">Options</div>
+        <div class="menu-item" goto="play"
+          i18n-en="Continue" i18n-zh="继续"></div>
+        <div class="menu-item" goto="play:'assets/stage/startup.json'"
+          i18n-en="New Adventure" i18n-zh="重新开始"></div>
+        <div class="menu-item" goto="config"
+          i18n-en="Options" i18n-zh="选项"></div>
       </div>
     </div>
   </div>
   <div class="screen-pause screen">
-    <div class="title">PAUSE</div>
+    <div class="title" i18n-en="PAUSE" i18n-zh="暂停"></div>
     <div class="content">
       <div class="menu-pause menu-list can-escape">
-        <div class="menu-item" goto="..">Continue</div>
-        <div class="menu-item" goto="../../play">Restart</div>
-        <div class="menu-item" goto="config">Options</div>
-        <div class="menu-item" goto="../..">Main Screen</div>
+        <div class="menu-item" goto=".."
+          i18n-en="Continue" i18n-zh="继续"></div>
+        <div class="menu-item" goto="../../play"
+          i18n-en="Restart" i18n-zh="重来"></div>
+        <div class="menu-item" goto="config"
+          i18n-en="Options" i18n-zh="选项"></div>
+        <div class="menu-item" goto="../.."
+          i18n-en="Main Screen" i18n-zh="主菜单"></div>
       </div>
     </div>
   </div>
   <div class="screen-config screen">
     <div class="content">
-      <div class="menu-config-title">Game Options</div>
+      <div class="menu-config-title"
+        i18n-en="Game Options" i18n-zh="游戏选项"></div>
       <div class="menu-config-list menu-config active">
-        <div class="menu-config-item menu-list can-escape">
-          <span class="menu-config-label">Language</span>
-          <span class="menu-item active">English</span>
-          <span class="menu-item">Chinese</span>
+        <div config-key="lang" class="menu-config-item menu-list can-escape">
+          <span class="menu-config-label"
+            i18n-en="Language" i18n-zh="语言"></span>
+          <span config-val="en" class="menu-item active">English</span>
+          <span config-val="zh" class="menu-item">中文</span>
         </div>
-        <div class="menu-config-item menu-list can-escape">
-          <span class="menu-config-label">Display Quality</span>
-          <span class="menu-item active">Fine</span>
-          <span class="menu-item">Normal</span>
+        <div config-key="display" class="menu-config-item menu-list can-escape">
+          <span class="menu-config-label"
+            i18n-en="Display Quality" i18n-zh="显示"></span>
+          <span config-val="fine" class="menu-item active"
+            i18n-en="Fine" i18n-zh="好"></span>
+          <span config-val="normal" class="menu-item"
+            i18n-en="Normal" i18n-zh="一般"></span>
         </div>
-        <div class="menu-config-item menu-list can-escape">
-          <span class="menu-config-label">Volume</span>
-          <span class="menu-item active">1</span>
-          <span class="menu-item">2</span>
-          <span class="menu-item">3</span>
-          <span class="menu-item">4</span>
-          <span class="menu-item">5</span>
+        <div config-key="volume" class="menu-config-item menu-list can-escape">
+          <span class="menu-config-label"
+            i18n-en="Volume" i18n-zh="音量"></span>
+          <span config-val="1" class="menu-item">1</span>
+          <span config-val="2" class="menu-item">2</span>
+          <span config-val="3" class="menu-item">3</span>
+          <span config-val="4" class="menu-item">4</span>
+          <span config-val="5" class="menu-item">5</span>
         </div>
       </div>
     </div>
