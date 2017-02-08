@@ -99,14 +99,27 @@ class Stage {
 }
 
 class StageManager {
-  // TODO: save it somewhere
-  private static _oldestURL = localStorage.getItem('stage-oldest-url') || ''
-  static get oldestURL() {
-    return this._oldestURL
+  static DEFAULT_HISTORY_VALUE = JSON.stringify([{ url: 'assets/stage/startup.json', x: 0, y: 0, z: 0 }])
+  static async restore(opts: StageOptions) {
+    const stageManager = new StageManager(opts),
+      history = [ ] as { url: string, x: number, y: number, z: number }[]
+    // TODO: load from somewhere
+    try {
+      history.push.apply(history, JSON.parse(localStorage.getItem('stage-history') || StageManager.DEFAULT_HISTORY_VALUE))
+    }
+    catch (err) {
+      console.error(err)
+    }
+    for (const stage of history) {
+      await stageManager.loadFromURL(stage.url, new Vector3(stage.x, stage.y, stage.z))
+    }
+    return stageManager
   }
-  static set oldestURL(val) {
-    localStorage.setItem('stage-oldest-url', val)
-    this._oldestURL = val
+  static hasProfile() {
+    return !!localStorage.getItem('stage-history')
+  }
+  static clear() {
+    localStorage.setItem('stage-history', StageManager.DEFAULT_HISTORY_VALUE)
   }
 
   private stages = [ ] as Stage[]
@@ -119,18 +132,16 @@ class StageManager {
       if (!this.isDisposed) {
         this.stages.push(new Stage(url, position, map, this.opts))
         this.stages.length > 2 && this.stages.shift().dispose()
-        StageManager.oldestURL = this.stages[0].url
+        localStorage.setItem('stage-history', JSON.stringify(this.stages.map(({ url, position: { x, y, z } }) => ({ url, x, y, z }))))
       }
     }
-    return url
   }
 
-  constructor(private opts: StageOptions) {
+  private constructor(private opts: StageOptions) {
   }
 
-  async loadFromURL(url: string, position: Vector3) {
+  private async loadFromURL(url: string, position: Vector3) {
     await this.addToQueue(() => this.doLoad(url, position))
-    return url
   }
 
   async loadFromLoader(loader: StageLoader) {
@@ -142,6 +153,57 @@ class StageManager {
   dispose() {
     this.stages.forEach(stage => stage.dispose())
     this.isDisposed = true
+  }
+}
+
+class ConfigManager extends EventEmitter<{ change: string }> {
+  static async load() {
+    const config = new ConfigManager()
+    // TODO: load from somewhere
+    try {
+      Object.assign(config.data, JSON.parse(localStorage.getItem('game-config')))
+    }
+    catch (err) {
+      console.error(err)
+    }
+
+    Object.keys(config.data).forEach(key => {
+      const val = config.data[key],
+        configItem = document.querySelector(`[config-key="${key}"]`)
+      if (configItem) {
+        const allValues = configItem.querySelectorAll('[config-val]')
+        for (const elem of allValues) {
+          elem.classList.remove('active')
+        }
+        const configValue = configItem.querySelector(`[config-val="${val}"]`) || allValues[0]
+        configValue.classList.add('active')
+      }
+    })
+    return config
+  }
+  private constructor(private data = {
+    lang: 'en',
+    display: 'fine',
+    volume: '3',
+  } as { [key: string]: any }) {
+    super()
+  }
+  get(key: string) {
+    return this.data[key]
+  }
+  set(key: string, val: string) {
+    this.data[key] = val
+    this.emit('change', key)
+  }
+  update() {
+    const activeList = MenuManager.activeList(),
+      key = activeList && activeList.getAttribute('config-key'),
+      activeItem = MenuManager.activeItem(),
+      val = activeItem && activeItem.getAttribute('config-val')
+    key && this.set(key, val)
+  }
+  save() {
+    localStorage.setItem('game-config', JSON.stringify(this.data))
   }
 }
 
@@ -202,62 +264,18 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
   }
 }
 
-class ConfigManager extends EventEmitter<{ change: string }> {
-  static async load() {
-    const config = new ConfigManager()
-    // TODO: load from somewhere
-    try {
-      Object.assign(config.data, JSON.parse(localStorage.getItem('game-config')))
-    }
-    catch (err) {
-      console.error(err)
-    }
-
-    Object.keys(config.data).forEach(key => {
-      const val = config.data[key],
-        configItem = document.querySelector(`[config-key="${key}"]`)
-      if (configItem) {
-        const allValues = configItem.querySelectorAll('[config-val]')
-        for (const elem of allValues) {
-          elem.classList.remove('active')
-        }
-        const configValue = configItem.querySelector(`[config-val="${val}"]`) || allValues[0]
-        configValue.classList.add('active')
-      }
-    })
-    return config
-  }
-  private constructor(private data = {
-    lang: 'en',
-    display: 'fine',
-    volume: '3',
-  } as { [key: string]: any }) {
-    super()
-  }
-  val(key: string) {
-    return this.data[key]
-  }
-  update() {
-    const activeList = MenuManager.activeList(),
-      key = activeList && activeList.getAttribute('config-key'),
-      activeItem = MenuManager.activeItem(),
-      val = activeItem && activeItem.getAttribute('config-val')
-    this.data[key] = val
-    this.emit('change', key)
-  }
-  save() {
-    localStorage.setItem('game-config', JSON.stringify(this.data))
-  }
-}
-
 function updateLoadingScreenProgress(index: number, total: number, progress: number) {
   LoadingScreen.update(`Loading Assets ${index + 1}/${total} (${~~(progress * 100)}%)`)
 }
 
-function updateLanguage(lang: string) {
+function updateGameLanguage(lang: string) {
   for (const elem of document.querySelectorAll(`[i18n-${lang}]`)) {
     elem.innerHTML = elem.getAttribute(`i18n-${lang}`)
   }
+}
+
+function selectNextConfigItem(delta: number) {
+  MenuManager.selectNext(delta, 'menu-config-list', 'menu-config-item')
 }
 
 ; (async function() {
@@ -269,24 +287,25 @@ function updateLanguage(lang: string) {
 
   new SkyBox('sky', scene)
 
-  updateLanguage(configManager.val('lang'))
+  updateGameLanguage(configManager.get('lang'))
   configManager.on('change', key => {
     if (key === 'lang') {
-      updateLanguage(configManager.val(key))
+      updateGameLanguage(configManager.get(key))
     }
   })
 
   const gameState = new GameState({
     async main(next) {
       camera.followTarget.copyFromFloats(0, 0, 0)
+      document.querySelector('.show-if-has-profile')
+        .classList[StageManager.hasProfile() ? 'remove' : 'add']('hidden')
       await next()
     },
-    async play(next, url: string) {
+    async play(next) {
       const tiles = assets.tiles,
         classes = assets.classes.map(({ icon, ...others }) => ({ ...others, opts: { icon, source, canvas2d, clock } })),
-        stageManager = new StageManager({ scene, classes, tiles }),
+        stageManager = await StageManager.restore({ scene, classes, tiles }),
         onTrigger = StageLoader.eventEmitter.on('trigger', loader => stageManager.loadFromLoader(loader))
-      await stageManager.loadFromURL(url || StageManager.oldestURL, Vector3.Zero())
       await next()
       StageLoader.eventEmitter.off('trigger', onTrigger)
       stageManager.dispose()
@@ -297,14 +316,17 @@ function updateLanguage(lang: string) {
       ctrl.resume()
     },
     async config(next) {
-      const selectNextConfig = (up: boolean) => MenuManager.selectNext(up ? -1 : 1, 'menu-config-list', 'menu-config-item'),
-        changeConfigItem = keyInput.down('nav-vertical', () => selectNextConfig(keyInput.state.up)),
+      const changeConfigItem = keyInput.down('nav-vertical', () => selectNextConfigItem(keyInput.state.up ? -1 : 1)),
         changeConfigValue = keyInput.down('nav-horizontal', () => configManager.update())
       await next()
       keyInput.off('nav-vertical', changeConfigItem)
       keyInput.off('nav-horizontal', changeConfigValue)
       configManager.save()
     },
+    async clear(next) {
+      StageManager.clear()
+      await next()
+    }
   })
 
   keyInput.down('escape', () => {

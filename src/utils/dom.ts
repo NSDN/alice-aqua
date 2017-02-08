@@ -208,10 +208,12 @@ export const MenuManager = {
     if (listElem) {
       listElem.classList.add('active')
       const lastActive = listElem.querySelector(`.${itemClass}.active`)
-      for (const elem of listElem.querySelectorAll(`.${itemClass}.active`)) {
-        elem.classList.remove('active')
+      if (lastActive) {
+        lastActive.classList.remove('active')
       }
-      const listItem = itemSelector ? listElem.querySelector(itemSelector) : (lastActive || listElem.querySelectorAll(`.${itemClass}`)[0])
+      const listItem = itemSelector ? listElem.querySelector(itemSelector) :
+        (lastActive ? [lastActive] : [ ]).concat(Array.from(listElem.querySelectorAll(`.${itemClass}`)))
+          .filter(elem => !elem.classList.contains('hidden'))[0]
       if (listItem) {
         listItem.classList.add('active')
       }
@@ -227,7 +229,8 @@ export const MenuManager = {
     const activeList = MenuManager.activeList(listClass)
     if (activeList) {
       const activeItem = MenuManager.activeItem(listClass, itemClass),
-        allItems = [].slice.call(activeList.querySelectorAll(`.${itemClass}`)) as Element[],
+        allItems = Array.from(activeList.querySelectorAll(`.${itemClass}`))
+          .filter(elem => !elem.classList.contains('hidden')),
         nextItem = allItems[(allItems.indexOf(activeItem) + delta + allItems.length) % allItems.length]
       activeItem && activeItem.classList.remove('active')
       nextItem && nextItem.classList.add('active')
