@@ -7,7 +7,6 @@ import {
   DynamicTexture,
   Color3,
   Vector3,
-  Vector2,
   Scene,
   Ray,
   Quaternion,
@@ -144,8 +143,7 @@ export default class Player extends Mesh {
     sprite.billboardMode = Mesh.BILLBOARDMODE_Y
     sprite.position.copyFromFloats(0, opts.height / 2 - opts.width / 2, 0)
 
-    const size = new Vector2(opts.height / 26 * 24, opts.height / 26 * 32)
-    sprite.scaling.copyFromFloats(size.x, size.y, size.x)
+    sprite.scaling.copyFromFloats(opts.height / 32 * 24, opts.height, 1)
     sprite.material = material
     sprite.parent = this
     sprite.registerBeforeRender(_ => this.updatePlayerFrame())

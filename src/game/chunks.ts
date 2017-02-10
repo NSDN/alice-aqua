@@ -41,9 +41,15 @@ export interface ChunkData {
   k: string
 }
 
-export interface SaveData {
+export interface ChunkSaveData {
   tiles: number[]
   heights: number[]
+}
+
+export interface ChunkRestoreData {
+  unit: number
+  size: number
+  chunks: { [key: string]: ChunkSaveData }
 }
 
 export interface TileDefine {
@@ -52,7 +58,7 @@ export interface TileDefine {
   offsetX: number
   offsetY: number
   size: number
-  isAutoTile: boolean
+  autoTileType: string
 }
 
 const push = [ ].push,
@@ -70,11 +76,11 @@ export default class Chunks extends EventEmitter<{
 
   constructor(readonly name: string, readonly scene: Scene,
     tilesDefine: TileDefine[],
-    saveData = { } as { [key: string]: SaveData },
+    restoreData = { } as ChunkRestoreData,
     readonly position = Vector3.Zero(),
-    readonly unitSize = 1,
-    readonly chunkSize = 32,
-    readonly textureSize = chunkSize * 32,
+    readonly unitSize = restoreData.unit || 1,
+    readonly chunkSize = restoreData.size || 16,
+    readonly textureSize = chunkSize * 16,
     readonly minimumY = 0,
     readonly chunkUnits = Math.floor(chunkSize / unitSize),
     readonly unitTexSize = Math.floor(textureSize / chunkUnits)) {
@@ -90,13 +96,14 @@ export default class Chunks extends EventEmitter<{
       const sideMaterial = this.sideMaterial = new StandardMaterial(sideMaterialId, scene)
       sideMaterial.disableLighting = true
       sideMaterial.emissiveColor = Color3.White()
-      const texture = sideMaterial.diffuseTexture = new Texture('assets/chunk_side.png', scene)
+      const texture = sideMaterial.diffuseTexture = new Texture('assets/chunk_side.png', scene,
+        false, false, Texture.NEAREST_SAMPLINGMODE)
       texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
       texture.uScale = texture.vScale = this.chunkUnits
     }
 
-    Object.keys(saveData).forEach(k => {
-      const { tiles, heights } = saveData[k]
+    Object.keys(restoreData.chunks || { }).forEach(k => {
+      const { tiles, heights } = restoreData.chunks[k]
       this.createChunkData(k, tiles, heights)
     })
   }
@@ -162,13 +169,14 @@ export default class Chunks extends EventEmitter<{
       dx = u * unitTexSize,
       dy = textureSize - (v + 1) * unitTexSize
 
+    dc.imageSmoothingEnabled = dc.webkitImageSmoothingEnabled = false
     if (this.tilesDefine[t]) {
-      const { src, offsetX, offsetY, size, isAutoTile } = this.tilesDefine[t]
-      if (isAutoTile) {
+      const { src, offsetX, offsetY, size, autoTileType } = this.tilesDefine[t]
+      if (autoTileType) {
         const neighbors = AUTO_TILE_NEIGHBORS
             .map(([i, j]) => this.getChunkData(m + i, n + j))
             .reduce((s, p, j) => s + (p.t === t && p.h === h ? 1 << j : 0), 0)
-        const { im, sx, sy } = getAutoTileImage(src, offsetX, offsetY, size, neighbors)
+        const { im, sx, sy } = getAutoTileImage(src, offsetX, offsetY, size, neighbors, autoTileType as any)
         dc.drawImage(im, sx, sy, size, size, dx, dy, unitTexSize, unitTexSize)
       }
       else {
@@ -279,11 +287,11 @@ export default class Chunks extends EventEmitter<{
   private addTextureToUpdate(m: number, n: number, v: number, u: number) {
     this.chunkTextureToUpdate[ [m, n].join('/') ] = v
     const tileV = this.tilesDefine[v], tileU = this.tilesDefine[u]
-    if ((tileV && tileV.isAutoTile) || (tileU && tileU.isAutoTile)) {
+    if ((tileV && tileV.autoTileType) || (tileU && tileU.autoTileType)) {
       AUTO_TILE_NEIGHBORS.forEach(([i, j]) => {
         const pixel = this.getChunkData(m + i, n + j),
           tile = this.tilesDefine[pixel.t]
-        if (tile && tile.isAutoTile) {
+        if (tile && tile.autoTileType) {
           this.chunkTextureToUpdate[ [m + i, n + j].join('/') ] = pixel.t
         }
       })
@@ -329,13 +337,14 @@ export default class Chunks extends EventEmitter<{
     return { t, h: h + this.position.y }
   }
 
-  serialize() {
-    const saveData = { } as { [key: string]: SaveData }
+  serialize(): ChunkRestoreData {
+    const chunks = { } as { [k: string]: ChunkSaveData }
     Object.keys(this.data).forEach(k => {
       const { tiles, heights } = this.data[k]
-      saveData[k] = { tiles, heights }
+      chunks[k] = { tiles, heights }
     })
-    return saveData
+    const size = this.chunkSize, unit = this.unitSize
+    return { chunks, unit, size }
   }
 
   dispose() {

@@ -2,22 +2,26 @@ export const AUTO_TILE_MAP = [
   {
     dst: [0, 0],
     mask: [0, 1, 2],
-    src: [[0, 2], [1, 2], [0, 2], [2, 2], [0, 3], [2, 0], [0, 3], [1, 4]],
+    h4x6: [[0, 2], [1, 2], [0, 2], [2, 2], [0, 3], [2, 0], [0, 3], [1, 4]],
+    h5x3: [[0, 0], [1, 0], [0, 0], [1, 0], [0, 1], [3, 0], [0, 1], [1, 1]],
   },
   {
     dst: [1, 0],
     mask: [2, 3, 4],
-    src: [[3, 2], [3, 3], [3, 2], [3, 4], [2, 2], [3, 0], [1, 2], [2, 4]],
+    h4x6: [[3, 2], [3, 3], [3, 2], [3, 4], [2, 2], [3, 0], [1, 2], [2, 4]],
+    h5x3: [[2, 0], [2, 1], [2, 0], [2, 1], [1, 0], [4, 0], [1, 0], [1, 1]],
   },
   {
     dst: [1, 1],
     mask: [4, 5, 6],
-    src: [[3, 5], [2, 5], [3, 5], [1, 5], [3, 3], [3, 1], [3, 4], [2, 3]],
+    h4x6: [[3, 5], [2, 5], [3, 5], [1, 5], [3, 3], [3, 1], [3, 4], [2, 3]],
+    h5x3: [[2, 2], [1, 2], [2, 2], [1, 2], [2, 1], [4, 1], [2, 1], [1, 1]],
   },
   {
     dst: [0, 1],
     mask: [6, 7, 0],
-    src: [[0, 5], [0, 4], [0, 5], [0, 3], [1, 5], [2, 1], [2, 5], [1, 3]],
+    h4x6: [[0, 5], [0, 4], [0, 5], [0, 3], [1, 5], [2, 1], [2, 5], [1, 3]],
+    h5x3: [[0, 2], [0, 1], [0, 2], [0, 1], [1, 2], [3, 1], [1, 2], [1, 1]],
   },
 ]
 
@@ -46,7 +50,7 @@ type TileCache = {
 // the size of autotile should be 2*3 tileSize
 export function getAutoTileImage(source: HTMLImageElement,
     offsetX: number, offsetY: number,
-    tileSize: number, neighbors: number) {
+    tileSize: number, neighbors: number, tileType: 'h4x6' | 'h5x3') {
   const srcCache = source as any as { autoTileCache: TileCache },
     cache = srcCache.autoTileCache = (srcCache.autoTileCache || { }),
     key = [offsetX, offsetY, tileSize].join('/')
@@ -62,12 +66,12 @@ export function getAutoTileImage(source: HTMLImageElement,
     hw = tileSize / 2
   if (!hasUsed[neighbors]) {
     const dc = canvas.getContext('2d')
-    AUTO_TILE_MAP.forEach(({ dst, mask, src }) => {
-      const b = getMaskBits(neighbors, mask),
-        [i, j] = src[b],
+    AUTO_TILE_MAP.forEach(map => {
+      const b = getMaskBits(neighbors, map.mask),
+        [i, j] = map[tileType][b],
         sx = offsetX + i * hw,
         sy = offsetY + j * hw,
-        [m, n] = dst,
+        [m, n] = map.dst,
         dx = m * hw,
         dy = n * hw + neighbors * tileSize
       dc.drawImage(source, sx, sy, hw, hw, dx, dy, hw, hw)

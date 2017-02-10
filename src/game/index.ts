@@ -6,12 +6,8 @@ import Jump from '../objs/jump'
 import Block from '../objs/block'
 import Box, { BoxGenerator } from '../objs/box'
 import Player, { PlayerGenerator } from '../objs/player'
-import { SaveData as ChunkSaveData } from '../game/chunks'
+import { ChunkRestoreData } from '../game/chunks'
 import { StageEntry, StageLoader } from '../objs/stage'
-
-import {
-  SKY_THEME_COLOR
-} from './skybox'
 
 import {
   Engine,
@@ -42,7 +38,7 @@ export interface ObjectSaveData {
 }
 
 export interface SavedMap {
-  chunksData: { [chunkId: string]: ChunkSaveData }
+  chunksData: ChunkRestoreData
   objectsData: { [objectId: string]: ObjectSaveData }
 }
 
@@ -61,41 +57,69 @@ const OBJECT_CLASSES = {
 
 export const ASSET_IMAGES = {
   imAssetTile1: 'assets/rpg_maker_vx_rtp_tileset_by_telles0808.png',
+  imAssetTile2: 'assets/tileset_pokemon_rpgmaker_xp_by_kutoal-d59p9c9.png',
 }
 
-export const ASSET_TILES: [number, keyof typeof ASSET_IMAGES, number, number, number, boolean][] = [
-  [ 2, 'imAssetTile1',    0,  576, 32, true],
-  [ 3, 'imAssetTile1',    0,  480, 32, true],
-  [ 4, 'imAssetTile1',   64,  480, 32, true],
-  [ 5, 'imAssetTile1',   64,  576, 32, true],
-  [ 6, 'imAssetTile1',  256, 1088, 32, true],
-  [ 7, 'imAssetTile1',  384, 1088, 32, true],
-  [ 8, 'imAssetTile1',  256, 1184, 32, true],
-  [ 9, 'imAssetTile1',  384, 1184, 32, true],
-  [10, 'imAssetTile1',  512,    0, 32, true],
-  [11, 'imAssetTile1',  576,    0, 32, true],
-  [12, 'imAssetTile1',  640,    0, 32, true],
-  [13, 'imAssetTile1',  704,    0, 32, true],
-  [14, 'imAssetTile1',  768,    0, 32, true],
-  [15, 'imAssetTile1',  832,    0, 32, true],
-  [16, 'imAssetTile1',  896,    0, 32, true],
-  [17, 'imAssetTile1',  960,    0, 32, true],
-  [18, 'imAssetTile1',  512,  160, 32, true],
-  [19, 'imAssetTile1',  576,  160, 32, true],
-  [20, 'imAssetTile1',  640,  160, 32, true],
-  [21, 'imAssetTile1',  704,  160, 32, true],
-  [22, 'imAssetTile1',  768,  160, 32, true],
-  [23, 'imAssetTile1',  832,  160, 32, true],
-  [24, 'imAssetTile1',  896,  160, 32, true],
-  [25, 'imAssetTile1',  960,  160, 32, true],
-  [26, 'imAssetTile1',  512,  320, 32, true],
-  [27, 'imAssetTile1',  576,  320, 32, true],
-  [28, 'imAssetTile1',  640,  320, 32, true],
-  [29, 'imAssetTile1',  704,  320, 32, true],
-  [30, 'imAssetTile1',  768,  320, 32, true],
-  [31, 'imAssetTile1',  832,  320, 32, true],
-  [32, 'imAssetTile1',  896,  320, 32, true],
-  [33, 'imAssetTile1',  960,  320, 32, true],
+export const ASSET_TILES: [number, keyof typeof ASSET_IMAGES, number, number, number, string][] = [
+  [ 2, 'imAssetTile1',    0,  576, 32, 'h4x6'],
+  [ 3, 'imAssetTile1',    0,  480, 32, 'h4x6'],
+  [ 4, 'imAssetTile1',   64,  480, 32, 'h4x6'],
+  [ 5, 'imAssetTile1',   64,  576, 32, 'h4x6'],
+  [ 6, 'imAssetTile1',  256, 1088, 32, 'h4x6'],
+  [ 7, 'imAssetTile1',  384, 1088, 32, 'h4x6'],
+  [ 8, 'imAssetTile1',  256, 1184, 32, 'h4x6'],
+  [ 9, 'imAssetTile1',  384, 1184, 32, 'h4x6'],
+  [10, 'imAssetTile1',  512,    0, 32, 'h4x6'],
+  [11, 'imAssetTile1',  576,    0, 32, 'h4x6'],
+  [12, 'imAssetTile1',  640,    0, 32, 'h4x6'],
+  [13, 'imAssetTile1',  704,    0, 32, 'h4x6'],
+  [14, 'imAssetTile1',  768,    0, 32, 'h4x6'],
+  [15, 'imAssetTile1',  832,    0, 32, 'h4x6'],
+  [16, 'imAssetTile1',  896,    0, 32, 'h4x6'],
+  [17, 'imAssetTile1',  960,    0, 32, 'h4x6'],
+  [18, 'imAssetTile1',  512,  160, 32, 'h4x6'],
+  [19, 'imAssetTile1',  576,  160, 32, 'h4x6'],
+  [20, 'imAssetTile1',  640,  160, 32, 'h4x6'],
+  [21, 'imAssetTile1',  704,  160, 32, 'h4x6'],
+  [22, 'imAssetTile1',  768,  160, 32, 'h4x6'],
+  [23, 'imAssetTile1',  832,  160, 32, 'h4x6'],
+  [24, 'imAssetTile1',  896,  160, 32, 'h4x6'],
+  [25, 'imAssetTile1',  960,  160, 32, 'h4x6'],
+  [26, 'imAssetTile1',  512,  320, 32, 'h4x6'],
+  [27, 'imAssetTile1',  576,  320, 32, 'h4x6'],
+  [28, 'imAssetTile1',  640,  320, 32, 'h4x6'],
+  [29, 'imAssetTile1',  704,  320, 32, 'h4x6'],
+  [30, 'imAssetTile1',  768,  320, 32, 'h4x6'],
+  [31, 'imAssetTile1',  832,  320, 32, 'h4x6'],
+  [32, 'imAssetTile1',  896,  320, 32, 'h4x6'],
+  [33, 'imAssetTile1',  960,  320, 32, 'h4x6'],
+  [56, 'imAssetTile2',  208,  720, 32, ''],
+  [34, 'imAssetTile2',    0,  704, 32, 'h5x3'],
+  [36, 'imAssetTile2',    0,  800, 32, 'h5x3'],
+  [40, 'imAssetTile2',    0,  656, 32, 'h5x3'],
+  [41, 'imAssetTile2',    0,  752, 32, 'h5x3'],
+  [54, 'imAssetTile2',  128,  656, 32, 'h5x3'],
+  [46, 'imAssetTile2',  128,    0, 32, 'h5x3'],
+  [35, 'imAssetTile2',  128,   48, 32, 'h5x3'],
+  [47, 'imAssetTile2',  128,   96, 32, 'h5x3'],
+  [48, 'imAssetTile2',  128,  144, 32, 'h5x3'],
+  [50, 'imAssetTile2',  128,  240, 32, 'h5x3'],
+  /*
+  [57, 'imAssetTile2',  112,  624, 32, ''],
+  [43, 'imAssetTile2',    0,  896, 32, 'h5x3'],
+  [55, 'imAssetTile2',  128,  704, 32, 'h5x3'],
+  */
+  [58, 'imAssetTile2',  176,  992, 32, ''],
+  [59, 'imAssetTile2',  208,  800, 32, ''],
+  [52, 'imAssetTile2',  128,  800, 32, 'h5x3'],
+  [53, 'imAssetTile2',  128,  944, 32, 'h5x3'],
+  /*
+  [51, 'imAssetTile2',  128,  288, 32, 'h5x3'],
+  [37, 'imAssetTile2',    0,  384, 32, 'h5x3'],
+  [38, 'imAssetTile2',    0,  432, 32, 'h5x3'],
+  [39, 'imAssetTile2',    0,  480, 32, 'h5x3'],
+  [44, 'imAssetTile2',    0,  944, 32, 'h5x3'],
+  */
 ]
 
 export const ASSET_CLASSES: [number, keyof typeof ASSET_IMAGES, number, number, number, number, keyof typeof OBJECT_CLASSES, any, any][] = [
@@ -147,7 +171,7 @@ export function createScene() {
 
   scene.enablePhysics(new Vector3(0, -3, 0))
   scene.workerCollisions = true
-  scene.clearColor = SKY_THEME_COLOR.toColor4()
+  scene.clearColor = Color3.FromHexString('#607f9a').scale(0.7).toColor4()
 
   engine.runRenderLoop(() => {
     scene.render()
@@ -244,9 +268,9 @@ export async function loadAssets(scene: Scene,
     materials[id] = { material, texSize }
   }
 
-  const tiles = ASSET_TILES.map(([tileId, srcId, offsetX, offsetY, size, isAutoTile]) => {
+  const tiles = ASSET_TILES.map(([tileId, srcId, offsetX, offsetY, size, autoTileType]) => {
     const src = document.getElementById(srcId) as HTMLImageElement
-    return { tileId, src, offsetX, offsetY, size, isAutoTile }
+    return { tileId, src, offsetX, offsetY, size, autoTileType }
   })
 
   const classes = ASSET_CLASSES.map(([clsId, srcId, offsetX, offsetY, width, height, clsName, args, editorClass]) => {
