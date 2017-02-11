@@ -10,14 +10,14 @@ import {
 } from '../babylon'
 
 import {
+  randomBytes,
+} from '../utils'
+
+import {
   ObjectPlayListener,
   ObjectEditable,
   ObjectUsable,
-} from './'
-
-import {
-  randomBytes,
-} from '../utils'
+} from '../game/objbase'
 
 import Sprite from './sprite'
 
@@ -62,7 +62,8 @@ export default class Box extends InstancedMesh implements ObjectUsable {
     return mesh.name === 'flandre'
   }
 
-  displayUsable(_mesh: AbstractMesh, show: boolean) {
+  displayUsable(_mesh: AbstractMesh, _show: boolean) {
+    /*
     const canvas = this.generator.opts.canvas2d
 
     const markCache = canvas as any as { boxMarkCache: BABYLON.Group2D },
@@ -84,6 +85,7 @@ export default class Box extends InstancedMesh implements ObjectUsable {
     }))
     mark.trackedNode = this
     mark.levelVisible = show
+    */
   }
 
   useFrom(mesh: AbstractMesh) {

@@ -1,19 +1,16 @@
 import {
-  Mesh,
   Vector3,
 } from './babylon'
 
 import {
-  createScene,
-  loadAssets,
+  Game,
   SavedMap,
 } from './game'
 
 import {
   ObjectBase,
-  ObjectOptions,
   ObjectPlayListener,
-} from './objs'
+} from './game/objbase'
 
 import {
   appendElement,
@@ -28,7 +25,7 @@ import {
   EventEmitter,
 } from './utils'
 
-import Chunks, { TileDefine } from './game/chunks'
+import Chunks from './game/chunks'
 import SkyBox from './game/skybox'
 import { StageLoader } from './objs/stage'
 
@@ -43,24 +40,13 @@ const KEY_MAP = {
   'nav-horizontal': 'LEFT | RIGHT',
 }
 
-interface StageOptions {
-  scene: BABYLON.Scene
-  tiles: TileDefine[]
-  classes: {
-    clsId: number
-    cls: typeof ObjectBase
-    opts: ObjectOptions
-    args: any
-  }[]
-}
-
 class Stage {
   readonly chunks: Chunks
-  readonly objects: (ObjectBase & ObjectPlayListener)[]
+  readonly objects: ObjectBase[] & ObjectPlayListener[]
   constructor(
       readonly url: string,
       readonly position: Vector3,
-      map: SavedMap, opts: StageOptions) {
+      map: SavedMap, game: Game) {
     const entryPosition = this.position.clone(),
       entryId = Object.keys(map.objectsData).find(id => map.objectsData[id].args.editorSingletonId === 'stage/entry')
     if (entryId) {
@@ -69,26 +55,21 @@ class Stage {
     }
 
     const name = url.split('.').slice(-2).shift()
-    this.chunks = new Chunks(name, opts.scene, opts.tiles, map.chunksData, entryPosition)
+    this.chunks = new Chunks(name, game.scene, game.assets.tiles, map.chunksData, entryPosition)
     this.objects = [ ]
 
     Object.keys(map.objectsData).forEach(id => {
       const objData = map.objectsData[id],
-        clsFound = opts.classes.find(c => c.clsId === objData.clsId)
-      if (clsFound) {
-        const { opts, cls } = clsFound,
-          { x, y, z } = objData,
-          args = Object.assign({ }, clsFound.args, objData.args),
-          object = new cls(id, opts)
-        object.position.copyFromFloats(x, y, z).addInPlace(entryPosition)
-        Object.assign(object, args)
-        this.objects.push(object as any)
+        { clsId, x, y, z, args } = objData,
+        position = new Vector3(x, y, z).addInPlace(entryPosition)
+      try {
+        this.objects.push(game.createObject(id, clsId, position, args))
       }
-      else {
-        console.warn(`class ${objData.clsId} is not found! ignoring object #${id}`)
+      catch (err) {
+        console.warn(`restore object failed: ${err && err.message || err}`)
       }
     })
-    this.objects.forEach((object: ObjectPlayListener) => object.startPlaying && object.startPlaying() as any)
+    this.objects.forEach((object: ObjectPlayListener) => object.startPlaying && object.startPlaying())
   }
 
   dispose() {
@@ -100,8 +81,8 @@ class Stage {
 
 class StageManager {
   static DEFAULT_HISTORY_VALUE = JSON.stringify([{ url: 'assets/stage/startup.json', x: 0, y: 0, z: 0 }])
-  static async restore(opts: StageOptions) {
-    const stageManager = new StageManager(opts),
+  static async restore(game: Game) {
+    const stageManager = new StageManager(game),
       history = [ ] as { url: string, x: number, y: number, z: number }[]
     // TODO: load from somewhere
     try {
@@ -130,14 +111,14 @@ class StageManager {
     if (!this.stages.find(stage => stage.url === url && stage.position.equals(position))) {
       const map = await fetch(url).then(res => res.json()) as any as SavedMap
       if (!this.isDisposed) {
-        this.stages.push(new Stage(url, position, map, this.opts))
+        this.stages.push(new Stage(url, position, map, this.game))
         this.stages.length > 2 && this.stages.shift().dispose()
         localStorage.setItem('stage-history', JSON.stringify(this.stages.map(({ url, position: { x, y, z } }) => ({ url, x, y, z }))))
       }
     }
   }
 
-  private constructor(private opts: StageOptions) {
+  private constructor(private game: Game) {
   }
 
   private async loadFromURL(url: string, position: Vector3) {
@@ -279,9 +260,16 @@ function selectNextConfigItem(delta: number) {
 }
 
 ; (async function() {
-  const { scene, camera, canvas2d, ctrl, clock } = createScene(),
-    source = new Mesh('cache/object/source', scene),
-    assets = await loadAssets(scene, updateLoadingScreenProgress),
+  let game: Game
+  try {
+    game = await Game.load(updateLoadingScreenProgress)
+  }
+  catch (err) {
+    LoadingScreen.update(`create game failed: ${err && err.message || err}`)
+    throw err
+  }
+
+  const scene = game.scene,
     configManager = await ConfigManager.load(),
     keyInput = new KeyEmitter(KEY_MAP)
 
@@ -296,24 +284,22 @@ function selectNextConfigItem(delta: number) {
 
   const gameState = new GameState({
     async main(next) {
-      camera.followTarget.copyFromFloats(0, 0, 0)
+      game.camera.followTarget.copyFromFloats(0, 0, 0)
       document.querySelector('.show-if-has-profile')
         .classList[StageManager.hasProfile() ? 'remove' : 'add']('hidden')
       await next()
     },
     async play(next) {
-      const tiles = assets.tiles,
-        classes = assets.classes.map(({ icon, ...others }) => ({ ...others, opts: { icon, source, canvas2d, clock } })),
-        stageManager = await StageManager.restore({ scene, classes, tiles }),
+      const stageManager = await StageManager.restore(game),
         onTrigger = StageLoader.eventEmitter.on('trigger', loader => stageManager.loadFromLoader(loader))
       await next()
       StageLoader.eventEmitter.off('trigger', onTrigger)
       stageManager.dispose()
     },
     async pause(next) {
-      ctrl.pause()
+      game.isPaused = true
       await next()
-      ctrl.resume()
+      game.isPaused = false
     },
     async config(next) {
       const changeConfigItem = keyInput.down('nav-vertical', () => selectNextConfigItem(keyInput.state.up ? -1 : 1)),
@@ -359,8 +345,8 @@ function selectNextConfigItem(delta: number) {
 
   await new Promise(resolve => setTimeout(resolve, 1000))
 
-  camera.lowerBetaSoftLimit = Math.PI * 0.35
-  camera.upperRadiusSoftLimit = 40
+  game.camera.lowerBetaSoftLimit = Math.PI * 0.35
+  game.camera.upperRadiusSoftLimit = 40
 
   gameState.goto('main')
   LoadingScreen.hide()

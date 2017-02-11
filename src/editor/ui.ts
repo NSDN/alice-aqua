@@ -13,7 +13,6 @@ import {
 
 export interface ClassDefine {
   clsId: number
-  clsName: string
   src: HTMLImageElement
   offsetX: number
   offsetY: number
@@ -68,8 +67,8 @@ export class UI extends EventEmitter<{
 
     const clsList = document.querySelector('.ui-classes')
     classes.forEach(cls => {
-      const { clsId, clsName, src, offsetX, offsetY, width, height, title } = cls,
-        attrs = { className: 'ui-list-item', attributes: { cid: clsId }, title: title || clsName },
+      const { clsId, src, offsetX, offsetY, width, height, title } = cls,
+        attrs = { className: 'ui-list-item', attributes: { cid: clsId }, title },
         div = appendElement('div', attrs, clsList) as HTMLDivElement,
         canvas = appendElement('canvas', { width, height }, div) as HTMLCanvasElement
       canvas.getContext('2d').drawImage(src, offsetX, offsetY, width, height, 0, 0, width, height)

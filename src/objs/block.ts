@@ -21,7 +21,7 @@ import {
   ObjectOptions,
   ObjectEditable,
   ObjectTriggerable,
-} from './'
+} from '../game/objbase'
 
 export default class Block extends ObjectBase implements ObjectEditable, ObjectTriggerable {
   public triggerSpeed = 0.02

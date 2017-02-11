@@ -20,15 +20,15 @@ import {
 } from '../utils/dom'
 
 import {
+  drawIconFont,
+} from '../utils/dom'
+
+import {
   ObjectBase,
   ObjectOptions,
   ObjectEditable,
   ObjectTriggerable,
-} from './'
-
-import {
-  drawIconFont,
-} from '../utils/dom'
+} from '../game/objbase'
 
 export default class Gate extends ObjectBase implements ObjectEditable, ObjectTriggerable {
   public direction = 'x' as 'x' | 'z'

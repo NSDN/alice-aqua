@@ -30,7 +30,7 @@ import {
   ObjectEditable,
   ObjectTriggerable,
   ObjectPlayListener,
-} from './'
+} from '../game/objbase'
 
 const TRIGGER_ON_COLOR = new Color3(1, 0.5, 0.5),
   TRIGGER_OFF_COLOR = Color3.White().scale(0.8)
@@ -39,7 +39,7 @@ class TriggerLocker extends Mesh {
   private timeBegin = 0
   private timeEnd = 0
   setTimeout(timeout: number) {
-    this.timeBegin = this.opts.clock.now()
+    this.timeBegin = this.opts.clock.tickNow
     this.timeEnd = this.timeBegin + timeout
     this.isVisible = true
   }
@@ -64,7 +64,7 @@ class TriggerLocker extends Mesh {
     texture.hasAlpha = true
     this.registerBeforeRender(_ => {
       if (this.timeEnd > this.timeBegin) {
-        const now = this.opts.clock.now()
+        const now = this.opts.clock.tickNow
         if (now > this.timeEnd) {
           this.timeEnd = this.timeBegin
         }

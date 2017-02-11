@@ -1,8 +1,7 @@
-const webpack = require("webpack"),
+const webpack = require('webpack'),
   isDevServer = process.argv.find(v => v.includes('webpack-dev-server'))
 
 module.exports = {
-  debug: true,
   devtool: isDevServer && 'source-map',
   entry: isDevServer ? {
     game: './src/game-main',
@@ -17,21 +16,24 @@ module.exports = {
     filename: 'build/[name].bundle.js'
   },
   resolve: {
-    extensions: ['', '.js', '.ts']
+    extensions: ['.js', '.ts']
   },
   module: {
-    preLoaders: [
+    rules: [
       {
         test: /\.ts$/,
+        enforce: 'pre',
         loader: 'tslint-loader'
-      }
-    ],
-    loaders: [
+      },
       {
         test: /\.ts$/,
-        loaders: isDevServer ? ['ts-loader'] : ['babel-loader', 'ts-loader'],
+        use: isDevServer ? ['ts-loader'] : ['babel-loader', 'ts-loader'],
       }
     ],
   },
-  plugins: isDevServer ? [ ] : [new webpack.optimize.UglifyJsPlugin()]
+  plugins: [
+    new webpack.LoaderOptionsPlugin({ debug: true })
+  ].concat(isDevServer ? [ ] : [
+    new webpack.optimize.UglifyJsPlugin()
+  ])
 }

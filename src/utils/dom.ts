@@ -238,8 +238,7 @@ export const MenuManager = {
   },
 }
 
-export function loadWithXHR<T>(src: string, opts: any,
-    onProgress?: (progress: number) => void) {
+export function loadWithXHR<T>(src: string, opts?: any, onProgress?: (progress: number) => void) {
   return new Promise<T>((onload, onerror) => {
     const xhr = new XMLHttpRequest()
     xhr.addEventListener('error', onerror)

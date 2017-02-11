@@ -1,8 +1,3 @@
-import { ObjectEditable, ObjectPlayListener } from './objs'
-import Player, { PlayerGenerator } from './objs/player'
-import Cursor from './editor/cursor'
-import Chunks, { ChunkData } from './game/chunks'
-
 import {
   Mesh,
   Vector3,
@@ -15,11 +10,17 @@ import {
 } from './babylon'
 
 import {
-  createScene,
-  loadAssets,
+  Game,
 } from './game'
 
+import {
+  ObjectEditable, ObjectPlayListener
+} from './game/objbase'
+
 import SkyBox from './game/skybox'
+import Chunks, { ChunkData } from './game/chunks'
+import Cursor from './editor/cursor'
+import Player, { PlayerGenerator } from './objs/player'
 
 import {
   SelectionBox,
@@ -95,17 +96,28 @@ const KEY_MAP = {
   redo: 'CTRL + Y',
 }
 
+function updateLoadingScreenProgress(index: number, total: number, progress: number) {
+  LoadingScreen.update(`Loading Assets ${index + 1}/${total} (${~~(progress * 100)}%)`)
+}
+
 ; (async function() {
-  const { scene, camera, canvas2d, clock } = createScene(),
-    keyInput = new KeyEmitter(KEY_MAP),
-    keys = keyInput.state,
+  let game: Game
+  try {
+    game = await Game.load(updateLoadingScreenProgress)
+    game.objectSource = new ObjectBoundary('frame', game.scene)
+  }
+  catch (err) {
+    LoadingScreen.update(`create game failed: ${err && err.message || err}`)
+    throw err
+  }
+
+  const { scene, camera, assets } = game,
     canvas = scene.getEngine().getRenderingCanvas(),
 
-    map = await loadSavedMap(),
-    assets = await loadAssets(scene, (index, total, progress) =>
-      LoadingScreen.update(`Loading Assets ${~~(progress * 100)}% (${index + 1}/${total})`)),
+    keyInput = new KeyEmitter(KEY_MAP),
+    keys = keyInput.state,
 
-    source = new ObjectBoundary('frame', scene),
+    map = await loadSavedMap(),
 
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
     lastSelection = new SelectionBox('select', scene),
@@ -113,36 +125,29 @@ const KEY_MAP = {
     chunks = new Chunks('chunk', scene, assets.tiles, map.chunksData),
     grid = new GridPlane('grids', scene, chunks.chunkSize),
 
-    ui = new UI(assets.tiles, assets.classes.map(cls => cls.ui)),
+    ui = new UI(assets.tiles, assets.classes),
     editorHistory = new EditorHistory(),
 
-    // TODO: wrap this into new class
     objectManager = {
-      create(id: string, clsId: number, position: Vector3, restoreArgs?: any) {
+      create(id: string, clsId: number, position: Vector3, args = { }) {
         objectManager.destroy(id)
-        const clsFound = assets.classes.find(c => c.clsId === clsId)
-        if (clsFound) {
-          const { icon, cls } = clsFound,
-            args = Object.assign({ }, clsFound.args, restoreArgs),
-            object = new cls(id, { icon, source, canvas2d, clock })
-          object.position.copyFrom(position)
-          Object.assign(object, args)
-
+        try {
+          const object = game.createObject(id, clsId, position, args)
           map.objectsData[id] = JSON.parse(JSON.stringify({ clsId, args }))
           Tags.AddTagsTo(object, TAGS.object)
           selectedObject = object
         }
-        else {
-          console.warn(`class ${clsId} is not found! ignoring object #${id}`)
+        catch (err) {
+          console.warn(`restore object failed: ${err && err.message || err}`)
         }
       },
       destroy(id: string) {
         const object = scene.getMeshByName(id)
         if (object) {
-          if (selectedObject === object) {
-            selectedObject = null
-          }
           object.dispose()
+        }
+        if (selectedObject === object) {
+          selectedObject = null
         }
         delete map.objectsData[id]
       }
@@ -317,7 +322,7 @@ const KEY_MAP = {
     grid.isVisible = ui.activePanel === 'brushes' || ui.activePanel === 'objects'
     lastSelection.isVisible = ui.activePanel === 'brushes'
     sky && sky.setIsVisible(ui.activePanel === 'play')
-    source.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
+    game.objectSource.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
   })
 
   const objectToolbar = document.getElementById('objectToolbar')
@@ -378,7 +383,7 @@ const KEY_MAP = {
     location.reload()
   })
 
-  const objectHoverCursor = source.createInstance('object-hover')
+  const objectHoverCursor = game.objectSource.createInstance('object-hover')
   objectHoverCursor.scaling.copyFromFloats(1.15, 1.15, 1.15)
   objectHoverCursor.isVisible = false
   const objectHoverInfo = document.getElementById('objectHoverInfo') as HTMLDivElement

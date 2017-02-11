@@ -2,7 +2,7 @@ import {
   ObjectEditable,
   ObjectTriggerable,
   ObjectPlayListener,
-} from './'
+} from '../game/objbase'
 
 import {
   appendConfigInput,

@@ -19,7 +19,7 @@ import {
   ObjectPlayListener,
   ObjectUsable,
   ObjectEditable,
-} from './'
+} from '../game/objbase'
 
 import {
   KeyEmitter,

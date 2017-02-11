@@ -14,7 +14,7 @@ import {
   ObjectOptions,
   ObjectEditable,
   ObjectTriggerable,
-} from './'
+} from '../game/objbase'
 
 import {
   drawIconFont,

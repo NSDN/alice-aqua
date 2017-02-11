@@ -41,15 +41,15 @@ export interface ChunkData {
   k: string
 }
 
-export interface ChunkSaveData {
-  tiles: number[]
-  heights: number[]
-}
-
-export interface ChunkRestoreData {
+export interface RestoreData {
   unit: number
   size: number
-  chunks: { [key: string]: ChunkSaveData }
+  chunks: {
+    [key: string]: {
+      tiles: number[]
+      heights: number[]
+    }
+  }
 }
 
 export interface TileDefine {
@@ -76,7 +76,7 @@ export default class Chunks extends EventEmitter<{
 
   constructor(readonly name: string, readonly scene: Scene,
     tilesDefine: TileDefine[],
-    restoreData = { } as ChunkRestoreData,
+    restoreData = { } as RestoreData,
     readonly position = Vector3.Zero(),
     readonly unitSize = restoreData.unit || 1,
     readonly chunkSize = restoreData.size || 16,
@@ -337,14 +337,17 @@ export default class Chunks extends EventEmitter<{
     return { t, h: h + this.position.y }
   }
 
-  serialize(): ChunkRestoreData {
-    const chunks = { } as { [k: string]: ChunkSaveData }
+  serialize() {
+    const data: RestoreData = {
+      unit: this.unitSize,
+      size: this.chunkSize,
+      chunks: { }
+    }
     Object.keys(this.data).forEach(k => {
       const { tiles, heights } = this.data[k]
-      chunks[k] = { tiles, heights }
+      data.chunks[k] = { tiles, heights }
     })
-    const size = this.chunkSize, unit = this.unitSize
-    return { chunks, unit, size }
+    return data
   }
 
   dispose() {

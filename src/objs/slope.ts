@@ -22,7 +22,7 @@ import {
   ObjectBase,
   ObjectEditable,
   ObjectOptions,
-} from './'
+} from '../game/objbase'
 
 export default class Slope extends ObjectBase implements ObjectEditable {
   static readonly TARGET_TAG = 'slope-target'

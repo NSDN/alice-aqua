@@ -16,7 +16,7 @@ import {
   ObjectBase,
   ObjectOptions,
   ObjectEditable,
-} from './'
+} from '../game/objbase'
 
 export default class Sprite extends ObjectBase implements ObjectEditable {
   readonly spriteBody: AbstractMesh
