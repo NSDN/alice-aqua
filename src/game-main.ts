@@ -302,11 +302,11 @@ function selectNextConfigItem(delta: number) {
       game.isPaused = false
     },
     async config(next) {
-      const changeConfigItem = keyInput.down('nav-vertical', () => selectNextConfigItem(keyInput.state.up ? -1 : 1)),
-        changeConfigValue = keyInput.down('nav-horizontal', () => configManager.update())
+      const changeConfigItem = keyInput.down.on('nav-vertical', () => selectNextConfigItem(keyInput.state.up ? -1 : 1)),
+        changeConfigValue = keyInput.down.on('nav-horizontal', () => configManager.update())
       await next()
-      keyInput.off('nav-vertical', changeConfigItem)
-      keyInput.off('nav-horizontal', changeConfigValue)
+      keyInput.down.off('nav-vertical', changeConfigItem)
+      keyInput.down.off('nav-horizontal', changeConfigValue)
       configManager.save()
     },
     async clear(next) {
@@ -315,28 +315,28 @@ function selectNextConfigItem(delta: number) {
     }
   })
 
-  keyInput.down('escape', () => {
+  keyInput.down.on('escape', () => {
     const activeList = MenuManager.activeList()
     if (activeList) {
       gameState.goto(activeList.getAttribute('menu-escape') || '')
     }
   })
 
-  keyInput.down('return', () => {
+  keyInput.down.on('return', () => {
     const activeItem = MenuManager.activeItem()
     if (activeItem) {
       gameState.goto(activeItem.getAttribute('menu-goto') || '')
     }
   })
 
-  keyInput.down('nav-vertical', () => {
+  keyInput.down.on('nav-vertical', () => {
     const activeList = MenuManager.activeList()
     if (activeList && !activeList.classList.contains('menu-horizontal')) {
       MenuManager.selectNext(keyInput.state.up ? -1 : 1)
     }
   })
 
-  keyInput.down('nav-horizontal', () => {
+  keyInput.down.on('nav-horizontal', () => {
     const activeList = MenuManager.activeList()
     if (activeList && !activeList.classList.contains('menu-vertical')) {
       MenuManager.selectNext(keyInput.state.left ? -1 : 1)

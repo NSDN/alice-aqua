@@ -278,6 +278,8 @@ const SPECIAL_KEYS: { [keyCode: number]: string } = {
 }
 
 export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
+  readonly down = new EventEmitter<{ [P in keyof KM]: void }>()
+  readonly up = new EventEmitter<{ [P in keyof KM]: void }>()
   private all = new EventEmitter<{ [key: string]: boolean }>()
   readonly state = { } as { [P in keyof KM]: boolean }
   readonly any = new EventEmitter<{
@@ -297,6 +299,7 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
         const down = keyDown.every(b => b)
         if (this.state[name] !== down) {
           this.emit(name, this.state[name] = down)
+          this[down ? 'down' : 'up'].emit(name, null)
           this.any.emit(down ? 'down' : 'up', name)
           this.any.emit('change', { name, down })
         }
@@ -312,13 +315,5 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
       const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which.toString()
       this.all.emit(key, false)
     })
-  }
-
-  down(key: keyof KM, cb: () => void) {
-    return this.on(key, down => down && cb())
-  }
-
-  up(key: keyof KM, cb: () => void) {
-    return this.on(key, down => !down && cb())
   }
 }

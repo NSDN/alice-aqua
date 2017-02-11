@@ -18,7 +18,7 @@ import {
 } from './game/objbase'
 
 import SkyBox from './game/skybox'
-import Chunks, { ChunkData } from './game/chunks'
+import Chunks from './game/chunks'
 import Cursor from './editor/cursor'
 import Player, { PlayerGenerator } from './objs/player'
 
@@ -246,7 +246,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     map.saveDebounced(chunks)
   })
 
-  chunks.on('height-updated', (chunk: ChunkData) => {
+  chunks.on('height-updated', chunk => {
     const pos = chunk.top.position, size = chunks.chunkSize,
       box = new BoundingBox(pos, pos.add(new Vector3(size, 0, size)))
     scene.getMeshesByTags(TAGS.object).forEach(mesh => {
@@ -265,7 +265,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     map.saveDebounced(chunks)
   })
 
-  chunks.on('chunk-loaded', (chunk: ChunkData) => {
+  chunks.on('chunk-loaded', chunk => {
     Tags.AddTagsTo(chunk.top, TAGS.block)
     Tags.AddTagsTo(chunk.side, TAGS.block)
   })
@@ -490,9 +490,9 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     }
   }))
 
-  keyInput.down('focus', () => grid.isVisible && camera.followTarget.copyFrom(cursor.hover))
-  keyInput.down('undo',  () => grid.isVisible && editorHistory.undo())
-  keyInput.down('redo',  () => grid.isVisible && editorHistory.redo())
+  keyInput.down.on('focus', () => grid.isVisible && camera.followTarget.copyFrom(cursor.hover))
+  keyInput.down.on('undo',  () => grid.isVisible && editorHistory.undo())
+  keyInput.down.on('redo',  () => grid.isVisible && editorHistory.redo())
 
   const renderListeners = [
     watch(() => {
