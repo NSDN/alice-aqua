@@ -13,6 +13,7 @@ sed -i -r \
   -e "s/\\{\\{BUILD_HASH\\}\\}/$BUILD_HASH/" \
   -e "s/<([^>]+)(class=\"build-hash\"[^>]*)>[^<]*</<\1\2>$BUILD_HASH</" \
   *.html &&\
+cp package.json $TMP_DIR/ &&\
 cp *.html $TMP_DIR/ &&\
 cp -r assets $TMP_DIR/ &&\
 cp -r build $TMP_DIR/ &&\
