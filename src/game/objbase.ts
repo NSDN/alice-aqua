@@ -3,6 +3,7 @@ import {
   Mesh,
   Material,
   AbstractMesh,
+  ScreenSpaceCanvas2D,
 } from '../babylon'
 
 export interface ObjectIcon {
@@ -20,6 +21,7 @@ export interface ObjectClock {
 }
 
 export interface ObjectOptions {
+  canvas: ScreenSpaceCanvas2D
   icon: ObjectIcon
   clock: ObjectClock
   source: Mesh

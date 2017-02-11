@@ -125,13 +125,13 @@ export function appendConfigElement(label: string | HTMLElement, tag: string, at
   return input
 }
 
-export function appendConfigInput(label: string | HTMLElement, value: any, attrs: any, container: HTMLElement, onChange: (value: string) => void) {
+export function appendConfigInput(label: string | HTMLElement, value: any, attrs: any, container: HTMLElement, onChange?: (value: string) => void) {
   const input = appendConfigElement(label, 'input', attrs, container) as HTMLInputElement
   input.value = value
-  input.addEventListener('change', _ => onChange(input.value))
+  onChange && input.addEventListener('change', _ => onChange(input.value))
 }
 
-export function appendSelectOptions(label: string | HTMLElement, val: string, options: any, container: HTMLElement) {
+export function appendSelectOptions(label: string | HTMLElement, val: string, options: any, container: HTMLElement, onChange?: (value: string) => void) {
   const select = appendConfigElement(label, 'select', { }, container) as HTMLSelectElement
   if (Array.isArray(options)) {
     options.forEach(innerHTML => appendElement('option', { innerHTML }, select))
@@ -140,20 +140,22 @@ export function appendSelectOptions(label: string | HTMLElement, val: string, op
     Object.keys(options).forEach(value => appendElement('option', { innerHTML: options[value], value }, select))
   }
   select.value = val
+  onChange && select.addEventListener('change', _ => onChange(select.value))
   return select
 }
 
 export function appendVectorInputs(label: string | HTMLElement, val: { x: number, y: number, z: number },
-    container: HTMLElement, attrs: any, onChange: (inputs: HTMLInputElement[]) => void) {
+    container: HTMLElement, attrs: any, onChange?: (x: string, y: string, z: string) => void) {
   attrs = { type: 'number', style: { width: '30%', maxWidth: '40px' }, ...attrs }
   const div = appendConfigElement(label, 'div', { }, container)
   const inputs = 'x/y/z'.split('/').map((a: 'x' | 'y' | 'z') => {
     const input = appendElement('input', attrs, div) as HTMLInputElement
     input.placeholder = a
     input.value = val[a] + ''
-    input.addEventListener('change', _ => onChange(inputs))
+    onChange && input.addEventListener('change', _ => onChange.apply(null, inputs.map(input => input.value)))
     return input
   })
+  return inputs
 }
 
 let loadingTimeout = 0

@@ -62,9 +62,8 @@ export default class Box extends InstancedMesh implements ObjectUsable {
     return mesh.name === 'flandre'
   }
 
-  displayUsable(_mesh: AbstractMesh, _show: boolean) {
-    /*
-    const canvas = this.generator.opts.canvas2d
+  displayUsable(_mesh: AbstractMesh, show: boolean) {
+    const canvas = this.generator.opts.canvas
 
     const markCache = canvas as any as { boxMarkCache: BABYLON.Group2D },
       mark = markCache.boxMarkCache || (markCache.boxMarkCache = new BABYLON.Group2D({
@@ -85,7 +84,8 @@ export default class Box extends InstancedMesh implements ObjectUsable {
     }))
     mark.trackedNode = this
     mark.levelVisible = show
-    */
+    // TODO
+    mark.opacity = show ? 1 : 0
   }
 
   useFrom(mesh: AbstractMesh) {

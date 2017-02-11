@@ -99,14 +99,14 @@ export default class Block extends ObjectBase implements ObjectEditable, ObjectT
   attachEditorContent(container: HTMLElement, save: (args: Partial<Block>) => void) {
     const attrs = { type: 'number', min: 0.005, max: 0.05, step: 0.005 }
     appendConfigInput('speed', this.triggerSpeed, attrs, container, val => save({ triggerSpeed: parseInt(val) }))
-    appendVectorInputs('size: ', this._blockSize, container, { min: 1, step: 1 }, inputs => {
-      save({ blockSize: inputs.map(i => i.value = Math.max(parseInt(i.value), 1) as any) })
+    appendVectorInputs('size: ', this._blockSize, container, { min: 1, step: 1 }, (x, y, z) => {
+      save({ blockSize: [x, y, z].map(v => Math.max(parseInt(v), 1)) })
     })
-    appendVectorInputs('offset: ', this._blockOffset, container, { step: 1 }, inputs => {
-      save({ blockOffset: inputs.map(i => i.value = parseInt(i.value) as any) })
+    appendVectorInputs('offset: ', this._blockOffset, container, { step: 1 }, (x, y, z) => {
+      save({ blockOffset: [x, y, z].map(parseFloat) })
     })
-    appendVectorInputs('trigger: ', this._triggerOffset, container, { step: 1 }, inputs => {
-      save({ triggerOffset: inputs.map(i => i.value = parseInt(i.value) as any) })
+    appendVectorInputs('trigger: ', this._triggerOffset, container, { step: 1 }, (x, y, z) => {
+      save({ triggerOffset: [x, y, z].map(parseFloat) })
     })
   }
 

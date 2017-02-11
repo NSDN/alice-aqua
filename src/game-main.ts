@@ -17,17 +17,22 @@ import {
   LoadingScreen,
   MenuManager,
   KeyEmitter,
+  loadWithXHR,
 } from './utils/dom'
 
 import {
   queue,
   step,
+  sleep,
   EventEmitter,
 } from './utils'
 
 import Chunks from './game/chunks'
 import SkyBox from './game/skybox'
+
 import { StageLoader } from './objs/stage'
+import BulletinBoard from './objs/bulletin'
+import Player from './objs/player'
 
 const KEY_MAP = {
   escape: 'ESCAPE',
@@ -38,6 +43,7 @@ const KEY_MAP = {
   right: 'RIGHT',
   'nav-vertical': 'UP | DOWN',
   'nav-horizontal': 'LEFT | RIGHT',
+  'finish-dialog': 'CTRL',
 }
 
 class Stage {
@@ -312,6 +318,38 @@ function selectNextConfigItem(delta: number) {
     async clear(next) {
       StageManager.clear()
       await next()
+    },
+    async dialog(next) {
+      const player = scene.getMeshesByTags(Player.PLAYER_TAG)
+        .find(player => (player as Player).isPlayerActive) as Player
+      player.isPlayerActive = false
+
+      const elem = document.querySelector('.game-dialog-content')
+      elem.innerHTML = ''
+
+      const text = await loadWithXHR<string>('package.json')
+      for (let i = 0; i < text.length && gameState.current === 'dialog'; i ++) {
+        if (keyInput.state['finish-dialog']) {
+          elem.innerHTML = text
+          await sleep(50)
+          elem.parentElement.scrollTop = elem.scrollHeight
+          break
+        }
+        else {
+          elem.innerHTML += text[i]
+          await sleep(50)
+          if (text[i - 1] === '\n') {
+            elem.parentElement.scrollTop = elem.scrollHeight
+            await sleep(50)
+          }
+        }
+      }
+
+      const onFinishDialog = keyInput.down.on('finish-dialog', () => gameState.goto('..'))
+      await next()
+      keyInput.down.off('finish-dialog', onFinishDialog)
+
+      player.isPlayerActive = true
     }
   })
 
@@ -341,6 +379,11 @@ function selectNextConfigItem(delta: number) {
     if (activeList && !activeList.classList.contains('menu-vertical')) {
       MenuManager.selectNext(keyInput.state.left ? -1 : 1)
     }
+  })
+
+  BulletinBoard.eventEmitter.on('use', data => {
+    const { target } = data
+    gameState.goto(`dialog:'${target.textContent}'`)
   })
 
   await new Promise(resolve => setTimeout(resolve, 1000))

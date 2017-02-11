@@ -17,7 +17,7 @@ export function Vector3Map(vec: Vector3, fn: (x: number, a?: 'x' | 'y' | 'z') =>
 }
 
 export const VERTEX_BOX      = VertexData.CreateBox({ })
-export const VERTEX_SPHERE   = VertexData.CreateSphere({ segments: 6, slice: 4 })
+export const VERTEX_SPHERE   = VertexData.CreateSphere({ segments: 6, slice: 4, arc: 4 })
 export const VERTEX_PLANE    = VertexData.CreatePlane({ })
 export const VERTEX_GROUND   = VertexData.CreateGround({ })
 export const VERTEX_CYLINDER = VertexData.CreateCylinder({ height: 1, diameter: 1 })
@@ -205,6 +205,18 @@ export class ColorNoLightingMaterial extends StandardMaterial {
   }
 }
 
+export class ColorWireframeNoLightingMaterial extends ColorNoLightingMaterial {
+  static getCached(scene: Scene, color: Color3) {
+    const name = 'cache/wireframe-nolighting/' + color.toHexString(),
+      dict = scene as any as { [color: string]: ColorWireframeNoLightingMaterial }
+    return dict[name] || (dict[name] = new ColorWireframeNoLightingMaterial(name, scene, color))
+  }
+  constructor(name: string, scene: Scene, color: Color3) {
+    super(name, scene, color)
+    this.wireframe = true
+  }
+}
+
 const Pi2 = Math.PI * 2
 function roundInPi2(a: number) {
   while (a < 0) a += Pi2
@@ -234,13 +246,6 @@ export class FollowCamera extends ArcRotateCamera {
     window.addEventListener('mouseup', _ => isMouseDown = false)
 
     this.getScene().registerAfterRender(() => {
-      if (!this.followTarget.equalsWithEpsilon(this.target, 0.1)) {
-        const cameraDirection = this.target.subtract(this.position),
-          b = this.target, e = this.followTarget
-        this.setTarget(Vector3Map(this.followSpeed, (f, a) => b[a] * (1 - f) + e[a] * f))
-        this.setPosition(this.target.subtract(cameraDirection))
-      }
-
       if (this.followAlpha !== undefined) {
         const alpha = roundInPi2(this.followAlpha)
         if (Math.abs(this.alpha - alpha) > 1e-2) {
@@ -252,6 +257,12 @@ export class FollowCamera extends ArcRotateCamera {
       }
 
       if (!isMouseDown) {
+        if (!this.followTarget.equalsWithEpsilon(this.target, 0.1)) {
+          const cameraDirection = this.target.subtract(this.position),
+            b = this.target, e = this.followTarget
+          this.setTarget(Vector3Map(this.followSpeed, (f, a) => b[a] * (1 - f) + e[a] * f))
+          this.setPosition(this.target.subtract(cameraDirection))
+        }
         this.beta = softClamp(this.beta, this.lowerBetaSoftLimit, this.upperBetaSoftLimit)
         this.radius = softClamp(this.radius, this.lowerRadiusSoftLimit, this.upperRadiusSoftLimit)
       }

@@ -4,6 +4,7 @@ import Sprite from './sprite'
 import Slope from './slope'
 import Gate from './gate'
 import Trigger from './trigger'
+import BulltinBoard from './bulletin'
 import Jump from './jump'
 import Block from './block'
 import Box, { BoxGenerator } from './box'
@@ -90,7 +91,7 @@ const classes: [number, keyof typeof images, number, number, number, number, typ
   [ 8, 'imAssetTile1',  160, 1408, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 9, 'imAssetTile1',   64, 1408, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
   [10, 'imAssetTile1',    0, 1376, 32, 32, Sprite,       { }, { }],
-  [11, 'imAssetTile1',   32, 1376, 32, 32, Sprite,       { }, { }],
+  [11, 'imAssetTile1',   32, 1376, 32, 32, BulltinBoard, { listenTags: [Player.PLAYER_TAG], textContent: 'text to shown' }, { }],
   [12, 'imAssetTile1',    0, 1408, 32, 32, Sprite,       { }, { }],
   [13, 'imAssetTile1',    0,  992, 32, 32, Sprite,       { }, { }],
   [14, 'imAssetTile1',   32,  992, 32, 32, Sprite,       { }, { }],

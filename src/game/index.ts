@@ -266,9 +266,10 @@ export class Game extends EventEmitter<{
 
     const classes = plugins.classes.map(([clsId, srcId, offsetX, offsetY, width, height, cls, args, uiArgs]) => {
       const { src, material, texSize } = materials[srcId],
+        clsName = cls.name,
         icon = { material, texSize, offsetX, offsetY, width, height },
-        clsName = cls.name
-      game._classes[clsId] = { cls, args, opts: { icon, clock: game, source: null } }
+        opts = { icon, clock: game, source: null as Mesh, canvas: game.canvas }
+      game._classes[clsId] = { cls, args, opts }
       return { clsId, clsName, src, offsetX, offsetY, width, height, args, ...uiArgs }
     })
 

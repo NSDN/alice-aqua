@@ -59,6 +59,10 @@ export function step(fn: (p: () => Promise<any>) => Promise<any>) {
   }
 }
 
+export async function sleep(delay: number) {
+  await new Promise(resolve => setTimeout(resolve, delay))
+}
+
 export function fpsCounter(n = 30) {
   let a = Array(n).fill(0), c = 0
   return () => {

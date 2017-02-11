@@ -44,7 +44,7 @@ const DEFAULT_CONFIG = {
   jumpForce: 20,
   minimumY: -5,
   angularDamping: 0.9,
-  linearDamping: 0.97,
+  linearDamping: 0.96,
   dynamicFriction: 0,
   staticFriction: 1,
 }
@@ -301,9 +301,9 @@ export default class Player extends Mesh {
       mesh && mesh.useFrom && mesh.useFrom(this)
     }
     else if (key === 'switch' && !down) {
-      const allPlayers = this.getScene().getMeshesByTags(Player.PLAYER_TAG)
-      allPlayers.forEach(mesh => (mesh as Player).isPlayerActive = false)
-      const nextPlayer = allPlayers[(allPlayers.indexOf(this) + 1) % allPlayers.length] as Player
+      const allPlayers = this.getScene().getMeshesByTags(Player.PLAYER_TAG),
+        nextPlayer = allPlayers[(allPlayers.indexOf(this) + 1) % allPlayers.length] as Player
+      allPlayers.filter(mesh => mesh !== nextPlayer).forEach(mesh => (mesh as Player).isPlayerActive = false)
       setImmediate(_ => nextPlayer.isPlayerActive = true)
     }
     else if (key === 'jump' && down) {
