@@ -105,13 +105,15 @@
       width: 90%;
       height: 30%;
       max-width: 640px;
-      transform: translateY(-10%);
+      transform: translateY(-15%);
       background: #eee;
       overflow: auto;
     }
+    .screen-dialog .game-dialog-content {
+      padding: 0 15px;
+    }
     .screen-dialog .content pre,
     .screen-dialog .content .menu-item {
-      margin: 10px;
       font-family: PixelMplus10-Regular;
       font-size: 120%;
     }
@@ -157,13 +159,12 @@
           <span config-val="en" class="menu-item active">English</span>
           <span config-val="zh" class="menu-item">中文</span>
         </div>
-        <div config-key="display" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
-          <span class="menu-config-label"
-            i18n-en="Display Quality" i18n-zh="显示"></span>
-          <span config-val="fine" class="menu-item active"
-            i18n-en="Fine" i18n-zh="好"></span>
-          <span config-val="normal" class="menu-item"
-            i18n-en="Normal" i18n-zh="一般"></span>
+        <div config-key="ssao" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
+          <span class="menu-config-label">SSAO</span>
+          <span config-val="on" class="menu-item active"
+            i18n-en="ON" i18n-zh="开启"></span>
+          <span config-val="off" class="menu-item"
+            i18n-en="OFF" i18n-zh="关闭"></span>
         </div>
         <div config-key="volume" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"

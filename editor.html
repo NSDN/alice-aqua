@@ -198,18 +198,13 @@
       <div class="hidden ui-panel panel-game">
         <div class="game-config">
           <h3>test</h3>
-          <button id="configOpenNewWindow">Play this Map!</button>
-        </div>
-        <div class="game-config">
-          <h3>display</h3>
-          <button id="configApplyDisplay">Apply Display Settings</button><br />
-          <label><input id="configDisplaySSAO" type="checkbox" />enable AO</label>
+          <button id="configOpenNewWindow">Play!</button>
         </div>
         <div class="game-config">
           <h3>map</h3>
-          <button id="configDownloadMap">download map</button>
-          <button id="configUploadMap">upload map</button>
-          <button id="configResetMap">reset map</button>
+          <button id="configDownloadMap">download</button>
+          <button id="configUploadMap">upload</button>
+          <button id="configResetMap">reset</button>
         </div>
       </div>
     </div>
@@ -256,12 +251,12 @@
       </div>
       <h2>Build {{BUILD_HASH}}</h2>
       <ul>
-        <li>新的 Remilia Sprite</li>
-        <li>多语言支持</li>
-        <li>新的插件系统</li>
-        <li>简单对话模式</li>
-        <li>选项对话框</li>
-        <li>[编辑器] 移除 play 面板</li>
+        <li>[game] 新的 Remilia 像素图</li>
+        <li>[game] 多语言支持</li>
+        <li>[game] 新的插件系统</li>
+        <li>[game] 简单对话模式</li>
+        <li>[game] 选项对话框</li>
+        <li>[editor] 移除 play 面板</li>
       </ul>
       <hr>
       
@@ -345,6 +340,7 @@
   <script src="babylonjs/cannon.js"></script>
   <script src="babylonjs/babylon.max.js"></script>
   <script src="babylonjs/canvas2D/babylon.canvas2d.js"></script>
+  <script src="babylonjs/inspector/babylon.inspector.bundle.js"></script>
   <script src="build/editor.bundle.js"></script>
 </body>
 </html>

@@ -146,7 +146,14 @@ class StageManager {
   }
 }
 
-class ConfigManager extends EventEmitter<{ change: string }> {
+class ConfigManager extends EventEmitter<{
+  change: { key: keyof typeof ConfigManager.defaultValue, val: string }
+}> {
+  private static defaultValue = {
+    lang: 'en',
+    ssao: 'off',
+    volume: '3',
+  }
   static async load() {
     const config = new ConfigManager()
     // TODO: load from somewhere
@@ -157,7 +164,7 @@ class ConfigManager extends EventEmitter<{ change: string }> {
       console.error(err)
     }
 
-    Object.keys(config.data).forEach(key => {
+    Object.keys(config.data).forEach((key: keyof typeof ConfigManager.defaultValue) => {
       const val = config.data[key],
         configItem = document.querySelector(`[config-key="${key}"]`)
       if (configItem) {
@@ -171,26 +178,22 @@ class ConfigManager extends EventEmitter<{ change: string }> {
     })
     return config
   }
-  private constructor(private data = {
-    lang: 'en',
-    display: 'fine',
-    volume: '3',
-  } as { [key: string]: any }) {
+  private constructor(private data = ConfigManager.defaultValue) {
     super()
   }
-  get(key: string) {
+  get(key: keyof typeof ConfigManager.defaultValue) {
     return this.data[key]
   }
-  set(key: string, val: string) {
+  set(key: keyof typeof ConfigManager.defaultValue, val: string) {
     this.data[key] = val
-    this.emit('change', key)
+    this.emit('change', { key, val })
   }
   update() {
     const activeList = MenuManager.activeList(),
       key = activeList && activeList.getAttribute('config-key'),
       activeItem = MenuManager.activeItem(),
       val = activeItem && activeItem.getAttribute('config-val')
-    key && this.set(key, val)
+    key && this.set(key as any, val)
   }
   save() {
     localStorage.setItem('game-config', JSON.stringify(this.data))
@@ -287,10 +290,14 @@ function selectNextConfigItem(delta: number) {
 
   new SkyBox('sky', scene)
 
+  game.enableSSAO = configManager.get('ssao') === 'on'
   updateGameLanguage(configManager.get('lang'))
-  configManager.on('change', key => {
+  configManager.on('change', ({ key, val }) => {
     if (key === 'lang') {
-      updateGameLanguage(configManager.get(key))
+      updateGameLanguage(val)
+    }
+    else if (key === 'ssao') {
+      game.enableSSAO = val === 'on'
     }
   })
 

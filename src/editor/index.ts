@@ -12,6 +12,7 @@ import {
 import {
   VERTEX_GROUND,
   getBoundingVertexData,
+  ColorWireframeNoLightingMaterial,
 } from '../utils/babylon'
 
 import {
@@ -118,11 +119,7 @@ export class ObjectBoundary extends Mesh {
     ]
     Object.assign(new VertexData(), { positions, indices }).applyToMesh(this)
 
-    const material = this.material = new StandardMaterial(name + '/mat', scene)
-    material.wireframe = true
-    material.emissiveColor = new Color3(1, 0.5, 0.5)
-    material.disableLighting = true
-
+    this.material = ColorWireframeNoLightingMaterial.getCached(scene, Color3.Red())
     this.isVisible = false
   }
 }

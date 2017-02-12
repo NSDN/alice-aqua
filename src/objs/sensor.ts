@@ -123,6 +123,7 @@ export default class Sensor extends ObjectBase implements ObjectEditable, Object
     if (!cache) {
       cache = new Mesh(cacheId, this.getScene())
       vertex.applyToMesh(cache)
+      cache.isVisible = false
       cache.material = ColorWireframeNoLightingMaterial.getCached(this.getScene(), Color3.Red())
       cache.scaling.copyFromFloats(0.5, 0.5, 0.5)
     }

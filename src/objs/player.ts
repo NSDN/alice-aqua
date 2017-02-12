@@ -102,8 +102,8 @@ export default class Player extends Mesh {
     return mesh.isVisible && usable.canBeUsedBy && usable.canBeUsedBy(this)
   }
   private pickUsableFromCenter() {
-    const origin = new Vector3(0, this.opts.height / 2 - this.opts.width / 2, 0),
-      ray = Ray.Transform(new Ray(origin, new Vector3(0, 0, 1), this.opts.width * 0.6), this.worldMatrixFromCache),
+    const origin = new Vector3(0, this.opts.height / 2 - this.opts.width / 2, - this.opts.width / 2),
+      ray = Ray.Transform(new Ray(origin, new Vector3(0, 0, 1), this.opts.width), this.worldMatrixFromCache),
       pick = this.getScene().pickWithRay(ray, mesh => this.canUsePickedMesh(mesh), false)
     return pick
   }

@@ -6,7 +6,6 @@ import {
   Tags,
   Matrix,
   AbstractMesh,
-  SSAORenderingPipeline,
 } from './babylon'
 
 import {
@@ -332,14 +331,6 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   })
   objectToolbar.querySelector('.cancel-select').addEventListener('click', _ => {
     selectedObject = null
-  })
-
-  const configDisplaySSAO = document.getElementById('configDisplaySSAO') as HTMLInputElement
-  configDisplaySSAO.checked = !!localStorage.getItem('config-display-ssao')
-  configDisplaySSAO.checked && new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
-  document.getElementById('configApplyDisplay').addEventListener('click', _ => {
-    localStorage.setItem('config-display-ssao', configDisplaySSAO.checked ? '1' : '')
-    location.reload()
   })
 
   document.getElementById('configOpenNewWindow').addEventListener('click', _ => {

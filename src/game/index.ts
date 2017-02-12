@@ -13,6 +13,7 @@ import {
   Texture,
   StandardMaterial,
   Mesh,
+  SSAORenderingPipeline,
 } from '../babylon'
 
 import {
@@ -222,6 +223,17 @@ export class Game extends EventEmitter<{
   private _assets = { } as { tiles: TileDefine[], classes: ClassDefine[] }
   get assets() {
     return this._assets
+  }
+
+  private _ssao: SSAORenderingPipeline
+  set enableSSAO(val: boolean) {
+    if (val && !this._ssao) {
+      this._ssao = new SSAORenderingPipeline('ao', this.scene, 1, [this.camera])
+    }
+    else if (!val && this._ssao) {
+      this._ssao.dispose()
+      this._ssao = null
+    }
   }
 
   static async load(onProgress: (index: number, total: number, progress: number) => void) {
