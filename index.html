@@ -95,6 +95,9 @@
       border: 1px solid #aaa;
     }
 
+    body.keep-dialog-screen-open .screen-dialog {
+      visibility: visible;
+    }
     .screen-dialog {
       justify-content: flex-end;
     }
@@ -106,7 +109,8 @@
       background: #eee;
       overflow: auto;
     }
-    .screen-dialog .content pre {
+    .screen-dialog .content pre,
+    .screen-dialog .content .menu-item {
       margin: 10px;
       font-family: PixelMplus10-Regular;
       font-size: 120%;
@@ -174,14 +178,15 @@
     </div>
   </div>
   <div class="screen-dialog screen">
-    <div class="menu-dialog menu-list hidden" menu-escape=".."></div>
     <div class="content">
-      <pre class="game-dialog-content"></pre>
+      <div class="game-dialog-content"></div>
     </div>
   </div>
-  <div class="menu-play menu-list hidden" menu-escape="pause"></div>
+  <div class="hidden menu-play menu-list" menu-escape="pause"></div>
+  <div class="fa fa-question" style="position: absolute; color: transparent;"></div>
   <script src="build/screen.bundle.js"></script>
   <script src="//localhost:8080/webpack-dev-server.js"></script>
+  <script src="node_modules/yamljs/dist/yaml.js"></script>
   <script src="babylonjs/cannon.js"></script>
   <script src="babylonjs/babylon.js"></script>
   <script src="babylonjs/canvas2D/babylon.canvas2d.js"></script>

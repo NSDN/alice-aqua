@@ -1,3 +1,5 @@
+import * as YAML from 'js-yaml'
+
 import {
   AbstractMesh,
 } from '../babylon'
@@ -5,18 +7,28 @@ import {
 import {
   ObjectUsable,
   ObjectOptions,
+  ObjectEditable,
 } from '../game/objbase'
 
 import {
   EventEmitter,
 } from '../utils'
 
+import {
+  appendConfigElement,
+} from '../utils/dom'
+
 import Sprite from './sprite'
 
-export default class BulletinBoard extends Sprite implements ObjectUsable {
+export default class BulletinBoard extends Sprite implements ObjectUsable, ObjectEditable {
   static eventEmitter = new EventEmitter<{ use: { target: BulletinBoard, by: AbstractMesh } }>()
 
-  public textContent = '...'
+  public dialogContent = { } as {
+    [name: string]: {
+      text: string
+      options: { [title: string]: string }
+    }
+  }
 
   constructor(name: string, opts: ObjectOptions) {
     super(name, opts)
@@ -67,5 +79,11 @@ export default class BulletinBoard extends Sprite implements ObjectUsable {
 
   useFrom(mesh: AbstractMesh) {
     BulletinBoard.eventEmitter.emit('use', { target: this, by: mesh })
+  }
+
+  attachEditorContent(container: HTMLElement, save: (args: Partial<BulletinBoard>) => void) {
+    const text = appendConfigElement('yaml', 'textarea', { rows: 5, cols: 30 }, container) as HTMLTextAreaElement
+    text.value = YAML.safeDump(this.dialogContent)
+    text.addEventListener('change', () => save({ dialogContent: YAML.safeLoad(text.value) }))
   }
 }

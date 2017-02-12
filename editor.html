@@ -6,6 +6,15 @@
   <link rel="stylesheet" type="text/css" href="assets/css/screen.css">
   <meta charset="utf-8">
   <style>
+    button {
+      background: #eee;
+      border: none;
+      border-radius: 3px;
+      color: #333;
+      padding: 5px 8px;
+      cursor: pointer;
+    }
+
     .hidden {
       display: none;
     }
@@ -154,14 +163,6 @@
     .show-help .doc-help {
       display: block;
     }
-
-    .on-panel-play .ui-toolbar,
-    .on-panel-play .ui-tabs {
-      display: none;
-    }
-    .on-panel-play .doc-help {
-      top: 40px;
-    }
   </style>
 </head>
 <body>
@@ -196,10 +197,13 @@
       </div>
       <div class="hidden ui-panel panel-game">
         <div class="game-config">
+          <h3>test</h3>
+          <button id="configOpenNewWindow">Play this Map!</button>
+        </div>
+        <div class="game-config">
           <h3>display</h3>
-          <label><input id="configDisplaySSAO" type="checkbox" />enable AO</label><br />
-          <label><input id="configDisplaySkyBox" type="checkbox" />show skybox</label><br />
-          <button id="configApplyDisplay">Apply Display Settings</button>
+          <button id="configApplyDisplay">Apply Display Settings</button><br />
+          <label><input id="configDisplaySSAO" type="checkbox" />enable AO</label>
         </div>
         <div class="game-config">
           <h3>map</h3>
@@ -216,22 +220,11 @@
         <a href="javascript:void(0)" class="ui-tab" tab-target="brushes">brushes</a>
         <a href="javascript:void(0)" class="ui-tab" tab-target="objects">objects</a>
         <a href="javascript:void(0)" class="ui-tab" tab-target="game">game</a>
-        <a href="javascript:void(0)" class="ui-tab" tab-target="play">play</a>
       </span>
-      <span class="hidden ui-panel panel-play">
-       <a href="javascript:void(0)" class="ui-tab" tab-target="game"
-         title="back to editor"><i class="fa fa-arrow-left"></i></a> /
-       <a href="javascript:void(0)" id="playSetCameraAlphaDec"
-         title="rotate left"><i class="fa fa-angle-double-left"></i></a>
-       <a href="javascript:void(0)" id="playResetCameraAlpha"
-         title="camera"><i class="fa fa-street-view"></i></a>
-       <a href="javascript:void(0)" id="playSetCameraAlphaInc"
-         title="rotate right"><i class="fa fa-angle-double-right"></i></a>
-      </span>
-      <span class="hidden ui-panel panel-brushes panel-objects"> /
-        <a class="disabled" href="javascript:void(0)" id="docActionUndo"
+      <span> /
+        <a href="javascript:void(0)" id="docActionUndo"
           title="undo (ctrl+Z)"><i class="fa fa-undo"></i></a>
-        <a class="disabled" href="javascript:void(0)" id="docActionRedo"
+        <a href="javascript:void(0)" id="docActionRedo"
           title="redo (ctrl+Y)"><i class="fa fa-repeat"></i></a>
       </span>
       <span class="hidden ui-panel panel-brushes"> /
@@ -242,8 +235,10 @@
       </span>
       <div class="ui-top-right">
         <span id="fpsCounterText"></span> /
-        <a href="javascript:void(0)" id="docShowDebug" title="debug"><i class="fa fa-info"></i></a> /
-        <a href="javascript:void(0)" id="docShowHelp" title="help"><i class="fa fa-question"></i></a>
+        <a href="javascript:void(0)" id="docShowDebug"
+          title="debug"><i class="fa fa-info"></i></a> /
+        <a href="javascript:void(0)" id="docShowHelp"
+          title="help"><i class="fa fa-question"></i></a>
       </div>
     </div>
   </div>
@@ -263,6 +258,10 @@
       <ul>
         <li>新的 Remilia Sprite</li>
         <li>多语言支持</li>
+        <li>新的插件系统</li>
+        <li>简单对话模式</li>
+        <li>选项对话框</li>
+        <li>[编辑器] 移除 play 面板</li>
       </ul>
       <hr>
       
@@ -342,6 +341,7 @@
   </div>
   <script src="build/screen.bundle.js"></script>
   <script src="//localhost:8080/webpack-dev-server.js"></script>
+  <script src="node_modules/yamljs/dist/yaml.js"></script>
   <script src="babylonjs/cannon.js"></script>
   <script src="babylonjs/babylon.max.js"></script>
   <script src="babylonjs/canvas2D/babylon.canvas2d.js"></script>

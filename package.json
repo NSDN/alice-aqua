@@ -27,7 +27,8 @@
     "webpack-dev-server": "^2.3.0"
   },
   "dependencies": {
-    "@types/whatwg-fetch": "0.0.33",
-    "font-awesome": "^4.6.3"
+    "@types/js-yaml": "^3.5.29",
+    "font-awesome": "^4.6.3",
+    "js-yaml": "^3.8.1"
   }
 }

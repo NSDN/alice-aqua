@@ -16,6 +16,9 @@ module.exports = {
   output: {
     filename: 'build/[name].bundle.js'
   },
+  externals: {
+    yamljs: 'YAML'
+  },
   resolve: {
     extensions: ['.js', '.ts']
   },

@@ -1,3 +1,21 @@
+export function queryStringSet(query: string, dict: any) {
+  return query.replace(/^\?/, '').split('&')
+    .filter(pair => !(pair.split('=').shift() in dict))
+    .concat(Object.keys(dict).map(key => key + '=' + encodeURIComponent(dict[key])))
+    .join('&')
+}
+
+export function queryStringGet(query: string, key: string) {
+  return query.split('&')
+    .concat(key + '=')
+    .find(pair => pair.startsWith(key + '=')).split('=').map(decodeURIComponent)
+    .pop()
+}
+
+export function camelCaseToHyphen(str: string) {
+  return str.replace(/[a-z][A-Z]{1}/g, m => m[0] + '-' + m[1].toLowerCase())
+}
+
 export function arrayRange(begin: number, end: number) {
   return Array(end - begin).fill(begin).map((b, i) => b + i)
 }
@@ -40,14 +58,15 @@ export function queue() {
   })
 }
 
-export function pair() {
+export function promiseObject() {
   let resolve = null as Function,
-    promise = new Promise(res => resolve = res)
-  return { resolve, promise }
+    reject = null as Function,
+    promise = new Promise((res, rej) => [resolve, reject] = [res, rej])
+  return { resolve, reject, promise }
 }
 
 export function step(fn: (p: () => Promise<any>) => Promise<any>) {
-  const start = pair(), stop = pair()
+  const start = promiseObject(), stop = promiseObject()
   const done = fn(async () => {
     start.resolve()
     await stop.promise

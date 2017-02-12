@@ -14,13 +14,11 @@ import {
 } from './game'
 
 import {
-  ObjectEditable, ObjectPlayListener
+  ObjectEditable
 } from './game/objbase'
 
-import SkyBox from './game/skybox'
 import Chunks from './game/chunks'
 import Cursor from './editor/cursor'
-import Player, { PlayerGenerator } from './objs/player'
 
 import {
   SelectionBox,
@@ -44,6 +42,7 @@ import {
 } from './editor/ui'
 
 import {
+  queryStringSet,
   watch,
   memo,
   randomBytes,
@@ -287,41 +286,8 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
 
   camera.lowerBetaSoftLimit = camera.lowerBetaLimit
   camera.upperRadiusSoftLimit = camera.upperRadiusLimit
-  ui.on('panel-changed', (oldPanel: string) => {
-    if (ui.activePanel === 'play') {
-      if (scene.getMeshesByTags(PlayerGenerator.PLAYER_GENERATOR_TAG).length === 0) {
-        const { x, z } = camera.target,
-          { h } = chunks.getPixel(x, z),
-          player = new Player('remilia', scene, { })
-        player.position.copyFromFloats(x, h + 2, z)
-        Tags.AddTagsTo(player, 'auto-generated-player')
-        console.warn('creating player from camera position...')
-      }
-      scene.getMeshesByTags(TAGS.object).forEach(mesh => {
-        mesh.isVisible = false
-        const listener = mesh as any as ObjectPlayListener
-        listener.startPlaying && listener.startPlaying()
-      })
-      camera.lowerBetaSoftLimit = Math.PI * 0.35
-      camera.upperRadiusSoftLimit = 40
-    }
-
-    if (oldPanel === 'play') {
-      scene.getMeshesByTags('auto-generated-player').forEach(mesh => {
-        mesh.dispose()
-      })
-      scene.getMeshesByTags(TAGS.object).forEach(mesh => {
-        mesh.isVisible = true
-        const listener = mesh as any as ObjectPlayListener
-        listener.stopPlaying && listener.stopPlaying()
-      })
-      camera.lowerBetaSoftLimit = camera.lowerBetaLimit
-      camera.upperRadiusSoftLimit = camera.upperRadiusLimit
-    }
-
-    grid.isVisible = ui.activePanel === 'brushes' || ui.activePanel === 'objects'
+  ui.on('panel-changed', () => {
     lastSelection.isVisible = ui.activePanel === 'brushes'
-    sky && sky.setIsVisible(ui.activePanel === 'play')
     game.objectSource.renderingGroupId = ui.activePanel === 'objects' ? 1 : 0
   })
 
@@ -371,16 +337,16 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   const configDisplaySSAO = document.getElementById('configDisplaySSAO') as HTMLInputElement
   configDisplaySSAO.checked = !!localStorage.getItem('config-display-ssao')
   configDisplaySSAO.checked && new SSAORenderingPipeline('ssaopipeline', scene, 1, [camera])
-
-  const configDisplaySkyBox = document.getElementById('configDisplaySkyBox') as HTMLInputElement
-  configDisplaySkyBox.checked = !!localStorage.getItem('config-display-skybox')
-  const sky = configDisplaySkyBox.checked && new SkyBox('sky', scene)
-  sky && sky.setIsVisible(false)
-
   document.getElementById('configApplyDisplay').addEventListener('click', _ => {
     localStorage.setItem('config-display-ssao', configDisplaySSAO.checked ? '1' : '')
-    localStorage.setItem('config-display-skybox', configDisplaySkyBox.checked ? '1' : '')
     location.reload()
+  })
+
+  document.getElementById('configOpenNewWindow').addEventListener('click', _ => {
+    const history = [{ url: 'data:text/json;charset=utf-8,' + encodeURIComponent(map.toJSON(chunks)) }],
+      queryDict = { 'stage-history': JSON.stringify(history), 'stage-start': 'play' },
+      queryString = queryStringSet(location.search.replace(/^\?/, ''), queryDict)
+    location.href = location.href.replace(/\/editor.html.*/, '') + '?' + queryString
   })
 
   const objectHoverCursor = game.objectSource.createInstance('object-hover')
@@ -408,17 +374,6 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
       brushHoverInfo.innerHTML = `${hover.x}, ${hover.z}` +
         (isVisible && isKeyDown ? `: ${minimum.x}, ${minimum.z} ~ ${maximum.x}, ${maximum.z}` : '')
     }
-  })
-
-  const quaterPI = Math.PI / 4
-  document.getElementById('playResetCameraAlpha').addEventListener('click', _ => {
-    camera.followAlpha = Math.floor(camera.alpha / quaterPI) * quaterPI
-  })
-  document.getElementById('playSetCameraAlphaInc').addEventListener('click', _ => {
-    camera.followAlpha = (Math.floor(camera.alpha / quaterPI + 0.1) + 1) * quaterPI
-  })
-  document.getElementById('playSetCameraAlphaDec').addEventListener('click', _ => {
-    camera.followAlpha = (Math.floor(camera.alpha / quaterPI + 0.1) - 1) * quaterPI
   })
 
   document.getElementById('configDownloadMap').addEventListener('click', _ => {
@@ -458,6 +413,9 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     document.body.classList.remove('show-help')
   })
 
+  for (const elem of document.querySelectorAll('#docActionUndo, #docActionRedo')) {
+    elem.classList.add('disabled')
+  }
   editorHistory.on('change', _ => {
     document.getElementById('docActionUndo').classList[editorHistory.canUndo ? 'remove' : 'add']('disabled')
     document.getElementById('docActionRedo').classList[editorHistory.canRedo ? 'remove' : 'add']('disabled')
@@ -470,9 +428,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   })
 
   cursor.isVisible = false
-  keyInput.any.on('change', watch(() => {
-    return grid.isVisible && keys.showCursor
-  }, shouldDetachCamera => {
+  keyInput.any.on('change', watch(() => keys.showCursor, shouldDetachCamera => {
     (cursor.isVisible = shouldDetachCamera) ? camera.detachControl(canvas) : camera.attachControl(canvas, true)
   }, false))
 
@@ -490,9 +446,9 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     }
   }))
 
-  keyInput.down.on('focus', () => grid.isVisible && camera.followTarget.copyFrom(cursor.hover))
-  keyInput.down.on('undo',  () => grid.isVisible && editorHistory.undo())
-  keyInput.down.on('redo',  () => grid.isVisible && editorHistory.redo())
+  keyInput.down.on('focus', () => camera.followTarget.copyFrom(cursor.hover))
+  keyInput.down.on('undo',  () => editorHistory.undo())
+  keyInput.down.on('redo',  () => editorHistory.redo())
 
   const renderListeners = [
     watch(() => {

@@ -15,12 +15,14 @@ import {
 import {
   appendElement,
   LoadingScreen,
+  LocationSearch,
   MenuManager,
   KeyEmitter,
   loadWithXHR,
 } from './utils/dom'
 
 import {
+  camelCaseToHyphen,
   queue,
   step,
   sleep,
@@ -92,13 +94,14 @@ class StageManager {
       history = [ ] as { url: string, x: number, y: number, z: number }[]
     // TODO: load from somewhere
     try {
-      history.push.apply(history, JSON.parse(localStorage.getItem('stage-history') || StageManager.DEFAULT_HISTORY_VALUE))
+      const historyJSON = LocationSearch.get('stage-history') || localStorage.getItem('stage-history') || StageManager.DEFAULT_HISTORY_VALUE
+      history.push.apply(history, JSON.parse(historyJSON))
     }
     catch (err) {
       console.error(err)
     }
     for (const stage of history) {
-      await stageManager.loadFromURL(stage.url, new Vector3(stage.x, stage.y, stage.z))
+      await stageManager.loadFromURL(stage.url, new Vector3(stage.x || 0, stage.y || 0, stage.z || 0))
     }
     return stageManager
   }
@@ -115,7 +118,7 @@ class StageManager {
   private addToQueue = queue()
   private async doLoad(url: string, position: Vector3) {
     if (!this.stages.find(stage => stage.url === url && stage.position.equals(position))) {
-      const map = await fetch(url).then(res => res.json()) as any as SavedMap
+      const map = JSON.parse(await loadWithXHR<string>(url)) as SavedMap
       if (!this.isDisposed) {
         this.stages.push(new Stage(url, position, map, this.game))
         this.stages.length > 2 && this.stages.shift().dispose()
@@ -194,9 +197,6 @@ class ConfigManager extends EventEmitter<{ change: string }> {
   }
 }
 
-const camelCaseToHyphen = (str: string) => str.replace(/[a-z][A-Z]{1}/g, m => m[0] + '-' + m[1].toLowerCase()),
-  wrapString = (str: string) => str.replace(/'[^']*'/g, m => '\'' + btoa(m.slice(1, -1))),
-  unwrapString = (str: string) => str[0] === '\'' ? atob(str.slice(1)) : str
 class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: any[]) => Promise<any> }> {
   private stack = [ ] as { name: string, next: () => Promise<any> }[]
   private queue = queue()
@@ -219,6 +219,9 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
       const current = this.current
       current && MenuManager.activate('.menu-' + camelCaseToHyphen(current))
     }
+    else {
+      console.warn('already at root of game state')
+    }
   }
 
   private async enter(name: keyof H, ...args: any[]) {
@@ -228,15 +231,18 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
       document.body.classList.add('game-' + camelCaseToHyphen(name))
       MenuManager.activate('.menu-' + camelCaseToHyphen(name))
     }
+    else {
+      console.warn(`no ${name} state in game`)
+    }
   }
 
   private async gotoAsync(path: string) {
-    for (const name of wrapString(path).split('/')) {
+    for (const name of path.split('/')) {
       if (name === '..') {
         await this.exit()
       }
       else if (name) {
-        await this.enter.apply(this, name.split(':').map(unwrapString))
+        await this.enter.apply(this, name.split(':').map(decodeURIComponent))
       }
     }
   }
@@ -319,24 +325,26 @@ function selectNextConfigItem(delta: number) {
       StageManager.clear()
       await next()
     },
-    async dialog(next) {
-      const player = scene.getMeshesByTags(Player.PLAYER_TAG)
-        .find(player => (player as Player).isPlayerActive) as Player
-      player.isPlayerActive = false
+    async text(next, name: string = '', dialogJSON: string = '{ }') {
+      const dialogs = JSON.parse(dialogJSON) as { [name: string]: { text: string, options: any } },
+        { text, options } = dialogs[name]
+
+      let isCanceled = false
+      const onEscape = keyInput.down.on('escape', () => isCanceled = true)
 
       const elem = document.querySelector('.game-dialog-content')
       elem.innerHTML = ''
 
-      const text = await loadWithXHR<string>('package.json')
-      for (let i = 0; i < text.length && gameState.current === 'dialog'; i ++) {
-        if (keyInput.state['finish-dialog']) {
-          elem.innerHTML = text
+      const elemLines = appendElement('pre', { }, elem)
+      for (let i = 0; i < text.length; i ++) {
+        if (keyInput.state['finish-dialog'] || isCanceled) {
+          elemLines.innerHTML = text
           await sleep(50)
           elem.parentElement.scrollTop = elem.scrollHeight
           break
         }
         else {
-          elem.innerHTML += text[i]
+          elemLines.innerHTML += text[i]
           await sleep(50)
           if (text[i - 1] === '\n') {
             elem.parentElement.scrollTop = elem.scrollHeight
@@ -345,10 +353,31 @@ function selectNextConfigItem(delta: number) {
         }
       }
 
-      const onFinishDialog = keyInput.down.on('finish-dialog', () => gameState.goto('..'))
-      await next()
-      keyInput.down.off('finish-dialog', onFinishDialog)
+      const elemOptions = appendElement('div', { className: 'menu-list', attributes: { 'menu-escape': '../..' } }, elem)
+      for (const title of Object.keys(options)) {
+        const next = options[title],
+          path = next && dialogs[next] ? ['text', next, dialogJSON].map(encodeURIComponent).join(':') : '..'
+        appendElement('span', { innerHTML: title, className: 'menu-item', attributes: { 'menu-goto': '../' + path } }, elemOptions)
+      }
+      elem.parentElement.scrollTop = elem.scrollHeight
+      MenuManager.activate(elemOptions)
 
+      await next()
+
+      keyInput.down.off('escape', onEscape)
+    },
+    async dialog(next, dialogJSON: string = '') {
+      const player = scene.getMeshesByTags(Player.PLAYER_TAG)
+        .find(player => (player as Player).isPlayerActive) as Player
+      player.isPlayerActive = false
+      document.body.classList.add('keep-dialog-screen-open')
+
+      const start = Object.keys(JSON.parse(dialogJSON)).shift(),
+        url = ['text', start, dialogJSON].map(encodeURIComponent).join(':')
+      setImmediate(() => gameState.goto(url))
+      await next()
+
+      document.body.classList.remove('keep-dialog-screen-open')
       player.isPlayerActive = true
     }
   })
@@ -381,16 +410,21 @@ function selectNextConfigItem(delta: number) {
     }
   })
 
-  BulletinBoard.eventEmitter.on('use', data => {
-    const { target } = data
-    gameState.goto(`dialog:'${target.textContent}'`)
+  // TODO: move it somewhere
+  BulletinBoard.eventEmitter.on('use', ({ target }) => {
+    const dialogJSON = JSON.stringify(target.dialogContent)
+    gameState.goto(`dialog:${encodeURIComponent(dialogJSON)}`)
   })
 
   await new Promise(resolve => setTimeout(resolve, 1000))
+  const fonts = (document as any).fonts
+  if (fonts && fonts.ready) {
+    await fonts.ready
+  }
 
   game.camera.lowerBetaSoftLimit = Math.PI * 0.35
   game.camera.upperRadiusSoftLimit = 40
 
-  gameState.goto('main')
+  gameState.goto(LocationSearch.get('stage-start') || 'main')
   LoadingScreen.hide()
 })()

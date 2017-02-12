@@ -1,5 +1,7 @@
 import {
   EventEmitter,
+  queryStringGet,
+  queryStringSet,
 } from './'
 
 export interface ElementAttributes {
@@ -91,16 +93,10 @@ export function attachDragable(
 
 export const LocationSearch = {
   get(key: string): string {
-    return location.search.replace(/^\?/, '').split('&')
-      .concat(key + '=')
-      .find(pair => pair.startsWith(key + '=')).split('=').map(decodeURIComponent)
-      .pop()
+    return queryStringGet(location.search.replace(/^\?/, ''), key)
   },
   set(dict: any) {
-    location.search = location.search.replace(/^\?/, '').split('&')
-      .filter(pair => !(pair.split('=').shift() in dict))
-      .concat(Object.keys(dict).map(key => key + '=' + encodeURIComponent(dict[key])))
-      .join('&')
+    location.search = queryStringSet(location.search.replace(/^\?/, ''), dict)
   },
 }
 
@@ -201,11 +197,11 @@ export const LoadingScreen = {
 }
 
 export const MenuManager = {
-  activate(list: string, itemSelector?: string, listClass = 'menu-list', itemClass = 'menu-item') {
+  activate(list: string | Element, itemSelector?: string, listClass = 'menu-list', itemClass = 'menu-item') {
     for (const elem of document.querySelectorAll(`.${listClass}.active`)) {
       elem.classList.remove('active')
     }
-    const elem = document.querySelector(list),
+    const elem = typeof list === 'string' ? document.querySelector(list) : list,
       listElem = elem && (elem.classList.contains(listClass) ? elem : elem.querySelector(`.${listClass}`))
     if (listElem) {
       listElem.classList.add('active')

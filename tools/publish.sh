@@ -6,6 +6,7 @@ SRC_DIRS=(
   "babylonjs/**/*.js"
   "node_modules/font-awesome/css/*.css"
   "node_modules/font-awesome/fonts/*.*"
+  "node_modules/yamljs/dist/*.js"
 )
 
 mkdir -p $TMP_DIR &&\

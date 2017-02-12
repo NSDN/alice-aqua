@@ -111,13 +111,16 @@ export default class Jump extends Trigger implements ObjectEditable, ObjectTrigg
     '-z': [ 0, -1, 1.0],
   }
 
-  onTrigger(isOn: boolean) {
-    const mesh = this.getScene().getMeshesByTags(this.triggerOnTag)[0]
-    if (isOn && mesh instanceof Player && mesh.name === 'remilia') {
-      mesh.physicsImpostor.setLinearVelocity(Vector3.Zero())
-      const { sideDirection, sideForce, upForce } = this,
-        [x, z] = Jump.SIDE_DIRS[sideDirection]
-      mesh.applyJumpImpulse(new Vector3(x * sideForce, upForce, z * sideForce))
+  onTrigger(isOn: boolean, mesh: AbstractMesh) {
+    if (mesh === this) {
+      const mesh = this.getScene().getMeshesByTags(this.triggerOnTag)[0]
+      if (isOn && mesh instanceof Player && mesh.name === 'remilia') {
+        mesh.physicsImpostor.setLinearVelocity(Vector3.Zero())
+        const { sideDirection, sideForce, upForce } = this,
+          [x, z] = Jump.SIDE_DIRS[sideDirection]
+        mesh.applyJumpImpulse(new Vector3(x * sideForce, upForce, z * sideForce))
+      }
     }
+    super.onTrigger(isOn, mesh)
   }
 }
