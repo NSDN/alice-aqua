@@ -2,6 +2,7 @@ export function queryStringSet(query: string, dict: any) {
   return query.replace(/^\?/, '').split('&')
     .filter(pair => !(pair.split('=').shift() in dict))
     .concat(Object.keys(dict).map(key => key + '=' + encodeURIComponent(dict[key])))
+    .filter(pair => pair)
     .join('&')
 }
 
