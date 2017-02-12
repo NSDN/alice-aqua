@@ -3,6 +3,7 @@ const webpack = require('webpack'),
 
 module.exports = {
   devtool: isDevServer && 'source-map',
+  devServer: { inline: false },
   entry: isDevServer ? {
     game: './src/game-main',
     editor: './src/editor-main',
