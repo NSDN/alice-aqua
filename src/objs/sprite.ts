@@ -15,10 +15,10 @@ import {
 import {
   ObjectBase,
   ObjectOptions,
-  ObjectEditable,
+  IEditable,
 } from '../game/objbase'
 
-export default class Sprite extends ObjectBase implements ObjectEditable {
+export default class Sprite extends ObjectBase implements IEditable {
   readonly spriteBody: AbstractMesh
 
   get spriteHeight() {

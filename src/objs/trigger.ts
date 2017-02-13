@@ -10,8 +10,7 @@ import {
 
 import {
   ObjectOptions,
-  ObjectEditable,
-  ObjectPlayListener,
+  IEditable,
 } from '../game/objbase'
 
 import Sensor, {
@@ -19,7 +18,7 @@ import Sensor, {
   TRIGGER_ON_COLOR
 } from './sensor'
 
-export default class Trigger extends Sensor implements ObjectEditable, ObjectPlayListener {
+export default class Trigger extends Sensor implements IEditable {
   protected readonly triggerOnBox: AbstractMesh
   protected readonly triggerOffBox: AbstractMesh
 

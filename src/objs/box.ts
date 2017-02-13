@@ -14,14 +14,13 @@ import {
 } from '../utils'
 
 import {
-  ObjectPlayListener,
-  ObjectEditable,
-  ObjectUsable,
+  IEditable,
+  IUsable,
 } from '../game/objbase'
 
 import Sprite from './sprite'
 
-export default class Box extends InstancedMesh implements ObjectUsable {
+export default class Box extends InstancedMesh implements IUsable {
   static readonly BOX_TAG = 'generated-box'
 
   constructor(name: string, source: Mesh, private generator: BoxGenerator) {
@@ -96,7 +95,7 @@ export default class Box extends InstancedMesh implements ObjectUsable {
   }
 }
 
-export class BoxGenerator extends Sprite implements ObjectPlayListener, ObjectEditable {
+export class BoxGenerator extends Sprite implements IEditable {
   public boxMass = 5
   public velocityThreshold = 0
   private boxName = ''

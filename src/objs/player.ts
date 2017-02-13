@@ -16,9 +16,8 @@ import {
 
 import {
   ObjectOptions,
-  ObjectPlayListener,
-  ObjectUsable,
-  ObjectEditable,
+  IUsable,
+  IEditable,
 } from '../game/objbase'
 
 import {
@@ -71,7 +70,7 @@ export default class Player extends Mesh {
 
   private isPlayerOnGround = false
   private forwardDirection = new Vector3(0, 0, 1)
-  private usableObject = null as ObjectUsable
+  private usableObject = null as IUsable
 
   private _isPlayerActive = false
   get isPlayerActive() {
@@ -98,7 +97,7 @@ export default class Player extends Mesh {
   }
 
   private canUsePickedMesh(mesh: Mesh) {
-    const usable = mesh as any as ObjectUsable
+    const usable = mesh as any as IUsable
     return mesh.isVisible && usable.canBeUsedBy && usable.canBeUsedBy(this)
   }
   private pickUsableFromCenter() {
@@ -205,12 +204,12 @@ export default class Player extends Mesh {
       }
     }
 
-    Player.keyInput.any.on('change', onKeyChange)
+    const unBindKeys = Player.keyInput.any.on('change', onKeyChange)
     this.onDisposeObservable.add(_ => {
       this.usableObject && this.usableObject.displayUsable(this, false)
       this.shadow.dispose()
       this.particle.dispose()
-      Player.keyInput.any.off('change', onKeyChange)
+      unBindKeys()
     })
 
     const allPlayers = scene.getMeshesByTags(Player.PLAYER_TAG)
@@ -282,7 +281,7 @@ export default class Player extends Mesh {
 
     const pick = this.isPlayerActive && this.pickUsableFromCenter(),
       mesh = pick && pick.hit && pick.pickedMesh,
-      usable = mesh as any as ObjectUsable,
+      usable = mesh as any as IUsable,
       usableObject = usable && usable.canBeUsedBy && usable.canBeUsedBy(this) && usable
     if (this.usableObject !== usableObject) {
       if (this.usableObject) {
@@ -297,7 +296,7 @@ export default class Player extends Mesh {
   protected updatePlayerFromKey(key: keyof typeof KEY_MAP, down: boolean) {
     if (key === 'use' && !down) {
       const pick = this.pickUsableFromCenter(),
-        mesh = pick.hit && pick.pickedMesh as any as ObjectUsable
+        mesh = pick.hit && pick.pickedMesh as any as IUsable
       mesh && mesh.useFrom && mesh.useFrom(this)
     }
     else if (key === 'switch' && !down) {
@@ -328,7 +327,7 @@ export default class Player extends Mesh {
   }
 }
 
-export class PlayerGenerator extends Sprite implements ObjectPlayListener, ObjectEditable {
+export class PlayerGenerator extends Sprite implements IEditable {
   static readonly PLAYER_GENERATOR_TAG = 'player-generator'
   private static playerReferenceCount = { } as { [playerName: string]: number }
 

@@ -12,8 +12,8 @@ import {
 
 import {
   ObjectOptions,
-  ObjectEditable,
-  ObjectTriggerable,
+  IEditable,
+  ITriggerable,
 } from '../game/objbase'
 
 import {
@@ -22,7 +22,7 @@ import {
   appendConfigInput,
 } from '../utils/dom'
 
-export default class Jump extends Trigger implements ObjectEditable, ObjectTriggerable {
+export default class Jump extends Trigger implements IEditable, ITriggerable {
   get upForce() {
     return this._upForce
   }

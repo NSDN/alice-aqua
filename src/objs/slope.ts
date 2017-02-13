@@ -20,11 +20,11 @@ import {
 
 import {
   ObjectBase,
-  ObjectEditable,
+  IEditable,
   ObjectOptions,
 } from '../game/objbase'
 
-export default class Slope extends ObjectBase implements ObjectEditable {
+export default class Slope extends ObjectBase implements IEditable {
   static readonly TARGET_TAG = 'slope-target'
   static readonly GROUND_TAG = 'slope-ground'
 

@@ -9,7 +9,6 @@ import {
 
 import {
   ObjectBase,
-  ObjectPlayListener,
 } from './game/objbase'
 
 import {
@@ -19,6 +18,7 @@ import {
   MenuManager,
   KeyEmitter,
   loadWithXHR,
+  checkFontsLoaded,
 } from './utils/dom'
 
 import {
@@ -32,7 +32,6 @@ import {
 import Chunks from './game/chunks'
 import SkyBox from './game/skybox'
 
-import { StageLoader } from './objs/stage'
 import BulletinBoard from './objs/bulletin'
 import Player from './objs/player'
 
@@ -50,7 +49,7 @@ const KEY_MAP = {
 
 class Stage {
   readonly chunks: Chunks
-  readonly objects: ObjectBase[] & ObjectPlayListener[]
+  readonly objects: ObjectBase[]
   constructor(
       readonly url: string,
       readonly position: Vector3,
@@ -77,11 +76,11 @@ class Stage {
         console.warn(`restore object failed: ${err && err.message || err}`)
       }
     })
-    this.objects.forEach((object: ObjectPlayListener) => object.startPlaying && object.startPlaying())
+    this.objects.forEach(object => object.startPlaying())
   }
 
   dispose() {
-    this.objects.forEach((object: ObjectPlayListener) => object.stopPlaying && object.stopPlaying())
+    this.objects.forEach(object => object.stopPlaying())
     this.objects.forEach(object => object.dispose())
     this.chunks.dispose()
   }
@@ -130,14 +129,8 @@ class StageManager {
   private constructor(private game: Game) {
   }
 
-  private async loadFromURL(url: string, position: Vector3) {
+  async loadFromURL(url: string, position: Vector3) {
     await this.addToQueue(() => this.doLoad(url, position))
-  }
-
-  async loadFromLoader(loader: StageLoader) {
-    const { position: { x, y, z }, offsetY } = loader,
-      position = new Vector3(Math.floor(x), Math.floor(y + offsetY), Math.floor(z))
-    return await this.loadFromURL(loader.stageURL, position)
   }
 
   dispose() {
@@ -275,6 +268,8 @@ function selectNextConfigItem(delta: number) {
 }
 
 ; (async function() {
+  await checkFontsLoaded()
+
   let game: Game
   try {
     game = await Game.load(updateLoadingScreenProgress)
@@ -310,9 +305,9 @@ function selectNextConfigItem(delta: number) {
     },
     async play(next) {
       const stageManager = await StageManager.restore(game),
-        onTrigger = StageLoader.eventEmitter.on('trigger', loader => stageManager.loadFromLoader(loader))
+        unbindLoadStage = ObjectBase.eventEmitter.on('load-stage', data => stageManager.loadFromURL(data.url, data.position))
       await next()
-      StageLoader.eventEmitter.off('trigger', onTrigger)
+      unbindLoadStage()
       stageManager.dispose()
     },
     async pause(next) {
@@ -321,11 +316,11 @@ function selectNextConfigItem(delta: number) {
       game.isPaused = false
     },
     async config(next) {
-      const changeConfigItem = keyInput.down.on('nav-vertical', () => selectNextConfigItem(keyInput.state.up ? -1 : 1)),
-        changeConfigValue = keyInput.down.on('nav-horizontal', () => configManager.update())
+      const unbindChangeConfigItem = keyInput.down.on('nav-vertical', () => selectNextConfigItem(keyInput.state.up ? -1 : 1)),
+        unbindChangeConfigValue = keyInput.down.on('nav-horizontal', () => configManager.update())
       await next()
-      keyInput.down.off('nav-vertical', changeConfigItem)
-      keyInput.down.off('nav-horizontal', changeConfigValue)
+      unbindChangeConfigItem()
+      unbindChangeConfigValue()
       configManager.save()
     },
     async clear(next) {
@@ -337,7 +332,10 @@ function selectNextConfigItem(delta: number) {
         { text, options } = dialogs[name]
 
       let isCanceled = false
-      const onEscape = keyInput.down.on('escape', () => isCanceled = true)
+      const unbindOnEscape = keyInput.down.on('escape', () => {
+        isCanceled = true
+        unbindOnEscape()
+      })
 
       const elem = document.querySelector('.game-dialog-content')
       elem.innerHTML = ''
@@ -370,8 +368,6 @@ function selectNextConfigItem(delta: number) {
       MenuManager.activate(elemOptions)
 
       await next()
-
-      keyInput.down.off('escape', onEscape)
     },
     async dialog(next, dialogJSON: string = '') {
       const player = scene.getMeshesByTags(Player.PLAYER_TAG)
@@ -417,17 +413,12 @@ function selectNextConfigItem(delta: number) {
     }
   })
 
-  // TODO: move it somewhere
-  BulletinBoard.eventEmitter.on('use', ({ target }) => {
-    const dialogJSON = JSON.stringify(target.dialogContent)
+  BulletinBoard.eventEmitter.on('read-bulletin-content', dialogContent => {
+    const dialogJSON = JSON.stringify(dialogContent)
     gameState.goto(`dialog:${encodeURIComponent(dialogJSON)}`)
   })
 
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  const fonts = (document as any).fonts
-  if (fonts && fonts.ready) {
-    await fonts.ready
-  }
+  await sleep(1000)
 
   game.camera.lowerBetaSoftLimit = Math.PI * 0.35
   game.camera.upperRadiusSoftLimit = 40

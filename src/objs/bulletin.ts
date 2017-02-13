@@ -5,14 +5,10 @@ import {
 } from '../babylon'
 
 import {
-  ObjectUsable,
+  IUsable,
   ObjectOptions,
-  ObjectEditable,
+  IEditable,
 } from '../game/objbase'
-
-import {
-  EventEmitter,
-} from '../utils'
 
 import {
   appendConfigElement,
@@ -20,9 +16,7 @@ import {
 
 import Sprite from './sprite'
 
-export default class BulletinBoard extends Sprite implements ObjectUsable, ObjectEditable {
-  static eventEmitter = new EventEmitter<{ use: { target: BulletinBoard, by: AbstractMesh } }>()
-
+export default class BulletinBoard extends Sprite implements IUsable, IEditable {
   public dialogContent = { } as {
     [name: string]: {
       text: string
@@ -36,7 +30,7 @@ export default class BulletinBoard extends Sprite implements ObjectUsable, Objec
       canBeUsedBy: this.canBeUsedBy.bind(this),
       displayUsable: this.displayUsable.bind(this),
       useFrom: this.useFrom.bind(this),
-    } as ObjectUsable)
+    } as IUsable)
   }
 
   canBeUsedBy(_mesh: AbstractMesh) {
@@ -77,8 +71,8 @@ export default class BulletinBoard extends Sprite implements ObjectUsable, Objec
     mark.opacity = show ? 1 : 0
   }
 
-  useFrom(mesh: AbstractMesh) {
-    BulletinBoard.eventEmitter.emit('use', { target: this, by: mesh })
+  useFrom(_mesh: AbstractMesh) {
+    BulletinBoard.eventEmitter.emit('read-bulletin-content', this.dialogContent)
   }
 
   attachEditorContent(container: HTMLElement, save: (args: Partial<BulletinBoard>) => void) {

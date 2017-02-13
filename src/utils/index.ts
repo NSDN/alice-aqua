@@ -203,7 +203,7 @@ export class EventEmitter<EventNames> {
     if (cbs.indexOf(callback) === -1) {
       cbs.push(callback)
     }
-    return callback
+    return () => cbs.splice(cbs.indexOf(callback), 1)
   }
 
   off<E extends keyof EventNames>(evt: E, callback: (data: EventNames[E]) => void) {
@@ -211,10 +211,9 @@ export class EventEmitter<EventNames> {
     if (cbs) {
       cbs.splice(cbs.indexOf(callback), 1)
     }
-    return callback
   }
 
   emit<E extends keyof EventNames>(evt: E, data: EventNames[E]) {
-    (this.callbacks[evt] || [ ]).forEach(cb => cb(data))
+    (this.callbacks[evt] || [ ]).slice().forEach(cb => cb(data))
   }
 }

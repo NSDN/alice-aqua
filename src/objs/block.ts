@@ -19,11 +19,11 @@ import {
 import {
   ObjectBase,
   ObjectOptions,
-  ObjectEditable,
-  ObjectTriggerable,
+  IEditable,
+  ITriggerable,
 } from '../game/objbase'
 
-export default class Block extends ObjectBase implements ObjectEditable, ObjectTriggerable {
+export default class Block extends ObjectBase implements IEditable, ITriggerable {
   public triggerSpeed = 0.02
 
   private _blockSize = new Vector3(1, 1, 1)

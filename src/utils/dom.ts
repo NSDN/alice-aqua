@@ -4,6 +4,13 @@ import {
   queryStringSet,
 } from './'
 
+export async function checkFontsLoaded() {
+  const fonts = (document as any).fonts
+  if (fonts && fonts.ready) {
+    await fonts.ready
+  }
+}
+
 export interface ElementAttributes {
   attributes?: any
   style?: any

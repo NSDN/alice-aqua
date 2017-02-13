@@ -1,20 +1,15 @@
 import {
-  ObjectEditable,
-  ObjectTriggerable,
-  ObjectPlayListener,
+  IEditable,
+  ITriggerable,
 } from '../game/objbase'
 
 import {
   appendConfigInput,
 } from '../utils/dom'
 
-import {
-  EventEmitter,
-} from '../utils'
-
 import Sprite from './sprite'
 
-class SpriteWithOffset extends Sprite implements ObjectEditable {
+class SpriteWithOffset extends Sprite implements IEditable {
   get offsetY() {
     return this.spriteBody.position.y - this.spriteBody.scaling.y / 2
   }
@@ -27,7 +22,7 @@ class SpriteWithOffset extends Sprite implements ObjectEditable {
   }
 }
 
-export class StageEntry extends SpriteWithOffset implements ObjectPlayListener {
+export class StageEntry extends SpriteWithOffset {
   startPlaying() {
     this.spriteBody.isVisible = false
   }
@@ -36,9 +31,7 @@ export class StageEntry extends SpriteWithOffset implements ObjectPlayListener {
   }
 }
 
-export class StageLoader extends StageEntry implements ObjectTriggerable {
-  static readonly eventEmitter = new EventEmitter<{ trigger: StageLoader }>()
-
+export class StageLoader extends StageEntry implements ITriggerable {
   public stageURL = ''
 
   attachEditorContent(container: HTMLElement, save: (args: Partial<StageLoader>) => void) {
@@ -47,6 +40,8 @@ export class StageLoader extends StageEntry implements ObjectTriggerable {
   }
 
   onTrigger(isOn: boolean) {
-    isOn && StageLoader.eventEmitter.emit('trigger', this)
+    const url = this.stageURL,
+      position = this.position.add(new BABYLON.Vector3(0, this.offsetY, 0))
+    isOn && StageLoader.eventEmitter.emit('load-stage', { url, position })
   }
 }

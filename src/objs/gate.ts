@@ -26,11 +26,11 @@ import {
 import {
   ObjectBase,
   ObjectOptions,
-  ObjectEditable,
-  ObjectTriggerable,
+  IEditable,
+  ITriggerable,
 } from '../game/objbase'
 
-export default class Gate extends ObjectBase implements ObjectEditable, ObjectTriggerable {
+export default class Gate extends ObjectBase implements IEditable, ITriggerable {
   public direction = 'x' as 'x' | 'z'
   public isOpen = false
 

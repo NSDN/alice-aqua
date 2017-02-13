@@ -13,7 +13,7 @@ import {
 } from './game'
 
 import {
-  ObjectEditable
+  IEditable
 } from './game/objbase'
 
 import Chunks from './game/chunks'
@@ -44,6 +44,7 @@ import {
   queryStringSet,
   watch,
   memo,
+  sleep,
   randomBytes,
   fpsCounter,
 } from './utils'
@@ -54,6 +55,7 @@ import {
   LocationSearch,
   LoadingScreen,
   KeyEmitter,
+  checkFontsLoaded,
 } from './utils/dom'
 
 const pixelHeightNames: { [key: string]: string } = {
@@ -99,6 +101,8 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
 }
 
 ; (async function() {
+  await checkFontsLoaded()
+
   let game: Game
   try {
     game = await Game.load(updateLoadingScreenProgress)
@@ -265,6 +269,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
 
   chunks.on('chunk-loaded', chunk => {
     Tags.AddTagsTo(chunk.top, TAGS.block)
+    Tags.AddTagsTo(chunk.edge, TAGS.block)
     Tags.AddTagsTo(chunk.side, TAGS.block)
   })
 
@@ -333,13 +338,6 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     selectedObject = null
   })
 
-  document.getElementById('configOpenNewWindow').addEventListener('click', _ => {
-    const history = [{ url: 'data:text/json;charset=utf-8,' + encodeURIComponent(map.toJSON(chunks)) }],
-      queryDict = { 'stage-history': JSON.stringify(history), 'stage-start': 'play' },
-      queryString = queryStringSet(location.search.replace(/^\?/, ''), queryDict)
-    location.href = location.href.replace(/\/editor.html.*/, '') + '?' + queryString
-  })
-
   const objectHoverCursor = game.objectSource.createInstance('object-hover')
   objectHoverCursor.scaling.copyFromFloats(1.15, 1.15, 1.15)
   objectHoverCursor.isVisible = false
@@ -365,6 +363,28 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
       brushHoverInfo.innerHTML = `${hover.x}, ${hover.z}` +
         (isVisible && isKeyDown ? `: ${minimum.x}, ${minimum.z} ~ ${maximum.x}, ${maximum.z}` : '')
     }
+  })
+
+  document.getElementById('configPlayInNewWindow').addEventListener('click', _ => {
+    const history = [{ url: 'data:text/json;charset=utf-8,' + encodeURIComponent(map.toJSON(chunks)) }],
+      queryDict = { 'stage-history': JSON.stringify(history), 'stage-start': 'play' },
+      queryString = queryStringSet(location.search.replace(/^\?/, ''), queryDict)
+    location.href = location.href.replace(/\/editor.html.*/, '') + '?' + queryString
+  })
+
+  const selectChunkSideTile = document.getElementById('configSelectChunkSideTile') as HTMLSelectElement,
+    availBackgroundTiles = new Set<number>(assets.tiles.map(({ sideTileId }) => sideTileId))
+  for (const tileId of availBackgroundTiles) {
+    const canvas = document.querySelector(`.ui-list-item[tid="${tileId}"] canvas`) as HTMLCanvasElement
+    if (canvas) {
+      const style = { background: `url(${canvas.toDataURL()})`, width: 32, height: 32 }
+      appendElement('option', { style, value: tileId, innerHTML: `tid: ${tileId}` }, selectChunkSideTile)
+    }
+  }
+  selectChunkSideTile.value = '' + chunks.sideTileId
+  selectChunkSideTile.addEventListener('change', _ => {
+    chunks.sideTileId = parseInt(selectChunkSideTile.value)
+    map.saveDebounced(chunks)
   })
 
   document.getElementById('configDownloadMap').addEventListener('click', _ => {
@@ -457,7 +477,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
         const container = objectToolbar.querySelector('.object-settings')
         container.innerHTML = `<div><b>#${newObject.name}</b></div>`
 
-        const binder = newObject as any as ObjectEditable,
+        const binder = newObject as any as IEditable,
           content = appendElement('table', { }, container)
         binder.attachEditorContent && binder.attachEditorContent(content, update => {
           editorHistory.push(new UpdateObjectAction(map.objectsData, newObject, update))
@@ -500,6 +520,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   })
   selectedObject = null
 
-  await new Promise(resolve => setTimeout(resolve, 800))
+  await sleep(800)
+
   LoadingScreen.hide()
 })()

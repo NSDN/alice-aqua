@@ -28,9 +28,8 @@ import {
 import {
   ObjectBase,
   ObjectOptions,
-  ObjectEditable,
-  ObjectTriggerable,
-  ObjectPlayListener,
+  IEditable,
+  ITriggerable,
 } from '../game/objbase'
 
 export const TRIGGER_ON_COLOR = new Color3(1, 0.5, 0.5),
@@ -95,7 +94,7 @@ class TriggerLocker extends Mesh {
   }
 }
 
-export default class Sensor extends ObjectBase implements ObjectEditable, ObjectPlayListener, ObjectTriggerable {
+export default class Sensor extends ObjectBase implements IEditable, ITriggerable {
   private showLockerSprite(timeout: number) {
     const spriteId = 'trigger/lock/sprite',
       sprite = (this.getScene().getMeshByName(spriteId) as TriggerLocker) ||
@@ -130,7 +129,6 @@ export default class Sensor extends ObjectBase implements ObjectEditable, Object
 
     const sensor = cache.createInstance(this.name + '/sensor')
     sensor.parent = this
-    sensor.actionManager = new ActionManager(this.getScene())
     return sensor
   }
 
@@ -198,7 +196,7 @@ export default class Sensor extends ObjectBase implements ObjectEditable, Object
       rows.length = 0
 
       const availNames = this.getScene().meshes
-          .filter(mesh => (mesh as any as ObjectTriggerable).onTrigger && mesh !== this)
+          .filter(mesh => (mesh as any as ITriggerable).onTrigger && mesh !== this)
           .map(mesh => mesh.name),
         savedTargets = (this.targetName || '').split(',').filter(target => !!target).concat('')
       while (availNames.length && savedTargets.length) {
@@ -243,7 +241,7 @@ export default class Sensor extends ObjectBase implements ObjectEditable, Object
     ; (this._targetName || '').split(',').forEach(target => {
       const isNe = target[0] === '!',
         name = isNe ? target.substr(1) : target,
-        mesh = this.getScene().getMeshByName(name) as any as ObjectTriggerable
+        mesh = this.getScene().getMeshByName(name) as any as ITriggerable
       if (mesh && mesh.onTrigger) {
         mesh.onTrigger(isNe ? !isOn : isOn, this)
       }
@@ -266,12 +264,16 @@ export default class Sensor extends ObjectBase implements ObjectEditable, Object
     }
   }
   private clearTriggered() {
+    this.triggerSensor.actionManager && this.triggerSensor.actionManager.dispose()
+    this.triggerSensor.actionManager = null
     this.getScene().getMeshesByTags(this.triggerOnTag).forEach(mesh => {
       Tags.RemoveTagsFrom(mesh, this.triggerOnTag)
     })
     this.fireTrigger(false)
   }
   private registerTrigger() {
+    this.triggerSensor.actionManager && this.triggerSensor.actionManager.dispose()
+    this.triggerSensor.actionManager = new ActionManager(this.getScene())
     this.getScene().getMeshesByTags(this.listenTags.join(' || ')).forEach(mesh => {
       this.triggerSensor.actionManager.registerAction(new ExecuteCodeAction({
         trigger: ActionManager.OnIntersectionEnterTrigger,

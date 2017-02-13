@@ -197,14 +197,15 @@
       </div>
       <div class="hidden ui-panel panel-game">
         <div class="game-config">
-          <h3>test</h3>
-          <button id="configOpenNewWindow">Play!</button>
+          <h3>terrain texture</h3>
+          <select id="configSelectChunkSideTile"></select>
         </div>
         <div class="game-config">
           <h3>map</h3>
-          <button id="configDownloadMap">download</button>
-          <button id="configUploadMap">upload</button>
-          <button id="configResetMap">reset</button>
+          <button id="configPlayInNewWindow">Play!</button>
+          <button id="configDownloadMap">Download</button>
+          <button id="configUploadMap">Upload</button>
+          <button id="configResetMap">Reset</button>
         </div>
       </div>
     </div>
@@ -249,7 +250,7 @@
       <div class="float-right">
         <a href="javascript:void(0)" id="docHideHelp"><i class="fa fa-close"></i></a>
       </div>
-      <h2>Build {{BUILD_HASH}}</h2>
+      <h2>Build </h2>
       <ul>
         <li>[game] 新的 Remilia 像素图</li>
         <li>[game] 多语言支持</li>
@@ -336,7 +337,6 @@
   </div>
   <script src="build/screen.bundle.js"></script>
   <script src="//localhost:8080/webpack-dev-server.js"></script>
-  <script src="node_modules/yamljs/dist/yaml.js"></script>
   <script src="babylonjs/cannon.js"></script>
   <script src="babylonjs/babylon.max.js"></script>
   <script src="babylonjs/canvas2D/babylon.canvas2d.js"></script>

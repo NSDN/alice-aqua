@@ -1,19 +1,21 @@
-BUILD_HASH=`webpack | grep Hash: | awk '{ print $2 }'`
-DST_DIR=qcs.ofr.me:~/www/alice-aqua-$BUILD_HASH
 TMP_DIR=.depoly-temp
+mkdir -p $TMP_DIR &&\
+webpack > $TMP_DIR/webpack-output &&\
+
+BUILD_HASH=`cat $TMP_DIR/webpack-output | grep Hash: | awk '{ print $2 }'` &&\
+DST_DIR=qcs.ofr.me:~/www/alice-aqua-$BUILD_HASH &&\
 SRC_DIRS=(
   "babylonjs/*.js"
   "babylonjs/**/*.js"
   "node_modules/font-awesome/css/*.css"
   "node_modules/font-awesome/fonts/*.*"
-  "node_modules/yamljs/dist/*.js"
-)
+) &&\
 
-mkdir -p $TMP_DIR &&\
 sed -i -r \
   -e "s/\\{\\{BUILD_HASH\\}\\}/$BUILD_HASH/" \
   -e "s/<([^>]+)(class=\"build-hash\"[^>]*)>[^<]*</<\1\2>$BUILD_HASH</" \
   *.html &&\
+
 cp package.json $TMP_DIR/ &&\
 cp *.html $TMP_DIR/ &&\
 cp -r assets $TMP_DIR/ &&\
@@ -26,6 +28,9 @@ do
     mkdir -p $dst && cp -r $src $dst
   done
 done &&\
+
 rsync -avr $TMP_DIR/. $DST_DIR &&\
+
+rm -rf $TMP_DIR/babylonjs &&\
 rm -rf $TMP_DIR &&\
 echo "uploaded to $DST_DIR"

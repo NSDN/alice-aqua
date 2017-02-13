@@ -19,6 +19,7 @@ import {
   getChunkGroundVertexData,
   getChunkSideVertexData,
   StaticBoxImpostor,
+  ColorNoLightingMaterial,
 } from '../utils/babylon'
 
 import {
@@ -33,17 +34,19 @@ export interface ChunkData {
   tiles: number[]
   heights: number[]
   top: Mesh
+  edge: Mesh
   side: Mesh
   blocks: { [id: string]: PhysicsImpostor }
   texture: DynamicTexture
-  i: number
-  j: number
+  m0: number
+  n0: number
   k: string
 }
 
 export interface RestoreData {
   unit: number
   size: number
+  sideTileId: number
   chunks: {
     [key: string]: {
       tiles: number[]
@@ -59,6 +62,7 @@ export interface TileDefine {
   offsetY: number
   size: number
   autoTileType: string
+  sideTileId: number
 }
 
 const push = [ ].push,
@@ -70,37 +74,51 @@ export default class Chunks extends EventEmitter<{
   'height-updated': ChunkData,
   'chunk-loaded': ChunkData,
 }> {
+  private readonly edgeMaterial: StandardMaterial
   private readonly sideMaterial: StandardMaterial
   private readonly tilesDefine: { [id: number]: TileDefine }
   private readonly data: { [key: string]: ChunkData } = { }
 
+  readonly unitSize: number
+  readonly chunkSize: number
+  readonly textureSize: number
+  readonly chunkUnits: number
+  readonly unitTexSize: number
+
   constructor(readonly name: string, readonly scene: Scene,
     tilesDefine: TileDefine[],
     restoreData = { } as RestoreData,
-    readonly position = Vector3.Zero(),
-    readonly unitSize = restoreData.unit || 1,
-    readonly chunkSize = restoreData.size || 16,
-    readonly textureSize = chunkSize * 16,
-    readonly minimumY = 0,
-    readonly chunkUnits = Math.floor(chunkSize / unitSize),
-    readonly unitTexSize = Math.floor(textureSize / chunkUnits)) {
+    readonly position = Vector3.Zero()) {
     super()
 
+    this.unitSize = restoreData.unit || 1
+    this.chunkSize = restoreData.size || 32
+    this.textureSize = this.chunkSize * 16
+    this.chunkUnits = Math.floor(this.chunkSize / this.unitSize)
+    this.unitTexSize = Math.floor(this.textureSize / this.chunkUnits)
+
     this.tilesDefine = { }
-    // index tiles with tileId
     tilesDefine.forEach(tile => this.tilesDefine[tile.tileId] = tile)
+
+    const edgeMaterialId = 'cache/chunk/edge/' + this.chunkUnits
+    this.edgeMaterial = scene.getMaterialByName(edgeMaterialId) as StandardMaterial
+    if (!this.edgeMaterial) {
+      this.edgeMaterial = new ColorNoLightingMaterial(edgeMaterialId, scene)
+      this.edgeMaterial.diffuseTexture =
+        new DynamicTexture('cache/chunk/edge/mat', this.edgeTextureCacheSize * this.unitTexSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
+    }
 
     const sideMaterialId = 'cache/chunk/side/' + this.chunkUnits
     this.sideMaterial = scene.getMaterialByName(sideMaterialId) as StandardMaterial
     if (!this.sideMaterial) {
-      const sideMaterial = this.sideMaterial = new StandardMaterial(sideMaterialId, scene)
-      sideMaterial.disableLighting = true
-      sideMaterial.emissiveColor = Color3.White()
-      const texture = sideMaterial.diffuseTexture = new Texture('assets/chunk_side.png', scene,
-        false, false, Texture.NEAREST_SAMPLINGMODE)
+      this.sideMaterial = new ColorNoLightingMaterial(sideMaterialId, scene)
+      const texture = this.sideMaterial.diffuseTexture =
+        new DynamicTexture('cache/chunk/side/mat', this.unitTexSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
       texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
       texture.uScale = texture.vScale = this.chunkUnits
     }
+
+    this.sideTileId = restoreData.sideTileId || tilesDefine[0].sideTileId
 
     Object.keys(restoreData.chunks || { }).forEach(k => {
       const { tiles, heights } = restoreData.chunks[k]
@@ -108,15 +126,59 @@ export default class Chunks extends EventEmitter<{
     })
   }
 
+  private _sideTileId = 1
+  get sideTileId() {
+    return this._sideTileId
+  }
+  set sideTileId(val) {
+    const tile = this.tilesDefine[val]
+    if (this._sideTileId !== val && tile) {
+      const { src, offsetX, offsetY, size } = tile,
+        texture = this.sideMaterial.diffuseTexture as DynamicTexture
+      texture.getContext().drawImage(src, offsetX, offsetY, size, size, 0, 0, this.unitTexSize, this.unitTexSize)
+      texture.update()
+    }
+    this._sideTileId = val
+  }
+
+  readonly edgeTextureCacheSize = 16
+  private edgeTextureCaches = { } as { [tileId: number]: [number, number, number, number] }
+  private getEdgeTileTextureUV(tileId: number) {
+    if (this.edgeTextureCaches[tileId]) {
+      return this.edgeTextureCaches[tileId]
+    }
+    else {
+      const { sideTileId } = this.tilesDefine[tileId] || { sideTileId: this._sideTileId },
+        { src, offsetX, offsetY, size } = this.tilesDefine[sideTileId] || this.tilesDefine[this._sideTileId],
+        index = Object.keys(this.edgeTextureCaches).length,
+        i = Math.floor(index / this.edgeTextureCacheSize), j = index % this.edgeTextureCacheSize,
+        texture = this.edgeMaterial.diffuseTexture as DynamicTexture,
+        dc = texture.getContext()
+      dc.drawImage(src, offsetX, offsetY, size, size,
+        i * this.unitTexSize, j * this.unitTexSize, this.unitTexSize, this.unitTexSize)
+      texture.update()
+      const e = 1e-3, // this remove strange black edges
+        u0 = i / this.edgeTextureCacheSize + e, u1 = (i + 1) / this.edgeTextureCacheSize - e,
+        v0 = 1 - (j + 1) / this.edgeTextureCacheSize + e, v1 = 1 - j / this.edgeTextureCacheSize - e
+      return this.edgeTextureCaches[tileId] = [u0, v1, u1, v1, u1, v0, u0, v0]
+    }
+  }
+
+  readonly minimumY = 0
   private createChunkData(k: string,
       tiles = Array(this.chunkUnits * this.chunkUnits).fill(0) as number[],
       heights = Array(this.chunkUnits * this.chunkUnits).fill(this.minimumY) as number[]) {
     const [i, j] = k.split('/').map(parseFloat),
-      { chunkUnits, scene, chunkSize, textureSize } = this
+      { chunkUnits, scene, chunkSize, textureSize } = this,
+      m0 = i * chunkUnits, n0 = j * chunkUnits
 
     const top = new Mesh(this.name + '/top/' + k, scene),
       { x, y, z } = this.position
     top.position.copyFromFloats(i * chunkSize + x, y, j * chunkSize + z)
+
+    const edge = new Mesh(this.name + '/edge/' + k, scene)
+    edge.material = this.edgeMaterial
+    edge.parent = top
 
     const side = new Mesh(this.name + '/side/' + k, scene)
     side.material = this.sideMaterial
@@ -145,10 +207,10 @@ export default class Chunks extends EventEmitter<{
       this.emit('chunk-loaded', this.data[k])
     })
 
-    return this.data[k] = { tiles, heights, top, side, blocks, texture, i, j, k }
+    return this.data[k] = { tiles, heights, top, edge, side, blocks, texture, m0, n0, k }
   }
 
-  private getChunkData(m: number, n: number) {
+  private getChunkDataIfExists(m: number, n: number) {
     const g = this.chunkUnits,
       i = Math.floor(m / g),
       j = Math.floor(n / g),
@@ -156,10 +218,16 @@ export default class Chunks extends EventEmitter<{
       u = m - i * g,
       v = n - j * g,
       c = u * g + v,
-      d = this.data[k] || this.createChunkData(k),
-      t = d.tiles[c],
-      h = d.heights[c]
-    return { ...d, u, v, c, t, h }
+      d = this.data[k],
+      t = d && d.tiles[c],
+      h = d && d.heights[c],
+      exists = !!d
+    return { ...d, u, v, c, t, h, exists }
+  }
+
+  private getChunkData(m: number, n: number) {
+    const data = this.getChunkDataIfExists(m, n)
+    return data.exists ? data : { ...this.createChunkData(data.k), ...data }
   }
 
   private updateTexture(m: number, n: number) {
@@ -191,54 +259,83 @@ export default class Chunks extends EventEmitter<{
 
   private updateHeight(m: number, n: number) {
     const { chunkUnits, unitSize, scene, minimumY } = this,
-      { heights, top, side, blocks } = this.getChunkData(m, n),
+      { heights, top, edge, side, blocks, m0, n0 } = this.getChunkData(m, n),
       h0 = Math.max(Math.min.apply(Math, heights) - 1, minimumY),
-      blks = getBlocksFromHeightMap(heights, chunkUnits, h0)
+      chunkBlocks = getBlocksFromHeightMap(heights, chunkUnits, h0)
 
-    const gvd = {
-      positions: [ ] as number[],
-      normals:   [ ] as number[],
-      indices:   [ ] as number[],
-      uvs:       [ ] as number[]
-    }
-    blks.forEach(([u0, u1, v0, v1, , h1]) => {
-      const i0 = gvd.positions.length / 3,
+    const topVd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] } as VertexData
+    chunkBlocks.forEach(([u0, u1, v0, v1, _, h1]) => {
+      const i0 = topVd.positions.length / 3,
         vd = getGroundVertexDataWithUVMemo(u0, u1, v0, v1, h1)
-      push.apply(gvd.positions, vd.positions.map(p => p * unitSize))
-      push.apply(gvd.normals,   vd.normals)
-      push.apply(gvd.indices,   vd.indices.map(i => i + i0))
-      push.apply(gvd.uvs,       vd.uvs.map(v => v / chunkUnits))
+      push.apply(topVd.positions, vd.positions.map(p => p * unitSize))
+      push.apply(topVd.normals,   vd.normals)
+      push.apply(topVd.indices,   vd.indices.map(i => i + i0))
+      push.apply(topVd.uvs,       vd.uvs.map(v => v / chunkUnits))
     })
-    Object.assign(new VertexData(), gvd).applyToMesh(top)
+    Object.assign(new VertexData(), topVd).applyToMesh(top)
     // FIXME: babylonjs
-    if (!gvd.indices.length) top.releaseSubMeshes()
+    if (!topVd.indices.length) top.releaseSubMeshes()
 
-    const svd = {
-      positions: [ ] as number[],
-      normals:   [ ] as number[],
-      indices:   [ ] as number[],
-      uvs:       [ ] as number[],
-    }
-    blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
-      const g = chunkUnits,
-        sides =
-          (v1 === g || arrayRange(u0, u1).some(u => heights[u * g + v1]       < h1) ? 8 : 0) +
-          (u0 === 0 || arrayRange(v0, v1).some(v => heights[(u0 - 1) * g + v] < h1) ? 4 : 0) +
-          (v0 === 0 || arrayRange(u0, u1).some(u => heights[u * g + (v0 - 1)] < h1) ? 2 : 0) +
-          (u1 === g || arrayRange(v0, v1).some(v => heights[u1 * g + v]       < h1) ? 1 : 0),
-        i0 = svd.positions.length / 3,
-        vd = getSideVertexDataMemo(u0, u1, v0, v1, h0, h1, sides)
-      push.apply(svd.positions, vd.positions.map(p => p * unitSize))
-      push.apply(svd.normals,   vd.normals)
-      push.apply(svd.indices,   vd.indices.map(i => i + i0))
-      push.apply(svd.uvs,       vd.uvs.map(v => v / chunkUnits))
+    const pixelFromUV = (u: number, v: number) => this.getChunkDataIfExists(m0 + u, n0 + v),
+      edges = chunkBlocks.map(([u0, u1, v0, v1]) => ({
+        top:    arrayRange(u0, u1).map(u => ({ u, v: v1 + 0.001, o: pixelFromUV(u,     v1), i: pixelFromUV(u, v1 - 1) })),
+        left:   arrayRange(v0, v1).map(v => ({ u: u0 - 0.001, v, o: pixelFromUV(u0 - 1, v), i: pixelFromUV(u0,     v) })),
+        bottom: arrayRange(u0, u1).map(u => ({ u, v: v0 - 0.001, o: pixelFromUV(u, v0 - 1), i: pixelFromUV(u,     v0) })),
+        right:  arrayRange(v0, v1).map(v => ({ u: u1 + 0.001, v, o: pixelFromUV(u1,     v), i: pixelFromUV(u1 - 1, v) })),
+      }))
+
+    const edgeVd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] } as VertexData
+    chunkBlocks.forEach(([_u0, _u1, _v0, _v1, _h0, h1], index) => {
+      const { top, left, bottom, right } = edges[index]
+      top.filter(({ i, o }) => i.h === h1 && o.h < h1).forEach(({ u, v, i }) => {
+        push.apply(edgeVd.indices,   [0, 1, 2, 0, 2, 3].map(v => v + edgeVd.positions.length / 3))
+        push.apply(edgeVd.positions, [u, h1, v, u + 1, h1, v, u + 1, h1 - 1, v, u, h1 - 1, v].map(v => v * unitSize))
+        push.apply(edgeVd.normals,   [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0])
+        push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
+      })
+      left.filter(({ i, o }) => i.h === h1 && o.h < h1).forEach(({ u, v, i }) => {
+        push.apply(edgeVd.indices,   [0, 1, 2, 0, 2, 3].map(v => v + edgeVd.positions.length / 3))
+        push.apply(edgeVd.positions, [u, h1, v, u, h1, v + 1, u, h1 - 1, v + 1, u, h1 - 1, v].map(v => v * unitSize))
+        push.apply(edgeVd.normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
+        push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
+      })
+      bottom.filter(({ i, o }) => i.h === h1 && o.h < h1).forEach(({ u, v, i }) => {
+        push.apply(edgeVd.indices,   [0, 2, 1, 0, 3, 2].map(v => v + edgeVd.positions.length / 3))
+        push.apply(edgeVd.positions, [u, h1, v, u + 1, h1, v, u + 1, h1 - 1, v, u, h1 - 1, v].map(v => v * unitSize))
+        push.apply(edgeVd.normals,   [0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0])
+        push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
+      })
+      right.filter(({ i, o }) => i.h === h1 && o.h < h1).forEach(({ u, v, i }) => {
+        push.apply(edgeVd.indices,   [0, 2, 1, 0, 3, 2].map(v => v + edgeVd.positions.length / 3))
+        push.apply(edgeVd.positions, [u, h1, v, u, h1, v + 1, u, h1 - 1, v + 1, u, h1 - 1, v].map(v => v * unitSize))
+        push.apply(edgeVd.normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
+        push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
+      })
     })
-    Object.assign(new VertexData(), svd).applyToMesh(side)
+    Object.assign(new VertexData(), edgeVd).applyToMesh(edge)
     // FIXME: babylonjs
-    if (!svd.indices.length) side.releaseSubMeshes()
+    if (!edgeVd.indices.length) edge.releaseSubMeshes()
+
+    const sideVd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] } as VertexData
+    chunkBlocks.forEach(([u0, u1, v0, v1, h0, h1], index) => {
+      const { top, left, bottom, right } = edges[index],
+        sides =
+          (top   .some(({ o }) => o.h < h1) ? 8 : 0) +
+          (left  .some(({ o }) => o.h < h1) ? 4 : 0) +
+          (bottom.some(({ o }) => o.h < h1) ? 2 : 0) +
+          (right .some(({ o }) => o.h < h1) ? 1 : 0),
+        vd = getSideVertexDataMemo(u0, u1, v0, v1, h0, h1, sides)
+      push.apply(sideVd.indices,   vd.indices.map(i => i + sideVd.positions.length / 3))
+      push.apply(sideVd.positions, vd.positions.map(p => p * unitSize))
+      push.apply(sideVd.normals,   vd.normals)
+      push.apply(sideVd.uvs,       vd.uvs.map(v => v / chunkUnits))
+    })
+    Object.assign(new VertexData(), sideVd).applyToMesh(side)
+    // FIXME: babylonjs
+    if (!sideVd.indices.length) side.releaseSubMeshes()
 
     const keepInBlocks = { } as { [id: string]: boolean }
-    blks.forEach(([u0, u1, v0, v1, h0, h1]) => {
+    chunkBlocks.forEach(([u0, u1, v0, v1, h0, h1]) => {
       const id = ['chunk', 'block', u0, u1, v0, v1, h0, h1].join('/')
       if (!blocks[id]) {
         const p0 = new Vector3(u0, h0, v0).add(top.position),
@@ -341,6 +438,7 @@ export default class Chunks extends EventEmitter<{
     const data: RestoreData = {
       unit: this.unitSize,
       size: this.chunkSize,
+      sideTileId: this.sideTileId,
       chunks: { }
     }
     Object.keys(this.data).forEach(k => {
@@ -352,9 +450,9 @@ export default class Chunks extends EventEmitter<{
 
   dispose() {
     Object.keys(this.data).forEach(k => {
-      const { top, side, texture, blocks } = this.data[k]
+      const { top, edge, texture, blocks } = this.data[k]
       top.dispose()
-      side.dispose()
+      edge.dispose()
       texture.dispose()
       Object.keys(blocks).forEach(id => blocks[id].dispose())
       delete this.data[k]

@@ -198,7 +198,7 @@ export class ColorNoLightingMaterial extends StandardMaterial {
       dict = scene as any as { [color: string]: ColorNoLightingMaterial }
     return dict[name] || (dict[name] = new ColorNoLightingMaterial(name, scene, color))
   }
-  constructor(name: string, scene: Scene, color: Color3) {
+  constructor(name: string, scene: Scene, color = Color3.White()) {
     super(name, scene)
     this.disableLighting = true
     this.emissiveColor = color

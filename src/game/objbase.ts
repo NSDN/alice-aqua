@@ -4,7 +4,12 @@ import {
   Material,
   AbstractMesh,
   ScreenSpaceCanvas2D,
+  Vector3,
 } from '../babylon'
+
+import {
+  EventEmitter,
+} from '../utils'
 
 export interface ObjectIcon {
   material: Material
@@ -27,27 +32,41 @@ export interface ObjectOptions {
   source: Mesh
 }
 
-export interface ObjectTriggerable {
+export interface ITriggerable {
   onTrigger(isOn: boolean, by?: AbstractMesh): void
 }
 
-export interface ObjectUsable {
+export interface IUsable {
   canBeUsedBy(mesh: AbstractMesh): boolean
   displayUsable(mesh: AbstractMesh, show: boolean): void
   useFrom(mesh: AbstractMesh): void
 }
 
-export interface ObjectEditable {
-  attachEditorContent(container: HTMLElement, save: (args: Partial<ObjectEditable>) => void): void
+export interface IEditable {
+  attachEditorContent(container: HTMLElement, save: (args: Partial<IEditable>) => void): void
 }
 
-export interface ObjectPlayListener {
-  startPlaying(): void
-  stopPlaying(): void
+interface ObjectEvents {
+  'load-stage': {
+    url: string,
+    position: Vector3
+  }
+  'read-bulletin-content': {
+    [name: string]: {
+      text: string
+      options: { [title: string]: string }
+    }
+  }
 }
 
 export class ObjectBase extends InstancedMesh {
+  static readonly eventEmitter = new EventEmitter<ObjectEvents>()
+
   constructor(name: string, readonly opts: ObjectOptions) {
     super(name, opts.source)
+  }
+  startPlaying() {
+  }
+  stopPlaying() {
   }
 }

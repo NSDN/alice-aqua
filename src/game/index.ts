@@ -271,9 +271,9 @@ export class Game extends EventEmitter<{
       materials[id] = { material, texSize, src: img }
     }
 
-    const tiles = plugins.tiles.map(([tileId, srcId, offsetX, offsetY, size, autoTileType]) => {
+    const tiles = plugins.tiles.map(([tileId, srcId, offsetX, offsetY, size, autoTileType, sideTileId]) => {
       const { src } = materials[srcId]
-      return { tileId, src, offsetX, offsetY, size, autoTileType }
+      return { tileId, src, offsetX, offsetY, size, autoTileType, sideTileId }
     })
 
     const classes = plugins.classes.map(([clsId, srcId, offsetX, offsetY, width, height, cls, args, uiArgs]) => {

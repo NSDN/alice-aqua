@@ -3,13 +3,18 @@ import {
 } from '../utils/dom'
 
 import {
-  TileDefine,
-} from '../game/chunks'
-
-import {
   EventEmitter,
   watch,
 } from '../utils'
+
+export interface TileDefine {
+  src: HTMLImageElement
+  tileId: number
+  offsetX: number
+  offsetY: number
+  size: number
+  autoTileType: string
+}
 
 export interface ClassDefine {
   clsId: number
@@ -57,18 +62,23 @@ export class UI extends EventEmitter<{
 
     const tileList = document.querySelector('.ui-brushes')
     tiles.forEach(tile => {
-      const { tileId, src, offsetX, offsetY, size } = tile,
-        attrs = { className: 'ui-list-item', attributes: { tid: tileId } },
+      const { tileId, src, offsetX, offsetY, size, autoTileType } = tile,
+        attrs = { className: 'ui-list-item', attributes: { tid: tileId }, title: `tileId: ${tileId}` },
         div = appendElement('div', attrs, tileList) as HTMLDivElement,
         [width, height] = [32, 32],
         canvas = appendElement('canvas', { width, height }, div) as HTMLCanvasElement
-      canvas.getContext('2d').drawImage(src, offsetX, offsetY, size, size, 0, 0, width, height)
+      if (autoTileType === 'h5x3') {
+        canvas.getContext('2d').drawImage(src, offsetX, offsetY, size / 2 * 3, size / 2 * 3, 0, 0, width, height)
+      }
+      else {
+        canvas.getContext('2d').drawImage(src, offsetX, offsetY, size, size, 0, 0, width, height)
+      }
     })
 
     const clsList = document.querySelector('.ui-classes')
     classes.forEach(cls => {
       const { clsId, src, offsetX, offsetY, width, height, title } = cls,
-        attrs = { className: 'ui-list-item', attributes: { cid: clsId }, title },
+        attrs = { className: 'ui-list-item', attributes: { cid: clsId }, title: title || `clsId: ${clsId}` },
         div = appendElement('div', attrs, clsList) as HTMLDivElement,
         canvas = appendElement('canvas', { width, height }, div) as HTMLCanvasElement
       canvas.getContext('2d').drawImage(src, offsetX, offsetY, width, height, 0, 0, width, height)
