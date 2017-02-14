@@ -16,7 +16,7 @@ import {
   IEditable
 } from './game/objbase'
 
-import Chunks from './game/chunks'
+import Terrain from './game/terrain'
 import Cursor from './editor/cursor'
 
 import {
@@ -124,8 +124,8 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => Tags.MatchesQuery(mesh, TAGS.block)),
     lastSelection = new SelectionBox('select', scene),
 
-    chunks = new Chunks('chunk', scene, assets.tiles, map.chunksData),
-    grid = new GridPlane('grids', scene, chunks.chunkSize),
+    terrain = new Terrain('terrain', scene, assets.tiles, map.chunksData),
+    grid = new GridPlane('grids', scene, terrain.chunkSize),
 
     ui = new UI(assets.tiles, assets.classes),
     editorHistory = new EditorHistory(),
@@ -164,7 +164,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     return evt.target === canvas && ui.activePanel === 'brushes' && !keys.ctrlKey && keys.shiftKey
   }, _ => {
     const { t } = ui.selectedTilePixel, { x, z } = cursor.hover
-    selectedPixel = { t: t === '?' ? chunks.getPixel(x, z).t : t && parseInt(t), h: 0 }
+    selectedPixel = { t: t === '?' ? terrain.getPixel(x, z).t : t && parseInt(t), h: 0 }
 
     lastSelection.scaling.copyFromFloats(1, 1, 1)
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
@@ -177,7 +177,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
       pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) }
     for (let m = minimum.x; m < maximum.x; m ++) {
       for (let n = minimum.z; n < maximum.z; n ++) {
-        editorHistory.push(new SetPixelAction(chunks, m, n, pixel))
+        editorHistory.push(new SetPixelAction(terrain, m, n, pixel))
       }
     }
     editorHistory.commit()
@@ -189,10 +189,10 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   }, _ => {
     const { t, h } = ui.selectedTilePixel, { x, z } = cursor.hover
     selectedPixel = {
-      t: t === '?' ? chunks.getPixel(x, z).t : t && parseInt(t),
+      t: t === '?' ? terrain.getPixel(x, z).t : t && parseInt(t),
       h: h && cursor.hover.y + parseInt(h)
     }
-    editorHistory.push(new SetPixelAction(chunks, x, z, selectedPixel))
+    editorHistory.push(new SetPixelAction(terrain, x, z, selectedPixel))
 
     cursor.alpha = 0
 
@@ -200,7 +200,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
     const { x, z } = cursor.hover
-    editorHistory.push(new SetPixelAction(chunks, x, z, selectedPixel))
+    editorHistory.push(new SetPixelAction(terrain, x, z, selectedPixel))
 
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
@@ -241,33 +241,33 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     }
   }, _ => {
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
-    editorHistory.push(new MoveObjectAction(chunks, selectedObject.name, pos))
+    editorHistory.push(new MoveObjectAction(terrain, selectedObject.name, pos))
   }, _ => {
     editorHistory.commit()
 
-    map.saveDebounced(chunks)
+    map.saveDebounced(terrain)
   })
 
-  chunks.on('height-updated', chunk => {
-    const pos = chunk.top.position, size = chunks.chunkSize,
+  terrain.on('height-updated', chunk => {
+    const pos = chunk.top.position, size = terrain.chunkSize,
       box = new BoundingBox(pos, pos.add(new Vector3(size, 0, size)))
     scene.getMeshesByTags(TAGS.object).forEach(mesh => {
       const { x, y, z } = mesh.position
       if (box.intersectsPoint(new Vector3(x, pos.y, z))) {
-        const height = chunks.getPixel(x, z).h,
+        const height = terrain.getPixel(x, z).h,
           origin = new Vector3(x, Math.max(y, height) + 0.1, z),
           direction = new Vector3(0, -1, 0),
           picked = scene.pickWithRay(new Ray(origin, direction), cursor.pickFilter)
         mesh.position.y = picked.hit && picked.getNormal().y > 0.9 ? picked.pickedPoint.y : height
       }
     })
-    map.saveDebounced(chunks)
+    map.saveDebounced(terrain)
   })
-  chunks.on('tile-updated', () => {
-    map.saveDebounced(chunks)
+  terrain.on('tile-updated', () => {
+    map.saveDebounced(terrain)
   })
 
-  chunks.on('chunk-loaded', chunk => {
+  terrain.on('chunk-loaded', chunk => {
     Tags.AddTagsTo(chunk.top, TAGS.block)
     Tags.AddTagsTo(chunk.edge, TAGS.block)
     Tags.AddTagsTo(chunk.side, TAGS.block)
@@ -281,7 +281,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
         pixel = ui.selectedTilePixel
       for (let m = minimum.x; m < maximum.x; m ++) {
         for (let n = minimum.z; n < maximum.z; n ++) {
-          editorHistory.push(new SetPixelAction(chunks, m, n, pixel as any))
+          editorHistory.push(new SetPixelAction(terrain, m, n, pixel as any))
         }
       }
       editorHistory.commit()
@@ -314,7 +314,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     cursor.updateFromPickTarget(evt)
   }, evt => {
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
-    editorHistory.push(new MoveObjectAction(chunks, selectedObject.name, pos))
+    editorHistory.push(new MoveObjectAction(terrain, selectedObject.name, pos))
 
     objectToolbar.style.left = (evt.clientX + cursor.offset.x) + 'px'
     objectToolbar.style.top = (evt.clientY + cursor.offset.y) + 'px'
@@ -325,14 +325,14 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
 
     editorHistory.commit()
 
-    map.saveDebounced(chunks)
+    map.saveDebounced(terrain)
   })
   objectToolbar.querySelector('.focus-object').addEventListener('click', _ => {
     camera.followTarget.copyFrom(selectedObject.position)
   })
   objectToolbar.querySelector('.remove-object').addEventListener('click', _ => {
     editorHistory.commit(new RemoveObjectAction(objectManager, selectedObject, map.objectsData[selectedObject.name]))
-    map.saveDebounced(chunks)
+    map.saveDebounced(terrain)
   })
   objectToolbar.querySelector('.cancel-select').addEventListener('click', _ => {
     selectedObject = null
@@ -366,7 +366,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   })
 
   document.getElementById('configPlayInNewWindow').addEventListener('click', _ => {
-    const history = [{ url: 'data:text/json;charset=utf-8,' + encodeURIComponent(map.toJSON(chunks)) }],
+    const history = [{ url: 'data:text/json;charset=utf-8,' + encodeURIComponent(map.toJSON(terrain)) }],
       queryDict = { 'stage-history': JSON.stringify(history), 'stage-start': 'play' },
       queryString = queryStringSet(location.search.replace(/^\?/, ''), queryDict)
     location.href = location.href.replace(/\/editor.html.*/, '') + '?' + queryString
@@ -381,14 +381,14 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
       appendElement('option', { style, value: tileId, innerHTML: `tid: ${tileId}` }, selectChunkSideTile)
     }
   }
-  selectChunkSideTile.value = '' + chunks.sideTileId
+  selectChunkSideTile.value = '' + terrain.sideTileId
   selectChunkSideTile.addEventListener('change', _ => {
-    chunks.sideTileId = parseInt(selectChunkSideTile.value)
-    map.saveDebounced(chunks)
+    terrain.sideTileId = parseInt(selectChunkSideTile.value)
+    map.saveDebounced(terrain)
   })
 
   document.getElementById('configDownloadMap').addEventListener('click', _ => {
-    const s = map.toJSON(chunks)
+    const s = map.toJSON(terrain)
     const a = appendElement('a', {
       href: 'data:text/json;charset=utf-8,' + encodeURIComponent(s),
       target: '_blank',
@@ -481,7 +481,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
           content = appendElement('table', { }, container)
         binder.attachEditorContent && binder.attachEditorContent(content, update => {
           editorHistory.push(new UpdateObjectAction(map.objectsData, newObject, update))
-          map.saveDebounced(chunks)
+          map.saveDebounced(terrain)
         })
       }
       editorHistory.commit()
@@ -505,7 +505,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
 
     if (cursor.isVisible) {
-      const { x, z } = cursor.hover, g = chunks.chunkSize,
+      const { x, z } = cursor.hover, g = terrain.chunkSize,
         p = grid.position, s = grid.scaling
       if (x < p.x - s.x / 2) grid.position.x -= g
       if (x > p.x + s.x / 2) grid.position.x += g

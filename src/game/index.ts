@@ -1,7 +1,7 @@
 import { ObjectBase, ObjectOptions } from './objbase'
 import * as DefaultPlugin from '../objs'
 
-import { RestoreData, TileDefine } from './chunks'
+import { TerrainData, TileDefine } from './terrain'
 
 import {
   Engine,
@@ -52,7 +52,7 @@ export interface ObjectSaveData {
 }
 
 export interface SavedMap {
-  chunksData: RestoreData
+  chunksData: TerrainData
   objectsData: { [objectId: string]: ObjectSaveData }
 }
 

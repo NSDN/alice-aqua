@@ -29,7 +29,7 @@ import {
   SavedMap,
 } from '../game'
 
-import Chunks from '../game/chunks'
+import Terrain from '../game/terrain'
 
 export function createDataURLFromIconFontAndSub(mainClass: string, subClass: string, size: number = 32, color = '#333') {
   const attrs = { width: size, height: size },
@@ -48,19 +48,19 @@ export function createDataURLFromIconFontAndSub(mainClass: string, subClass: str
 }
 
 export async function loadSavedMap() {
-  const toJSON = function(chunks: Chunks) {
-    const chunksData = chunks.serialize(),
+  const toJSON = function(terrain: Terrain) {
+    const chunksData = terrain.serialize(),
       objectsData = savedMap.objectsData
     Object.keys(objectsData).forEach(id => {
       const { clsId, args } = objectsData[id],
-        { x, y, z } = chunks.scene.getMeshByName(id).position
+        { x, y, z } = terrain.scene.getMeshByName(id).position
       objectsData[id] = { args, clsId, x, y, z }
     })
     return JSON.stringify({ objectsData, chunksData })
   }
 
-  const saveDebounced = debounce((chunks: Chunks) => {
-    const dataToSave = toJSON(chunks)
+  const saveDebounced = debounce((terrain: Terrain) => {
+    const dataToSave = toJSON(terrain)
     localStorage.setItem('saved-map', dataToSave)
     console.log(`save chunk data ok (${dataToSave.length} bytes)`)
   }, 1000)

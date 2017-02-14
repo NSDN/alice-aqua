@@ -29,7 +29,7 @@ import {
   EventEmitter,
 } from './utils'
 
-import Chunks from './game/chunks'
+import Terrain from './game/terrain'
 import SkyBox from './game/skybox'
 
 import BulletinBoard from './objs/bulletin'
@@ -48,7 +48,7 @@ const KEY_MAP = {
 }
 
 class Stage {
-  readonly chunks: Chunks
+  readonly terrain: Terrain
   readonly objects: ObjectBase[]
   constructor(
       readonly url: string,
@@ -62,7 +62,7 @@ class Stage {
     }
 
     const name = url.split('.').slice(-2).shift()
-    this.chunks = new Chunks(name, game.scene, game.assets.tiles, map.chunksData, entryPosition)
+    this.terrain = new Terrain(name, game.scene, game.assets.tiles, map.chunksData, entryPosition)
     this.objects = [ ]
 
     Object.keys(map.objectsData).forEach(id => {
@@ -82,7 +82,7 @@ class Stage {
   dispose() {
     this.objects.forEach(object => object.stopPlaying())
     this.objects.forEach(object => object.dispose())
-    this.chunks.dispose()
+    this.terrain.dispose()
   }
 }
 

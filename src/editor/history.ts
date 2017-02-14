@@ -1,4 +1,4 @@
-import Chunks from '../game/chunks'
+import Terrain from '../game/terrain'
 
 import {
   Vector3,
@@ -62,35 +62,35 @@ export class EditorHistory extends EventEmitter<{ 'change': void }> {
 }
 
 export class SetPixelAction implements EditorAction {
-  constructor(private readonly chunks: Chunks,
+  constructor(private readonly terrain: Terrain,
     private readonly x: number, private readonly z: number, pixel: { t: number, h: number },
-    private readonly p = { ...pixel }, private readonly d = chunks.getPixel(x, z)) {
+    private readonly p = { ...pixel }, private readonly d = terrain.getPixel(x, z)) {
     this.exec()
   }
   exec() {
-    this.chunks.setPixel(this.x, this.z, this.p)
+    this.terrain.setPixel(this.x, this.z, this.p)
   }
   revert() {
-    this.chunks.setPixel(this.x, this.z, this.d)
+    this.terrain.setPixel(this.x, this.z, this.d)
   }
 }
 
 export class MoveObjectAction implements EditorAction {
-  constructor(private readonly chunks: Chunks,
+  constructor(private readonly terrain: Terrain,
       private readonly id: string, pos: Vector3,
       readonly newPos = pos.clone(),
-      readonly oldPos = chunks.scene.getMeshByName(id).position.clone()) {
+      readonly oldPos = terrain.scene.getMeshByName(id).position.clone()) {
     this.exec()
   }
   exec() {
     const { x, z } = this.newPos,
-      mesh = this.chunks.scene.getMeshByName(this.id)
-    mesh && mesh.position.copyFromFloats(x, this.chunks.getPixel(x, z).h, z)
+      mesh = this.terrain.scene.getMeshByName(this.id)
+    mesh && mesh.position.copyFromFloats(x, this.terrain.getPixel(x, z).h, z)
   }
   revert() {
     const { x, z } = this.oldPos,
-      mesh = this.chunks.scene.getMeshByName(this.id)
-    mesh && mesh.position.copyFromFloats(x, this.chunks.getPixel(x, z).h, z)
+      mesh = this.terrain.scene.getMeshByName(this.id)
+    mesh && mesh.position.copyFromFloats(x, this.terrain.getPixel(x, z).h, z)
   }
 }
 
