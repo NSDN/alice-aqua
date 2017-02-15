@@ -51,9 +51,15 @@ export interface ObjectSaveData {
   args: any,
 }
 
-export interface SavedMap {
-  chunksData: TerrainData
-  objectsData: { [objectId: string]: ObjectSaveData }
+export interface TerrainSaveData extends TerrainData {
+  x: number
+  y: number
+  z: number
+}
+
+export interface MapSaveData {
+  objects: { [id: string]: ObjectSaveData }
+  terrains: { [id: string]: TerrainSaveData }
 }
 
 const loadedPlugins: { [name: string]: typeof DefaultPlugin } = {

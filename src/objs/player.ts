@@ -43,7 +43,7 @@ const DEFAULT_CONFIG = {
   jumpForce: 20,
   minimumY: -5,
   angularDamping: 0.9,
-  linearDamping: 0.96,
+  linearDamping: 0.97,
   dynamicFriction: 0,
   staticFriction: 1,
 }

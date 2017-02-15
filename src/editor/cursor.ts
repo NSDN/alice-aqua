@@ -18,12 +18,12 @@ const CURSOR_NORMALS = [
   new Vector3( 0,  0, -1),
 ]
 
-export function getMousePickOnMesh(scene: Scene, px: number, py: number, filter: (mesh: Mesh) => boolean) {
+export function getMousePickOnMeshOrPlane(scene: Scene, px: number, py: number, h: number, filter: (mesh: Mesh) => boolean) {
   const ray = scene.createPickingRay(px, py, null, scene.activeCamera),
     picked = scene.pickWithRay(ray, filter),
     [position, normal] = picked.hit && picked.pickedPoint.y > -0.1 ?
       [picked.pickedPoint, picked.getNormal(true, false)] :
-      [ray.origin.add(ray.direction.scale(-ray.origin.y / ray.direction.y)), new Vector3(0, 1, 0)]
+      [ray.origin.add(ray.direction.scale((h - ray.origin.y) / ray.direction.y)), new Vector3(0, 1, 0)]
   position.copyFromFloats(Math.floor(position.x + 0.001), Math.floor(position.y + 0.001), Math.floor(position.z + 0.001))
 
   const { x, y, z } = normal,
@@ -67,6 +67,8 @@ export default class Cursor extends LinesMesh {
     return this._isKeyDown
   }
 
+  public baseHeight = 0
+
   constructor(
     name: string,
     readonly scene: Scene,
@@ -83,7 +85,9 @@ export default class Cursor extends LinesMesh {
     })
 
     window.addEventListener('mousemove', evt => {
-      this._isKeyDown ? this.updateWithMouseDown(evt) : this.updateFromPickTarget(evt)
+      if (evt.target === canvas) {
+        this._isKeyDown ? this.updateWithMouseDown(evt) : this.updateFromPickTarget(evt)
+      }
     })
 
     window.addEventListener('mouseup', _ => {
@@ -92,8 +96,8 @@ export default class Cursor extends LinesMesh {
   }
 
   updateFromPickTarget(evt: MouseEvent) {
-    const { norm, position } = getMousePickOnMesh(this.scene,
-      evt.clientX + this.offset.x, evt.clientY + this.offset.y, this.pickFilter)
+    const { norm, position } = getMousePickOnMeshOrPlane(this.scene,
+      evt.clientX + this.offset.x, evt.clientY + this.offset.y, this.baseHeight, this.pickFilter)
     this._direction = [norm.x, norm.y, norm.z].join('/')
 
     const [rot, delta] = DIRECTIONS[this._direction],

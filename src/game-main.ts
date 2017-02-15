@@ -4,7 +4,7 @@ import {
 
 import {
   Game,
-  SavedMap,
+  MapSaveData,
 } from './game'
 
 import {
@@ -48,26 +48,26 @@ const KEY_MAP = {
 }
 
 class Stage {
-  readonly terrain: Terrain
+  readonly terrains: Terrain[]
   readonly objects: ObjectBase[]
-  constructor(
-      readonly url: string,
-      readonly position: Vector3,
-      map: SavedMap, game: Game) {
+  constructor(readonly url: string, readonly position: Vector3, map: MapSaveData, game: Game) {
     const entryPosition = this.position.clone(),
-      entryId = Object.keys(map.objectsData).find(id => map.objectsData[id].args.editorSingletonId === 'stage/entry')
+      entryId = Object.keys(map.objects).find(id => map.objects[id].args.editorSingletonId === 'stage/entry')
     if (entryId) {
-      const { x, y, z, args } = map.objectsData[entryId]
+      const { x, y, z, args } = map.objects[entryId]
       entryPosition.subtractInPlace(new Vector3(Math.floor(x), Math.floor(y + (args.offsetY || 0)), Math.floor(z)))
     }
 
-    const name = url.split('.').slice(-2).shift()
-    this.terrain = new Terrain(name, game.scene, game.assets.tiles, map.chunksData, entryPosition)
-    this.objects = [ ]
+    this.terrains = [ ]
+    Object.keys(map.terrains).forEach(id => {
+      const { x, y, z } = map.terrains[id],
+        position = new Vector3(x, y, z).addInPlace(entryPosition)
+      new Terrain('terrain/' + id, game.scene, game.assets.tiles, map.terrains[id], position)
+    })
 
-    Object.keys(map.objectsData).forEach(id => {
-      const objData = map.objectsData[id],
-        { clsId, x, y, z, args } = objData,
+    this.objects = [ ]
+    Object.keys(map.objects).forEach(id => {
+      const { clsId, x, y, z, args } = map.objects[id],
         position = new Vector3(x, y, z).addInPlace(entryPosition)
       try {
         this.objects.push(game.createObject(id, clsId, position, args))
@@ -82,7 +82,7 @@ class Stage {
   dispose() {
     this.objects.forEach(object => object.stopPlaying())
     this.objects.forEach(object => object.dispose())
-    this.terrain.dispose()
+    this.terrains.forEach(terrain => terrain.dispose())
   }
 }
 
@@ -117,7 +117,7 @@ class StageManager {
   private addToQueue = queue()
   private async doLoad(url: string, position: Vector3) {
     if (!this.stages.find(stage => stage.url === url && stage.position.equals(position))) {
-      const map = JSON.parse(await loadWithXHR<string>(url)) as SavedMap
+      const map = JSON.parse(await loadWithXHR<string>(url)) as MapSaveData
       if (!this.isDisposed) {
         this.stages.push(new Stage(url, position, map, this.game))
         this.stages.length > 2 && this.stages.shift().dispose()
@@ -279,9 +279,10 @@ function selectNextConfigItem(delta: number) {
     throw err
   }
 
-  const scene = game.scene,
+  const { scene, camera } = game,
     configManager = await ConfigManager.load(),
-    keyInput = new KeyEmitter(KEY_MAP)
+    keyInput = new KeyEmitter(KEY_MAP),
+    keys = keyInput.state
 
   new SkyBox('sky', scene)
 
@@ -298,7 +299,7 @@ function selectNextConfigItem(delta: number) {
 
   const gameState = new GameState({
     async main(next) {
-      game.camera.followTarget.copyFromFloats(0, 0, 0)
+      camera.followTarget.copyFromFloats(0, 0, 0)
       document.querySelector('.show-if-has-profile')
         .classList[StageManager.hasProfile() ? 'remove' : 'add']('hidden')
       await next()
@@ -316,7 +317,7 @@ function selectNextConfigItem(delta: number) {
       game.isPaused = false
     },
     async config(next) {
-      const unbindChangeConfigItem = keyInput.down.on('nav-vertical', () => selectNextConfigItem(keyInput.state.up ? -1 : 1)),
+      const unbindChangeConfigItem = keyInput.down.on('nav-vertical', () => selectNextConfigItem(keys.up ? -1 : 1)),
         unbindChangeConfigValue = keyInput.down.on('nav-horizontal', () => configManager.update())
       await next()
       unbindChangeConfigItem()
@@ -342,7 +343,7 @@ function selectNextConfigItem(delta: number) {
 
       const elemLines = appendElement('pre', { }, elem)
       for (let i = 0; i < text.length; i ++) {
-        if (keyInput.state['finish-dialog'] || isCanceled) {
+        if (keys['finish-dialog'] || isCanceled) {
           elemLines.innerHTML = text
           await sleep(50)
           elem.parentElement.scrollTop = elem.scrollHeight
@@ -402,14 +403,14 @@ function selectNextConfigItem(delta: number) {
   keyInput.down.on('nav-vertical', () => {
     const activeList = MenuManager.activeList()
     if (activeList && !activeList.classList.contains('menu-horizontal')) {
-      MenuManager.selectNext(keyInput.state.up ? -1 : 1)
+      MenuManager.selectNext(keys.up ? -1 : 1)
     }
   })
 
   keyInput.down.on('nav-horizontal', () => {
     const activeList = MenuManager.activeList()
     if (activeList && !activeList.classList.contains('menu-vertical')) {
-      MenuManager.selectNext(keyInput.state.left ? -1 : 1)
+      MenuManager.selectNext(keys.left ? -1 : 1)
     }
   })
 
@@ -420,9 +421,10 @@ function selectNextConfigItem(delta: number) {
 
   await sleep(1000)
 
-  game.camera.lowerBetaSoftLimit = Math.PI * 0.35
-  game.camera.upperRadiusSoftLimit = 40
+  camera.lowerBetaSoftLimit = Math.PI * 0.35
+  camera.upperRadiusSoftLimit = 40
+
+  LoadingScreen.hide()
 
   gameState.goto(LocationSearch.get('stage-start') || 'main')
-  LoadingScreen.hide()
 })()

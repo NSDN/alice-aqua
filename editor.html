@@ -69,7 +69,6 @@
       padding-top: 2em;
       background-color: rgba(255, 255, 255, 0.3);
       overflow: hidden;
-      user-select: none;
     }
     .ui-panels {
       height: 100%;
@@ -77,30 +76,30 @@
       padding: 10px;
       padding-top: 2px;
     }
-    .ui-list-item {
+    .ui-list-block .ui-list-item {
       float: left;
       padding: 2px;
     }
-    .ui-list-item > * {
+    .ui-list-block .ui-list-item > * {
       display: block;
       cursor: default;
     }
-    .ui-list-item span {
+    .ui-list-block .ui-list-item span {
       width: 32px;
       height: 32px;
       line-height: 32px;
       background: #ddd;
       text-align: center;
     }
-    .ui-list-item.selected {
+    .ui-list-block .ui-list-item.selected {
       background: white;
     }
+
     .ui-head {
       position: absolute;
       width: 100%;
       height: 2em;
       line-height: 2em;
-      -webkit-user-select: none;
       user-select: none;
     }
     .ui-top {
@@ -125,6 +124,9 @@
       color: #eee;
     }
 
+    .panel-brushes {
+      user-select: none;
+    }
     .ui-brushes {
       margin-left: 80px;
     }
@@ -132,9 +134,40 @@
       position: absolute;
       width: 80px;
     }
-    .ui-brushes-height span {
+    .ui-brushes-height .ui-list-item span {
       color: #ddd;
       background: #666;
+    }
+
+    .panel-layers {
+      color: #eee;
+    }
+    .ui-layers {
+      width: 200px;
+      float: left;
+    }
+    .ui-layers > div {
+      margin: 2px 0;
+      cursor: pointer;
+    }
+    .ui-layers .ui-layer:before {
+      content: '▶';
+      color: transparent;
+    }
+    .ui-layers .ui-layer.active:before {
+      color: inherit;
+    }
+    .ui-layer-config {
+      margin: 5px;
+    }
+    .ui-layer-content {
+      margin-left: 200px;
+    }
+    .ui-layer-sidetiles .ui-list-item.active {
+      background: #eee;
+    }
+    .ui-layer-sidetiles .ui-list-item {
+      padding: 2px;
     }
 
     .game-config {
@@ -168,22 +201,22 @@
 <body>
   <div class="ui-toolbar">
     <div class="ui-panels">
-      <div class="hidden ui-panel panel-brushes">
-        <div class="ui-brushes-height ui-list">
-          <div class="ui-list-item" height="+1">
+      <div tab-group="panel" class="hidden ui-panel panel-brushes">
+        <div class="ui-brushes-height ui-list ui-list-block">
+          <div class="ui-list-item" item-type="tile" height="+1">
             <span title="shift up"><i class="fa fa-arrow-up"></i></span>
           </div>
-          <div class="ui-list-item" height="-1">
+          <div class="ui-list-item" item-type="tile" height="-1">
             <span title="shift down"><i class="fa fa-arrow-down"></i></span>
           </div>
-          <div class="ui-list-item" height="0">
+          <div class="ui-list-item" item-type="tile" height="0">
             <span title="flatten"><i class="fa fa-arrows-h"></i></span>
           </div>
-          <div class="ui-list-item" height="">
+          <div class="ui-list-item" item-type="tile" height="">
             <span title="none"><i class="fa fa-ban"></i></span>
           </div>
         </div>
-        <div class="ui-brushes ui-list">
+        <div class="ui-brushes ui-list ui-list-block">
           <div class="ui-list-item" tid="?">
             <span title="use tile from start"><i class="fa fa-question"></i></span>
           </div>
@@ -192,16 +225,30 @@
           </div>
         </div>
       </div>
-      <div class="hidden ui-panel panel-objects">
-        <div class="ui-classes ui-list"></div>
+      <div tab-group="panel" class="hidden ui-panel panel-objects">
+        <div class="ui-classes ui-list ui-list-block"></div>
       </div>
-      <div class="hidden ui-panel panel-game">
-        <div class="game-config">
-          <h3>terrain texture</h3>
-          <select id="configSelectChunkSideTile"></select>
+      <div tab-group="panel" class="hidden ui-panel panel-layers">
+        <div class="ui-layers ui-list">
+          <div class="ui-add-layer">+Add Layer</div>
         </div>
+        <div class="ui-layer-content">
+          <div class="ui-layer-config">
+            <label>position: </label>
+            <input class="ui-layer-pos-x" type="number" style="width: 50px" step="1" />
+            <input class="ui-layer-pos-y" type="number" style="width: 50px" step="1" />
+            <input class="ui-layer-pos-z" type="number" style="width: 50px" step="1" />
+          </div>
+          <div class="ui-layer-config ui-layer-sidetiles">
+            <label>sideTile: </label>
+          </div>
+          <div class="ui-layer-config">
+            <button class="ui-layer-remove">Remove Layer</button>
+          </div>
+        </div>
+      </div>
+      <div tab-group="panel" class="hidden ui-panel panel-game">
         <div class="game-config">
-          <h3>map</h3>
           <button id="configPlayInNewWindow">Play</button>
           <button id="configDownloadMap">Save</button>
           <button id="configUploadMap">Upload</button>
@@ -213,9 +260,10 @@
   <div class="ui-head">
     <div class="ui-top">
       <span class="ui-tabs">
-        <a href="javascript:void(0)" class="ui-tab" tab-target="brushes">brushes</a>
-        <a href="javascript:void(0)" class="ui-tab" tab-target="objects">objects</a>
-        <a href="javascript:void(0)" class="ui-tab" tab-target="game">game</a>
+        <a href="javascript:void(0)" class="ui-tab" tab-group="panel" tab-target="brushes">brushes</a>
+        <a href="javascript:void(0)" class="ui-tab" tab-group="panel" tab-target="objects">objects</a>
+        <a href="javascript:void(0)" class="ui-tab" tab-group="panel" tab-target="layers">layers</a>
+        <a href="javascript:void(0)" class="ui-tab" tab-group="panel" tab-target="game">game</a>
       </span>
       <span> /
         <a href="javascript:void(0)" id="docActionUndo"
@@ -223,10 +271,10 @@
         <a href="javascript:void(0)" id="docActionRedo"
           title="redo (ctrl+Y)"><i class="fa fa-repeat"></i></a>
       </span>
-      <span class="hidden ui-panel panel-brushes"> /
+      <span tab-group="panel" class="hidden ui-panel panel-brushes"> /
         <span id="brushHoverInfo"></span>
       </span>
-      <span class="hidden ui-panel panel-objects"> /
+      <span tab-group="panel" class="hidden ui-panel panel-objects"> /
         <span id="objectHoverInfo"></span>
       </span>
       <div class="ui-top-right">
@@ -250,13 +298,20 @@
       <div class="float-right">
         <a href="javascript:void(0)" id="docHideHelp"><i class="fa fa-close"></i></a>
       </div>
-      <h2>Build </h2>
+      <h2>Planing</h2>
       <ul>
-        <li>[game] 新的 Remilia 像素图</li>
+        <li>[editor] 从工具栏拖放对象</li>
+      </ul>
+      <hr>
+
+      <h2>Build {{BUILD_HASH}}</h2>
+      <ul>
+        <li>[all] 新的 Remilia 像素图</li>
+        <li>[all] 新的插件系统</li>
         <li>[game] 多语言支持</li>
-        <li>[game] 新的插件系统</li>
         <li>[game] 简单对话模式</li>
         <li>[game] 选项对话框</li>
+        <li>[editor] 新特性：图层</li>
         <li>[editor] 移除 play 面板</li>
       </ul>
       <hr>

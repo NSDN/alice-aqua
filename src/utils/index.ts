@@ -13,6 +13,10 @@ export function queryStringGet(query: string, key: string) {
     .pop()
 }
 
+export function randomBytes(size = 4) {
+  return Array(size * 2).fill(0).map(_ => Math.floor(Math.random() * 16).toString(16)).join('')
+}
+
 export function camelCaseToHyphen(str: string) {
   return str.replace(/[a-z][A-Z]{1}/g, m => m[0] + '-' + m[1].toLowerCase())
 }
@@ -25,10 +29,6 @@ export function randomRange(begin: number, end: number) {
   return Math.random() * (end - begin) + begin
 }
 
-export function randomBytes(size = 4) {
-  return Array(size * 2).fill(0).map(_ => Math.floor(Math.random() * 16).toString(16)).join('')
-}
-
 export function softClamp(x: number, min: number, max: number, epsi = 1e-3, fac = 0.1) {
   if (x < min - epsi * min) {
     return x * (1 - fac) + min * fac
@@ -39,14 +39,32 @@ export function softClamp(x: number, min: number, max: number, epsi = 1e-3, fac 
   return x
 }
 
-interface Task {
-  start: () => Promise<any>
-  resolve: Function
-  reject: Function
+export function compressWithRLE(array: number[]) {
+  const packed = [ ] as number[]
+  for (let i = 0, a = NaN; i < array.length; i ++) {
+    array[i] === a ?
+      packed[packed.length - 1] ++ :
+      packed.push(a = array[i], 1)
+  }
+  return packed
 }
+
+export function extractWithRLE(packed: number[]) {
+  const array = [ ] as number[]
+  for (let i = 0; i < packed.length; i += 2) {
+    const a = packed[i], n = packed[i + 1]
+    array.push.apply(array, Array(n).fill(a))
+  }
+  return array
+}
+
 export function queue() {
-  let running = null as Task
-  const waiting = [ ] as Task[]
+  let running = null as {
+    start: () => Promise<any>
+    resolve: Function
+    reject: Function
+  }
+  const waiting = [ ] as (typeof running)[]
   const exec = () => {
     running = waiting.shift()
     running && running.start()
@@ -148,6 +166,10 @@ export function watch<T>(test: (...args: any[]) => T,
       oldVal = newVal
     }
   }
+}
+
+export function deepClone<T>(obj: T) {
+  return JSON.parse(JSON.stringify(obj)) as T
 }
 
 type N = number
