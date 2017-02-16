@@ -91,6 +91,7 @@ export class Toolbar extends EventEmitter<{
     }
 
     for (const layerId in layers) {
+      const { position: { x, y, z } } = layers[layerId]
       if (!createdTabs.has(layerId)) {
         const tab = appendElement('div', {
           className: 'ui-layer',
