@@ -5,10 +5,6 @@ import {
 } from './'
 
 import {
-  Toolbar,
-} from './toolbar'
-
-import {
   Vector3,
   AbstractMesh,
 } from '../babylon'
@@ -68,7 +64,7 @@ export class EditorHistory extends EventEmitter<{ 'change': void }> {
 
 export class SetPixelAction implements EditorAction {
   constructor(private readonly terrain: Terrain,
-    private readonly x: number, private readonly z: number, pixel: { t: number, h: number },
+    private readonly x: number, private readonly z: number, pixel: { t: number, h: number | string },
     private readonly p = { ...pixel }, private readonly d = terrain.getPixel(x, z)) {
     this.exec()
   }
@@ -130,7 +126,7 @@ export class CreateObjectAction implements EditorAction {
       private readonly id: string,
       private readonly clsId: number,
       pos: Vector3,
-      private readonly terrainId: string,
+      private readonly terrainId = map.activeTerrain.name,
       private readonly position = pos.clone()) {
     this.exec()
   }
@@ -154,31 +150,28 @@ export class RemoveObjectAction implements EditorAction {
     this.map.destroyObject(this.id)
   }
   revert() {
-    this.map.createObject(this.id, this.data.clsId, this.position, this.data.args, this.data.terrainId)
+    this.map.createObject(this.id, this.data.clsId, this.position, this.data.terrainId, this.data.args)
   }
 }
 
 export class AddLayerAction implements EditorAction {
   constructor(private readonly map: EditorMap,
-      private readonly toolbar: Toolbar,
       private readonly id: string,
       private readonly oldTerrain = map.activeTerrain) {
     this.exec()
   }
   exec() {
     this.map.activeTerrain = this.map.createTerrianIfNotExists(this.id)
-    this.toolbar.syncLayerTabs(this.map.terrains, this.map.activeTerrain.name)
   }
   revert() {
     this.map.terrains[this.id].dispose()
+    this.map.activeTerrain = this.oldTerrain
     delete this.map.terrains[this.id]
-    this.toolbar.syncLayerTabs(this.map.terrains, this.oldTerrain.name)
   }
 }
 
 export class MoveLayerAction implements EditorAction {
-  constructor(private readonly map: EditorMap,
-      private readonly toolbar: Toolbar,
+  constructor(map: EditorMap,
       pos: Vector3,
       private readonly terrain = map.activeTerrain,
       private readonly newPos = pos.clone(),
@@ -187,17 +180,14 @@ export class MoveLayerAction implements EditorAction {
   }
   exec() {
     this.terrain.setPosition(this.newPos)
-    this.toolbar.syncLayerTabs(this.map.terrains, this.terrain.name)
   }
   revert() {
     this.terrain.setPosition(this.oldPos)
-    this.toolbar.syncLayerTabs(this.map.terrains, this.terrain.name)
   }
 }
 
 export class SelectLayerAction implements EditorAction {
   constructor(private readonly map: EditorMap,
-      private readonly toolbar: Toolbar,
       id: string,
       private readonly newTerrain = map.terrains[id],
       private readonly oldTerrain = map.activeTerrain) {
@@ -205,17 +195,14 @@ export class SelectLayerAction implements EditorAction {
   }
   exec() {
     this.map.activeTerrain = this.newTerrain
-    this.toolbar.syncLayerTabs(this.map.terrains, this.newTerrain.name)
   }
   revert() {
     this.map.activeTerrain = this.oldTerrain
-    this.toolbar.syncLayerTabs(this.map.terrains, this.oldTerrain.name)
   }
 }
 
 export class UpdateLayerSideTileAction implements EditorAction {
-  constructor(private readonly map: EditorMap,
-      private readonly toolbar: Toolbar,
+  constructor(map: EditorMap,
       private readonly sideTileId: number,
       private readonly terrain = map.activeTerrain,
       private readonly oldTileId = terrain.sideTileId) {
@@ -223,17 +210,14 @@ export class UpdateLayerSideTileAction implements EditorAction {
   }
   exec() {
     this.terrain.sideTileId = this.sideTileId
-    this.toolbar.syncLayerTabs(this.map.terrains, this.terrain.name)
   }
   revert() {
     this.terrain.sideTileId = this.oldTileId
-    this.toolbar.syncLayerTabs(this.map.terrains, this.terrain.name)
   }
 }
 
 export class RemoveLayerAction implements EditorAction {
   constructor(private readonly map: EditorMap,
-      private readonly toolbar: Toolbar,
       terrain = map.activeTerrain,
       private readonly oldTerrainData = deepClone({ ...terrain.serialize(), ...terrain.position, id: terrain.name }),
       private readonly newTerrainName = Object.keys(map.terrains).filter(id => id !== terrain.name).pop()) {
@@ -243,11 +227,9 @@ export class RemoveLayerAction implements EditorAction {
     this.map.terrains[this.oldTerrainData.id].dispose()
     delete this.map.terrains[this.oldTerrainData.id]
     this.map.activeTerrain = this.map.terrains[this.newTerrainName]
-    this.toolbar.syncLayerTabs(this.map.terrains, this.newTerrainName)
   }
   revert() {
     this.map.activeTerrain = this.map.createTerrianIfNotExists(this.oldTerrainData.id, this.oldTerrainData)
-    this.toolbar.syncLayerTabs(this.map.terrains, this.oldTerrainData.id)
   }
 }
 

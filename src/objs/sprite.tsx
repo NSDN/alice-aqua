@@ -1,3 +1,5 @@
+import { h } from 'preact'
+
 import {
   Mesh,
   AbstractMesh,
@@ -9,16 +11,11 @@ import {
 } from '../utils/babylon'
 
 import {
-  appendConfigInput,
-} from '../utils/dom'
-
-import {
   ObjectBase,
   ObjectOptions,
-  IEditable,
 } from '../game/objbase'
 
-export default class Sprite extends ObjectBase implements IEditable {
+export default class Sprite extends ObjectBase {
   readonly spriteBody: AbstractMesh
 
   get spriteHeight() {
@@ -54,8 +51,12 @@ export default class Sprite extends ObjectBase implements IEditable {
     sprite.parent = this
   }
 
-  attachEditorContent(container: HTMLElement, save: (args: Partial<Sprite>) => void) {
-    const attrs = { type: 'range', min: 1, max: this.opts.icon.height / 32 * 4, step: 1 }
-    appendConfigInput('height: ', this.spriteHeight, attrs, container, val => save({ spriteHeight: parseFloat(val) }))
+  renderConfig(save: (args: Partial<Sprite>) => void) {
+    return [
+      <label>height: </label>,
+      <input type="range" min={ 1 } max={ this.opts.icon.height / 32 * 4 } step={ 1 }
+        value={ this.spriteHeight as any }
+        onChange={ ({ target }) => save({ spriteHeight: parseFloat((target as HTMLInputElement).value) }) } />
+    ]
   }
 }

@@ -1,3 +1,5 @@
+import { h } from 'preact'
+
 import {
   AbstractMesh,
   Mesh,
@@ -12,18 +14,12 @@ import {
 } from '../utils/babylon'
 
 import {
-  appendVectorInputs,
-  appendConfigInput,
-} from '../utils/dom'
-
-import {
   ObjectBase,
   ObjectOptions,
-  IEditable,
   ITriggerable,
 } from '../game/objbase'
 
-export default class Block extends ObjectBase implements IEditable, ITriggerable {
+export default class Block extends ObjectBase implements ITriggerable {
   public triggerSpeed = 0.02
 
   private _blockSize = new Vector3(1, 1, 1)
@@ -96,7 +92,8 @@ export default class Block extends ObjectBase implements IEditable, ITriggerable
     this.onDisposeObservable.add(_ => block.dispose())
   }
 
-  attachEditorContent(container: HTMLElement, save: (args: Partial<Block>) => void) {
+  renderConfig(_save: (args: Partial<Block>) => void) {
+    /*
     const attrs = { type: 'number', min: 0.005, max: 0.05, step: 0.005 }
     appendConfigInput('speed', this.triggerSpeed, attrs, container, val => save({ triggerSpeed: parseInt(val) }))
     appendVectorInputs('size: ', this._blockSize, container, { min: 1, step: 1 }, (x, y, z) => {
@@ -108,6 +105,8 @@ export default class Block extends ObjectBase implements IEditable, ITriggerable
     appendVectorInputs('trigger: ', this._triggerOffset, container, { step: 1 }, (x, y, z) => {
       save({ triggerOffset: [x, y, z].map(parseFloat) })
     })
+    */
+    return [<div>TODO:</div>]
   }
 
   private currentProgress = 0

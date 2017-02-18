@@ -23,7 +23,6 @@ import {
 } from '../utils/dom'
 
 import {
-  randomBytes,
   debounce,
   deepClone,
   EventEmitter,
@@ -184,12 +183,9 @@ export class EditorMap extends EventEmitter<{
       map.createTerrianIfNotExists(id, mapData.terrains[id])
     })
     Object.keys(mapData.objects || { }).forEach(id => {
-      const { clsId, x, y, z, terrainId } = mapData.objects[id] as MapObjectData
-      map.createObject(id, clsId, new Vector3(x, y, z), terrainId)
+      const { clsId, x, y, z, terrainId, args } = mapData.objects[id] as MapObjectData
+      map.createObject(id, clsId, new Vector3(x, y, z), terrainId, args)
     })
-
-    const activeTerrainId = Object.keys(map.terrains).pop() || 'Terrain/' + randomBytes()
-    map.activeTerrain = map.createTerrianIfNotExists(activeTerrainId)
 
     return map
   }
@@ -214,10 +210,10 @@ export class ObjectBoundary extends Mesh {
     super(name, scene)
 
     const positions = [
-       0.5, -0.01,  0.5,
-       0.5, -0.01, -0.5,
-      -0.5, -0.01, -0.5,
-      -0.5, -0.01,  0.5,
+       0.5, -0,  0.5,
+       0.5, -0, -0.5,
+      -0.5, -0, -0.5,
+      -0.5, -0,  0.5,
     ]
     const indices = [
       0, 1, 2,

@@ -1,3 +1,5 @@
+import { h } from 'preact'
+
 import {
   Mesh,
   Vector2,
@@ -16,21 +18,16 @@ import {
 } from '../utils/babylon'
 
 import {
-  appendSelectOptions,
-} from '../utils/dom'
-
-import {
   drawIconFont,
 } from '../utils/dom'
 
 import {
   ObjectBase,
   ObjectOptions,
-  IEditable,
   ITriggerable,
 } from '../game/objbase'
 
-export default class Gate extends ObjectBase implements IEditable, ITriggerable {
+export default class Gate extends ObjectBase implements ITriggerable {
   public direction = 'x' as 'x' | 'z'
   public isOpen = false
 
@@ -146,9 +143,16 @@ export default class Gate extends ObjectBase implements IEditable, ITriggerable 
     })
   }
 
-  attachEditorContent(container: HTMLElement, save: (args: Partial<Gate>) => void) {
-    const select = appendSelectOptions('direction: ', this.direction, ['x', 'z'], container)
-    select.addEventListener('change', _ => save({ direction: select.value as any }))
+  renderConfig(save: (args: Partial<Gate>) => void) {
+    return [
+      <div>
+        <label>direction: </label>
+        <select value={ this.direction } onChange={ evt => save({ direction: (evt.target as HTMLSelectElement).value as any }) }>
+          <option>x</option>
+          <option>z</option>
+        </select>
+      </div>
+    ]
   }
 
   onTrigger(isOn: boolean) {

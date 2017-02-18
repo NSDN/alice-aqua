@@ -1,3 +1,4 @@
+import { h } from 'preact'
 import Trigger from './trigger'
 import Player from './player'
 
@@ -12,17 +13,14 @@ import {
 
 import {
   ObjectOptions,
-  IEditable,
   ITriggerable,
 } from '../game/objbase'
 
 import {
   drawIconFont,
-  appendElement,
-  appendConfigInput,
 } from '../utils/dom'
 
-export default class Jump extends Trigger implements IEditable, ITriggerable {
+export default class Jump extends Trigger implements ITriggerable {
   get upForce() {
     return this._upForce
   }
@@ -93,15 +91,24 @@ export default class Jump extends Trigger implements IEditable, ITriggerable {
     arrow.parent = this
   }
 
-  attachEditorContent(container: HTMLElement, save: (args: Partial<Jump>) => void) {
-    const attrs = { type: 'number', min: 0, style: { width: '100px' } }
-    appendConfigInput('up: ', this.upForce, attrs, container, val => save({ upForce: parseFloat(val) }))
-
-    const dirSel = appendElement('select', { }, null) as HTMLSelectElement
-    'x/-x/z/-z'.split('/').forEach(innerHTML => appendElement('option', { innerHTML }, dirSel))
-    dirSel.value = this.sideDirection
-    dirSel.addEventListener('change', _ => save({ sideDirection: dirSel.value as any }))
-    appendConfigInput(dirSel, this.sideForce, attrs, container, val => save({ sideForce: parseFloat(val) }))
+  renderConfig(save: (args: Partial<Jump>) => void) {
+    return [
+      <div>
+        <label>up: </label>
+        <input type="number" min={ 0 } style={{ width: 100 }}
+          value={ this.upForce.toString() } onChange={ evt => save({ upForce: parseFloat((evt.target as HTMLInputElement).value) }) } />
+      </div>,
+      <div>
+        <select value={ this.sideDirection } onChange={ evt => save({ sideDirection: (evt.target as HTMLSelectElement).value as any }) }>
+          <option>x</option>
+          <option>-x</option>
+          <option>z</option>
+          <option>-z</option>
+        </select>
+        <input type="number" min={ 0 } style={{ width: 100 }}
+          value={ this.sideForce.toString() } onChange={ evt => save({ sideForce: parseFloat((evt.target as HTMLInputElement).value) }) } />
+      </div>
+    ]
   }
 
   static readonly SIDE_DIRS = {

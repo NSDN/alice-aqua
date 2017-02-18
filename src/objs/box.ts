@@ -14,7 +14,6 @@ import {
 } from '../utils'
 
 import {
-  IEditable,
   IUsable,
 } from '../game/objbase'
 
@@ -95,7 +94,7 @@ export default class Box extends InstancedMesh implements IUsable {
   }
 }
 
-export class BoxGenerator extends Sprite implements IEditable {
+export class BoxGenerator extends Sprite {
   public boxMass = 5
   public velocityThreshold = 0
   private boxName = ''
@@ -129,9 +128,5 @@ export class BoxGenerator extends Sprite implements IEditable {
     const box = this.getScene().getMeshByName(this.boxName)
     box && box.dispose()
     this.spriteBody.isVisible = true
-  }
-
-  attachEditorContent(_container: HTMLElement, _save: (args: Partial<BoxGenerator>) => void) {
-    // do nothing
   }
 }

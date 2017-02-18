@@ -17,7 +17,6 @@ import {
 import {
   ObjectOptions,
   IUsable,
-  IEditable,
 } from '../game/objbase'
 
 import {
@@ -327,7 +326,7 @@ export default class Player extends Mesh {
   }
 }
 
-export class PlayerGenerator extends Sprite implements IEditable {
+export class PlayerGenerator extends Sprite {
   static readonly PLAYER_GENERATOR_TAG = 'player-generator'
   private static playerReferenceCount = { } as { [playerName: string]: number }
 
@@ -361,7 +360,7 @@ export class PlayerGenerator extends Sprite implements IEditable {
     this.spriteBody.isVisible = true
   }
 
-  attachEditorContent(_container: HTMLElement, _save: (args: Partial<PlayerGenerator>) => void) {
-    // do nothing
+  renderConfig(_save: (args: Partial<PlayerGenerator>) => void) {
+    return [ ] as JSX.Element[]
   }
 }

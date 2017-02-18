@@ -1,3 +1,5 @@
+import { h } from 'preact'
+
 import {
   Scene,
   Mesh,
@@ -18,17 +20,8 @@ import {
 } from '../utils/babylon'
 
 import {
-  appendElement,
-  appendConfigRow,
-  appendConfigInput,
-  appendSelectOptions,
-  appendVectorInputs,
-} from '../utils/dom'
-
-import {
   ObjectBase,
   ObjectOptions,
-  IEditable,
   ITriggerable,
 } from '../game/objbase'
 
@@ -94,7 +87,7 @@ class TriggerLocker extends Mesh {
   }
 }
 
-export default class Sensor extends ObjectBase implements IEditable, ITriggerable {
+export default class Sensor extends ObjectBase implements ITriggerable {
   private showLockerSprite(timeout: number) {
     const spriteId = 'trigger/lock/sprite',
       sprite = (this.getScene().getMeshByName(spriteId) as TriggerLocker) ||
@@ -166,64 +159,80 @@ export default class Sensor extends ObjectBase implements IEditable, ITriggerabl
     this.triggerOnTag = 'mesh-trigger-on' + this.name
   }
 
-  attachEditorContent(container: HTMLElement, save: (args: Partial<Sensor>) => void) {
-    const attrs = { type: 'number', style: { width: '100px' } }
-    appendConfigInput('reset (ms): ', this.autoResetTimeout, attrs, container, value => {
-      save({ autoResetTimeout: parseInt(value) || 0 })
-    })
-
-    appendSelectOptions('shape: ', this.sensorShape, Sensor.sensorTypes, container, (sensorShape: any) => {
-      save({ sensorShape })
-    })
-
-    const [x, y, z] = this.sensorSize
-    appendVectorInputs('size: ', { x, y, z }, container, { min: 1, step: 1 }, (x, y, z) => {
-      save({ sensorSize: [x, y, z].map(v => Math.max(1, parseInt(v))) })
-    })
-
-    const rows = [ ] as HTMLElement[]
-    const saveTargetName = () => {
-      const targetName = rows.map(elem => {
-        const name = (elem.querySelector('select.name') as HTMLSelectElement).value,
-          isNe = (elem.querySelector('select.is-ne') as HTMLSelectElement).value
-        return name && (isNe + name)
-      }).filter(target => !!target).join(',')
-      save({ targetName })
-    }
-
-    const updateSelections = () => {
-      rows.forEach(elem => elem.parentNode.removeChild(elem))
-      rows.length = 0
-
-      const availNames = this.getScene().meshes
-          .filter(mesh => (mesh as any as ITriggerable).onTrigger && mesh !== this)
-          .map(mesh => mesh.name),
-        savedTargets = (this.targetName || '').split(',').filter(target => !!target).concat('')
-      while (availNames.length && savedTargets.length) {
-        const target = savedTargets.shift(),
-          isNe = target[0] === '!' ? '!' : '',
+  renderConfig(save: (args: Partial<Sensor>) => void) {
+    const availTargets = this.getScene().meshes
+        .filter(mesh => (mesh as any as ITriggerable).onTrigger && mesh !== this)
+        .map(mesh => mesh.name),
+      savedTargets = (this.targetName || '').split(',')
+        .filter(target => availTargets.indexOf(target) >= 0)
+        .filter(target => !!target).concat(''),
+      targetInputs = Array.from(new Set(savedTargets)).map(target => {
+        const isNe = target[0] === '!' ? '!' : '',
           name = isNe ? target.substr(1) : target
-
-        const isNeSel = appendElement('select', { className: 'is-ne' }, null) as HTMLSelectElement
-        appendElement('option', { innerHTML: 'on', value: '' }, isNeSel)
-        appendElement('option', { innerHTML: 'off', value: '!' }, isNeSel)
-        isNeSel.value = isNe
-        isNeSel.addEventListener('change', _ => saveTargetName())
-
-        const nameSel = appendElement('select', { className: 'name' }, null) as HTMLSelectElement
-        availNames.forEach(name => appendElement('option', { innerHTML: name }, nameSel))
-        appendElement('option', { innerHTML: '--', value: '' }, nameSel)
-        nameSel.value = name
-        nameSel.addEventListener('change', _ => (saveTargetName(), updateSelections()))
-
-        const tr = appendConfigRow(isNeSel, nameSel, container) as HTMLTableRowElement
-        tr.classList.add('.trigger-config-line')
-        rows.push(tr)
-
-        availNames.splice(availNames.indexOf(target), 1)
+        return { isNe, name }
+      }),
+      saveTargets = () => {
+        const targetName = targetInputs.map(({ isNe, name }) => isNe + name).join(',')
+        save({ targetName })
       }
-    }
-    updateSelections()
+    return [
+      <div>
+        <label>reset: </label>
+        <input type="number" style={{ width: 100 }}
+          value={ this.autoResetTimeout.toString() }
+          onChange={ evt => save({ autoResetTimeout: parseFloat((evt.target as HTMLInputElement).value) }) } />
+      </div>,
+      <div>
+        <label>shape: </label>
+        <select
+          value={ this.sensorShape }
+          onChange={ evt => save({ sensorShape: (evt.target as HTMLInputElement).value as any }) }>
+        {
+          Sensor.sensorTypes.map(type => <option>{ type }</option>)
+        }
+        </select>
+      </div>,
+      <div>
+        <label>size: </label>
+        {
+          [0, 1, 2].map(i => {
+            return <input type="number" min={ 0.1 } step={ 0.1 } style={{ width: 50 }}
+              value={ this.sensorSize[i].toString() }
+              onChange={ ({ target }) => {
+                  const sensorSize = this.sensorSize
+                  sensorSize[i] = parseFloat((target as HTMLInputElement).value)
+                  save({ sensorSize })
+                }
+              } />
+          })
+        }
+      </div>,
+    ].concat(targetInputs.map(target => {
+      return <div key={ target.name }>
+        <select value={ target.isNe ? 'on' : 'off' }
+          onChange={
+            evt => {
+              target.isNe = (evt.target as HTMLSelectElement).value === 'off' ? '!' : ''
+              saveTargets()
+            }
+          }>
+          <option>on</option>
+          <option>off</option>
+        </select>
+        <select value={ target.name }
+          onChange={
+            evt => {
+              target.name = (evt.target as HTMLSelectElement).value
+              saveTargets()
+            }
+          }>
+          <option value="">--</option>
+          {
+            availTargets.map(name => <option>{ name }</option>)
+          }
+        </select>
+      </div>
+    }))
   }
 
   public onTrigger(isOn: boolean, mesh: AbstractMesh) {

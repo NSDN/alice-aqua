@@ -1,4 +1,10 @@
 import {
+  h,
+  Component,
+  render as renderWithReact,
+} from 'preact'
+
+import {
   EventEmitter,
   queryStringGet,
   queryStringSet,
@@ -49,6 +55,23 @@ export function appendElement(tag: string, attrs = { } as ElementAttributes, par
   return elem
 }
 
+export function renderReactComponent<P, S>(render: (state: S, props?: P) => JSX.Element, container: Element) {
+  return new Promise<Component<P, S>>(resolve => {
+    class Renderer extends Component<P, S> {
+      setStatePartial(state: Partial<S>) {
+        super.setState(state as S)
+      }
+      componentDidMount() {
+        resolve(this)
+      }
+      render() {
+        return render(this.state)
+      }
+    }
+    renderWithReact(h(Renderer, { }), container)
+  })
+}
+
 export function drawIconFont(dc: CanvasRenderingContext2D, className: string, x: number, y: number, size: number) {
   const attrs = { className, width: size, height: size, style: { fontSize: size + 'px' } },
     span = appendElement('i', attrs) as HTMLCanvasElement,
@@ -61,6 +84,30 @@ export function drawIconFont(dc: CanvasRenderingContext2D, className: string, x:
   dc.fillText(text, x + size / 2, y + size / 2)
   dc.restore()
   span.parentNode.removeChild(span)
+}
+
+export function promptDownloadText(filename: string, content: string) {
+  const a = appendElement('a', {
+    href: 'data:text/json;charset=utf-8,' + encodeURIComponent(content),
+    target: '_blank',
+    download: filename,
+  }) as HTMLLinkElement
+  a.click()
+  a.parentNode.removeChild(a)
+}
+
+export function getUploadedText() {
+  return new Promise<string>((resolve, reject) => {
+    const f = appendElement('input', { type: 'file', className: 'hidden' }) as HTMLInputElement
+    f.addEventListener('change', _ => {
+      const r = new FileReader()
+      r.onload = _ => resolve(r.result)
+      r.onerror = reject
+      r.readAsText(f.files[0])
+    })
+    f.click()
+    f.parentNode.removeChild(f)
+  })
 }
 
 export function attachDragable(
@@ -105,60 +152,6 @@ export const LocationSearch = {
   set(dict: any) {
     location.search = queryStringSet(location.search.replace(/^\?/, ''), dict)
   },
-}
-
-export function appendConfigRow(label: HTMLElement, input: HTMLElement, container: HTMLElement) {
-  const tr = appendElement('tr', { className: 'config-line' }, container)
-
-  const td1 = appendElement('td', { }, tr) as HTMLTableDataCellElement
-  label.parentNode && label.parentNode.removeChild(label)
-  td1.appendChild(label)
-
-  const td2 = appendElement('td', { }, tr) as HTMLTableDataCellElement
-  input.parentNode && input.parentNode.removeChild(label)
-  td2.appendChild(input)
-
-  return tr
-}
-
-export function appendConfigElement(label: string | HTMLElement, tag: string, attrs: any, container: HTMLElement) {
-  const input = appendElement(tag, attrs, null),
-    elem = typeof label === 'string' ? appendElement('label', { innerText: label }, null) : label
-  appendConfigRow(elem, input, container)
-  return input
-}
-
-export function appendConfigInput(label: string | HTMLElement, value: any, attrs: any, container: HTMLElement, onChange?: (value: string) => void) {
-  const input = appendConfigElement(label, 'input', attrs, container) as HTMLInputElement
-  input.value = value
-  onChange && input.addEventListener('change', _ => onChange(input.value))
-}
-
-export function appendSelectOptions(label: string | HTMLElement, val: string, options: any, container: HTMLElement, onChange?: (value: string) => void) {
-  const select = appendConfigElement(label, 'select', { }, container) as HTMLSelectElement
-  if (Array.isArray(options)) {
-    options.forEach(innerHTML => appendElement('option', { innerHTML }, select))
-  }
-  else {
-    Object.keys(options).forEach(value => appendElement('option', { innerHTML: options[value], value }, select))
-  }
-  select.value = val
-  onChange && select.addEventListener('change', _ => onChange(select.value))
-  return select
-}
-
-export function appendVectorInputs(label: string | HTMLElement, val: { x: number, y: number, z: number },
-    container: HTMLElement, attrs: any, onChange?: (x: string, y: string, z: string) => void) {
-  attrs = { type: 'number', style: { width: '30%', maxWidth: '40px' }, ...attrs }
-  const div = appendConfigElement(label, 'div', { }, container)
-  const inputs = 'x/y/z'.split('/').map((a: 'x' | 'y' | 'z') => {
-    const input = appendElement('input', attrs, div) as HTMLInputElement
-    input.placeholder = a
-    input.value = val[a] + ''
-    onChange && input.addEventListener('change', _ => onChange.apply(null, inputs.map(input => input.value)))
-    return input
-  })
-  return inputs
 }
 
 let loadingTimeout = 0

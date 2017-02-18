@@ -93,7 +93,7 @@ class StageManager {
       history = [ ] as { url: string, x: number, y: number, z: number }[]
     // TODO: load from somewhere
     try {
-      const historyJSON = LocationSearch.get('stage-history') || localStorage.getItem('stage-history') || StageManager.DEFAULT_HISTORY_VALUE
+      const historyJSON = LocationSearch.get('stageHistoryArray') || localStorage.getItem('stage-history') || StageManager.DEFAULT_HISTORY_VALUE
       history.push.apply(history, JSON.parse(historyJSON))
     }
     catch (err) {
@@ -426,5 +426,5 @@ function selectNextConfigItem(delta: number) {
 
   LoadingScreen.hide()
 
-  gameState.goto(LocationSearch.get('stage-start') || 'main')
+  gameState.goto(LocationSearch.get('stageStartPath') || 'main')
 })()

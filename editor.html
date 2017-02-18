@@ -14,102 +14,69 @@
       padding: 5px 8px;
       cursor: pointer;
     }
+    a {
+      color: #eee;
+      text-decoration: none;
+    }
 
     .hidden {
       display: none;
     }
-    .disabled {
-      opacity: 0.2;
-    }
-    .clear-both {
-      width: 100%;
-      clear: both;
+    .no-select {
+      user-select: none;
+      -webkit-user-drag: none;
     }
     .float-right {
       float: right;
     }
 
-    .show-debug-layer {
-      cursor: pointer;
-      float: right;
+    .shown-object-selected {
+      display: none;
+      position: absolute;
+      transition: opacity 0.1s linear;
     }
-    .object-toolbar.dragging {
+    .has-object-selected .shown-object-selected {
+      display: block;
+    }
+    .on-object-dragging .shown-object-selected {
       visibility: hidden;
       opacity: 0;
       transition: visibility 0s 0.1s, opacity 0.1s linear;
     }
-    .object-toolbar {
-      position: absolute;
-      background-color: rgba(255, 255, 255, 0.3);
-      padding: 5px;
-      user-select: none;
-      transition: opacity 0.1s linear;
+
+    .object-toolbar .action-icon {
+      cursor: pointer;
     }
     .object-toolbar .move-object {
       cursor: -webkit-grab;
     }
-    .object-toolbar .focus-object,
-    .object-toolbar .remove-object,
-    .object-toolbar .cancel-select {
-      cursor: pointer;
+    .object-float {
+      font-size: 120%;
+      padding: 5px;
+      background-color: rgba(255, 255, 255, 0.3);
     }
-    .object-toolbar .cancel-select {
-      float: right;
-    }
-    .object-toolbar .config-item {
-      height: 2em;
+    .object-editor {
+      right: 20px;
+      top: 160px;
+      width: 20%;
+      padding: 5px;
+      background-color: rgba(255, 255, 255, 0.3);
     }
 
-    .ui-toolbar {
+    .ui-top {
       position: absolute;
       left: 0;
       top: 0;
       width: 100%;
-      height: 120px;
-      padding-top: 2em;
-      background-color: rgba(255, 255, 255, 0.3);
-      overflow: hidden;
-    }
-    .ui-panels {
-      height: 100%;
-      overflow: auto;
-      padding: 10px;
-      padding-top: 2px;
-    }
-    .ui-list-block .ui-list-item {
-      float: left;
-      padding: 2px;
-    }
-    .ui-list-block .ui-list-item > * {
-      display: block;
-      cursor: default;
-    }
-    .ui-list-block .ui-list-item span {
-      width: 32px;
-      height: 32px;
-      line-height: 32px;
-      background: #ddd;
-      text-align: center;
-    }
-    .ui-list-block .ui-list-item.selected {
-      background: white;
-    }
-
-    .ui-head {
-      position: absolute;
-      width: 100%;
+      padding: 0 5px;
+      box-sizing: border-box;
       height: 2em;
-      line-height: 2em;
-      user-select: none;
-    }
-    .ui-top {
-      padding: 0 10px;
       color: #eee;
+      background-color: rgba(255, 255, 255, 0.3);
     }
     .ui-tabs .ui-tab {
-      padding: 0 5px;
-      text-decoration: none;
-      color: #eee;
+      display: inline-block;
+      margin: 0 5px;
       opacity: 0.5;
       border-top: 2px solid transparent;
     }
@@ -117,36 +84,64 @@
       opacity: 1;
       border-top-color: #eee;
     }
-    .ui-top-right {
-      float: right;
+    .ui-top .undo-redo a {
+      opacity: 0.5;
     }
-    .ui-top a {
+    .ui-top .undo-redo a.active {
+      opacity: 1;
+    }
+    .ui-panels {
+      position: absolute;
+      left: 0;
+      top: 2em;
+      width: 100%;
+      height: 120px;
+      padding: 5px 10px;
+      box-sizing: border-box;
+      overflow: auto;
       color: #eee;
+      background-color: rgba(255, 255, 255, 0.3);
     }
 
-    .panel-brushes {
-      user-select: none;
+    .list-item {
+      padding: 2px;
+      float: left
     }
-    .ui-brushes {
-      margin-left: 80px;
+    .list-item.active {
+      background: #ddd;
     }
+    .list-item > * {
+      display: block;
+    }
+
     .ui-brushes-height {
       position: absolute;
       width: 80px;
     }
-    .ui-brushes-height .ui-list-item span {
-      color: #ddd;
+    .ui-brushes .list-item i,
+    .ui-brushes-height .list-item i {
+      width: 32px;
+      height: 32px;
+      line-height: 32px;
+      text-align: center;
+    }
+    .ui-brushes-height .list-item i {
       background: #666;
+      color: #ddd;
+    }
+    .ui-brushes {
+      margin-left: 80px;
+    }
+    .ui-brushes .list-item i {
+      color: #666;
+      background: #ddd;
     }
 
-    .panel-layers {
-      color: #eee;
-    }
     .ui-layers {
       width: 200px;
       float: left;
     }
-    .ui-layers > div {
+    .ui-layers .ui-layer {
       margin: 2px 0;
       cursor: pointer;
     }
@@ -157,23 +152,18 @@
     .ui-layers .ui-layer.active:before {
       color: inherit;
     }
-    .ui-layer-config {
-      margin: 5px;
-    }
     .ui-layer-content {
       margin-left: 200px;
     }
-    .ui-layer-sidetiles .ui-list-item.active {
-      background: #eee;
+    .ui-layer-content .config-position input {
+      width: 40px;
     }
-    .ui-layer-sidetiles .ui-list-item {
-      padding: 2px;
+    .ui-layer-content .list-item {
+      float: none;
+      display: inline-block;
     }
-
-    .game-config {
-      min-width: 120px;
-      float: left;
-      padding: 0 10px;
+    .ui-layer-config {
+      margin: 5px;
     }
 
     .doc-help {
@@ -199,100 +189,6 @@
   </style>
 </head>
 <body>
-  <div class="ui-toolbar">
-    <div class="ui-panels">
-      <div tab-group="panel" class="hidden ui-panel panel-brushes">
-        <div class="ui-brushes-height ui-list ui-list-block">
-          <div class="ui-list-item" item-type="tile" height="+1">
-            <span title="shift up"><i class="fa fa-arrow-up"></i></span>
-          </div>
-          <div class="ui-list-item" item-type="tile" height="-1">
-            <span title="shift down"><i class="fa fa-arrow-down"></i></span>
-          </div>
-          <div class="ui-list-item" item-type="tile" height="0">
-            <span title="flatten"><i class="fa fa-arrows-h"></i></span>
-          </div>
-          <div class="ui-list-item" item-type="tile" height="">
-            <span title="none"><i class="fa fa-ban"></i></span>
-          </div>
-        </div>
-        <div class="ui-brushes ui-list ui-list-block">
-          <div class="ui-list-item" tid="?">
-            <span title="use tile from start"><i class="fa fa-question"></i></span>
-          </div>
-          <div class="ui-list-item" tid="">
-            <span title="none"><i class="fa fa-ban"></i></span>
-          </div>
-        </div>
-      </div>
-      <div tab-group="panel" class="hidden ui-panel panel-objects">
-        <div class="ui-classes ui-list ui-list-block"></div>
-      </div>
-      <div tab-group="panel" class="hidden ui-panel panel-layers">
-        <div class="ui-layers ui-list">
-          <div class="ui-add-layer">+Add Layer</div>
-        </div>
-        <div class="ui-layer-content">
-          <div class="ui-layer-config">
-            <label>position: </label>
-            <input class="ui-layer-pos-x" type="number" style="width: 50px" step="1" />
-            <input class="ui-layer-pos-y" type="number" style="width: 50px" step="1" />
-            <input class="ui-layer-pos-z" type="number" style="width: 50px" step="1" />
-          </div>
-          <div class="ui-layer-config ui-layer-sidetiles">
-            <label>sideTile: </label>
-          </div>
-          <div class="ui-layer-config">
-            <button class="ui-layer-remove">Remove Layer</button>
-          </div>
-        </div>
-      </div>
-      <div tab-group="panel" class="hidden ui-panel panel-game">
-        <div class="game-config">
-          <button id="configPlayInNewWindow">Play</button>
-          <button id="configDownloadMap">Save</button>
-          <button id="configUploadMap">Upload</button>
-          <button id="configResetMap">Reset</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="ui-head">
-    <div class="ui-top">
-      <span class="ui-tabs">
-        <a href="javascript:void(0)" class="ui-tab" tab-group="panel" tab-target="brushes">brushes</a>
-        <a href="javascript:void(0)" class="ui-tab" tab-group="panel" tab-target="objects">objects</a>
-        <a href="javascript:void(0)" class="ui-tab" tab-group="panel" tab-target="layers">layers</a>
-        <a href="javascript:void(0)" class="ui-tab" tab-group="panel" tab-target="game">game</a>
-      </span>
-      <span> /
-        <a href="javascript:void(0)" id="docActionUndo"
-          title="undo (ctrl+Z)"><i class="fa fa-undo"></i></a>
-        <a href="javascript:void(0)" id="docActionRedo"
-          title="redo (ctrl+Y)"><i class="fa fa-repeat"></i></a>
-      </span>
-      <span tab-group="panel" class="hidden ui-panel panel-brushes"> /
-        <span id="brushHoverInfo"></span>
-      </span>
-      <span tab-group="panel" class="hidden ui-panel panel-objects"> /
-        <span id="objectHoverInfo"></span>
-      </span>
-      <div class="ui-top-right">
-        <span id="fpsCounterText"></span> /
-        <a href="javascript:void(0)" id="docShowDebug"
-          title="debug"><i class="fa fa-info"></i></a> /
-        <a href="javascript:void(0)" id="docShowHelp"
-          title="help"><i class="fa fa-question"></i></a>
-      </div>
-    </div>
-  </div>
-  <div id="objectToolbar" class="object-toolbar">
-    <i class="move-object fa fa-arrows" title="drag to move"></i>
-    <i class="focus-object fa fa-crosshairs" title="look at this"></i>
-    <i class="remove-object fa fa-trash" title="remove"></i>
-    <i class="cancel-select fa fa-close" title="cancel"></i>
-    <div class="object-settings"></div>
-  </div>
   <div class="doc-help">
     <div class="content">
       <div class="float-right">
@@ -300,7 +196,6 @@
       </div>
       <h2>Planing</h2>
       <ul>
-        <li>[editor] 从工具栏拖放对象</li>
       </ul>
       <hr>
 
@@ -311,6 +206,7 @@
         <li>[game] 多语言支持</li>
         <li>[game] 简单对话模式</li>
         <li>[game] 选项对话框</li>
+        <li>[editor] 从工具栏拖放对象</li>
         <li>[editor] 新特性：图层</li>
         <li>[editor] 移除 play 面板</li>
       </ul>

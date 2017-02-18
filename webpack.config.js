@@ -20,24 +20,24 @@ module.exports = {
     yamljs: 'YAML'
   },
   resolve: {
-    extensions: ['.js', '.ts']
+    extensions: ['.js', '.ts', '.tsx']
   },
   module: {
     rules: [
       {
-        test: /\.ts$/,
+        test: /\.ts(x?)$/,
         enforce: 'pre',
         loader: 'tslint-loader'
       },
       {
-        test: /\.ts$/,
+        test: /\.ts(x?)$/,
         use: isDevServer ? ['ts-loader'] : ['babel-loader', 'ts-loader'],
       }
     ],
   },
-  plugins: [
+  plugins: isDevServer ? [
     new webpack.LoaderOptionsPlugin({ debug: true })
-  ].concat(isDevServer ? [ ] : [
+  ] : [
     new webpack.optimize.UglifyJsPlugin()
-  ])
+  ]
 }

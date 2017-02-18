@@ -1,4 +1,8 @@
 import {
+  h
+} from 'preact'
+
+import {
   Mesh,
   Color3,
   Vector3,
@@ -15,16 +19,11 @@ import {
 } from '../utils/babylon'
 
 import {
-  appendSelectOptions,
-} from '../utils/dom'
-
-import {
   ObjectBase,
-  IEditable,
   ObjectOptions,
 } from '../game/objbase'
 
-export default class Slope extends ObjectBase implements IEditable {
+export default class Slope extends ObjectBase {
   static readonly TARGET_TAG = 'slope-target'
   static readonly GROUND_TAG = 'slope-ground'
 
@@ -116,16 +115,29 @@ export default class Slope extends ObjectBase implements IEditable {
     })
   }
 
-  attachEditorContent(container: HTMLElement, save: (args: Partial<Slope>) => void) {
-    const options = { '': '--' } as { [key: string]: string }
-    this.getScene().getMeshesByTags(Slope.TARGET_TAG, (mesh: Slope) => {
-      mesh !== this && mesh.targetName !== this.name && (options[mesh.name] = mesh.name)
-    })
-
-    const tarSel = appendSelectOptions('target: ', this.targetName, options, container)
-    tarSel.addEventListener('change', _ => save({ targetName: tarSel.value }))
-
-    const dirSel = appendSelectOptions('direction: ', this.direction, ['x', 'z'], container)
-    dirSel.addEventListener('change', _ => save({ direction: dirSel.value as any }))
+  renderConfig(save: (args: Partial<Slope>) => void) {
+    return [
+      <div>
+        <label>target: </label>
+        <select value={ this.targetName }
+          onChange={ ({ target }) => save({ targetName: (target as HTMLSelectElement).value }) }>
+          <option value="">--</option>
+          {
+            this.getScene().getMeshesByTags(Slope.TARGET_TAG)
+              .map(mesh => mesh as any as Slope)
+              .filter(mesh => mesh !== this && mesh.targetName !== this.name)
+              .map(name => <option>{ name }</option>)
+          }
+        </select>
+      </div>,
+      <div>
+        <label>target: </label>
+        <select value={ this._direction }
+          onChange={ ({ target }) => save({ direction: (target as HTMLSelectElement).value as any }) }>
+          <option>x</option>
+          <option>z</option>
+        </select>
+      </div>,
+    ]
   }
 }

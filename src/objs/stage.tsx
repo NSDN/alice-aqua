@@ -1,15 +1,14 @@
 import {
-  IEditable,
+  h,
+} from 'preact'
+
+import {
   ITriggerable,
 } from '../game/objbase'
 
-import {
-  appendConfigInput,
-} from '../utils/dom'
-
 import Sprite from './sprite'
 
-class SpriteWithOffset extends Sprite implements IEditable {
+class SpriteWithOffset extends Sprite {
   get offsetY() {
     return this.spriteBody.position.y - this.spriteBody.scaling.y / 2
   }
@@ -17,8 +16,14 @@ class SpriteWithOffset extends Sprite implements IEditable {
     this.spriteBody.position.y = val + this.spriteBody.scaling.y / 2
   }
 
-  attachEditorContent(container: HTMLElement, save: (args: Partial<StageLoader>) => void) {
-    appendConfigInput('offsetY: ', this.offsetY, { type: 'number', step: 1 }, container, val => save({ offsetY: parseInt(val) }))
+  renderConfig(save: (args: Partial<StageLoader>) => void) {
+    return [
+      <div>
+        <label>offsetY: </label>
+        <input type="number" step={ 1 } value={ this.offsetY as any }
+          onChange={ ({ target }) => save({ offsetY: parseInt((target as HTMLInputElement).value) }) } />
+      </div>
+    ]
   }
 }
 
@@ -34,9 +39,14 @@ export class StageEntry extends SpriteWithOffset {
 export class StageLoader extends StageEntry implements ITriggerable {
   public stageURL = ''
 
-  attachEditorContent(container: HTMLElement, save: (args: Partial<StageLoader>) => void) {
-    super.attachEditorContent(container, save)
-    appendConfigInput('stageURL: ', this.stageURL, { }, container, stageURL => save({ stageURL }))
+  renderConfig(save: (args: Partial<StageLoader>) => void) {
+    return super.renderConfig(save).concat([
+      <div>
+        <label>stageURL: </label>
+        <input value={ this.stageURL }
+          onChange={ ({ target }) => save({ stageURL: (target as HTMLInputElement).value }) } />
+      </div>
+    ])
   }
 
   onTrigger(isOn: boolean) {

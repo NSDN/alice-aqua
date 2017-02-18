@@ -10,7 +10,6 @@ import {
 
 import {
   ObjectOptions,
-  IEditable,
 } from '../game/objbase'
 
 import Sensor, {
@@ -18,7 +17,7 @@ import Sensor, {
   TRIGGER_ON_COLOR
 } from './sensor'
 
-export default class Trigger extends Sensor implements IEditable {
+export default class Trigger extends Sensor {
   protected readonly triggerOnBox: AbstractMesh
   protected readonly triggerOffBox: AbstractMesh
 
@@ -50,10 +49,6 @@ export default class Trigger extends Sensor implements IEditable {
     this.triggerOffBox = boxOff.createInstance(this.name + '/box')
     this.triggerOffBox.isVisible = true
     this.triggerOnBox.parent = this.triggerOffBox.parent = this
-  }
-
-  attachEditorContent(container: HTMLElement, save: (args: Partial<Trigger>) => void) {
-    super.attachEditorContent(container, save)
   }
 
   public onTrigger(isOn: boolean, mesh: AbstractMesh) {

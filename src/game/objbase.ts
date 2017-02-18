@@ -42,10 +42,6 @@ export interface IUsable {
   useFrom(mesh: AbstractMesh): void
 }
 
-export interface IEditable {
-  attachEditorContent(container: HTMLElement, save: (args: Partial<IEditable>) => void): void
-}
-
 interface ObjectEvents {
   'load-stage': {
     url: string,
@@ -68,5 +64,8 @@ export class ObjectBase extends InstancedMesh {
   startPlaying() {
   }
   stopPlaying() {
+  }
+  renderConfig(_save: (args: Partial<ObjectBase>) => void) {
+    return [ ] as JSX.Element[]
   }
 }
