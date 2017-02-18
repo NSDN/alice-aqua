@@ -27,7 +27,7 @@ import {
   VERTEX_PLANE,
   VERTEX_GROUND,
   VERTEX_SPHERE,
-//  VERTEX_DUMMY,
+  VERTEX_DUMMY,
   FollowCamera,
 } from '../utils/babylon'
 
@@ -63,6 +63,7 @@ export default class Player extends Mesh {
   private static keyInput = new KeyEmitter(KEY_MAP)
 
   readonly spriteBody: Mesh
+  readonly playerHead: Mesh
   readonly shadow: AbstractMesh
   readonly particle: ParticleSystem
   readonly lastShadowDropPosition = Vector3.Zero()
@@ -79,6 +80,8 @@ export default class Player extends Mesh {
     if (val !== this._isPlayerActive) {
       const friction = val ? this.opts.dynamicFriction : this.opts.staticFriction
       this.physicsImpostor.setParam('friction', friction)
+      this.playerHead.physicsImpostor.dispose()
+      this.playerHead.physicsImpostor = new PhysicsImpostor(this.playerHead, PhysicsImpostor.SphereImpostor)
       this.physicsImpostor.forceUpdate()
     }
     this._isPlayerActive = val
@@ -146,18 +149,16 @@ export default class Player extends Mesh {
     sprite.parent = this
     sprite.registerBeforeRender(_ => this.updatePlayerFrame())
 
-    /*
-    const head = new Mesh(name + '/head', scene)
+    const head = this.playerHead = new Mesh(name + '/head', scene)
     VERTEX_DUMMY.applyToMesh(head)
     head.position.copyFromFloats(0, opts.height - opts.width * Math.sqrt(2) / 2 - opts.width / 2, 0)
     head.scaling.copyFromFloats(opts.width, opts.width, opts.width)
     head.rotation.x = Math.PI / 4
     head.isVisible = false
     head.parent = this
-    head.physicsImpostor = new PhysicsImpostor(head, PhysicsImpostor.BoxImpostor)
+    head.physicsImpostor = new PhysicsImpostor(head, PhysicsImpostor.SphereImpostor)
 
     this.physicsImpostor.forceUpdate()
-    */
 
     const shadowCacheId = 'cache/player/shadow'
     let shadowCache = scene.getMeshByName(shadowCacheId) as Mesh
