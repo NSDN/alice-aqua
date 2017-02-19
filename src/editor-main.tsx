@@ -8,6 +8,7 @@ import {
   BoundingBox,
   Matrix,
   AbstractMesh,
+  Scene,
 } from './babylon'
 
 import {
@@ -63,13 +64,11 @@ import {
 import {
   appendElement,
   attachDragable,
-  LocationSearch,
   LoadingScreen,
   KeyEmitter,
   checkFontsLoaded,
   renderReactComponent,
   promptDownloadText,
-  requestUploadingText,
 } from './utils/dom'
 
 const pixelHeightNames: { [key: string]: string } = {
@@ -78,6 +77,7 @@ const pixelHeightNames: { [key: string]: string } = {
   '0': 'flat',
   '': 'none',
 }
+
 const iconClassFromCursorClass: { [key: string]: string } = {
   'cursor-up-ctrl' : 'fa fa-pencil/fa fa-arrow-up',
   'cursor-down-ctrl' : 'fa fa-pencil/fa fa-arrow-down',
@@ -90,6 +90,7 @@ const iconClassFromCursorClass: { [key: string]: string } = {
   'cursor-objects-ctrl' : 'fa fa-tree',
   'cursor-objects-shift': 'fa fa-object-group',
 }
+
 const appendCursorStyle = memo((cursorClass: string) => {
   const [mainClass, subClass] = iconClassFromCursorClass[cursorClass].split('/'),
     dataUrl = createDataURLFromIconFontAndSub(mainClass, subClass)
@@ -109,6 +110,22 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   LoadingScreen.update(`Loading Assets ${index + 1}/${total} (${~~(progress * 100)}%)`)
 }
 
+function toggleDebugLayer(scene: Scene) {
+  document.querySelector('.insp-wrapper') ? scene.debugLayer.hide() : scene.debugLayer.show(true)
+}
+
+function toggleHelpDisplay() {
+  const isHelpShown = document.querySelector('.doc-help').scrollHeight > 0
+  isHelpShown ? document.body.classList.remove('show-help') : document.body.classList.add('show-help')
+}
+
+function playMapInNewWindow(map: EditorMap) {
+  const history = [{ url: 'data:text/json;charset=utf-8,' + encodeURIComponent(map.toJSON()) }],
+    queryDict = { stageHistoryArray: JSON.stringify(history), stageStartPath: 'play' },
+    queryString = queryStringSet(location.search.replace(/^\?/, ''), queryDict)
+  location.href = location.href.replace(/\/editor.html.*/, '') + '?' + queryString
+}
+
 ; (async function() {
   await checkFontsLoaded()
 
@@ -123,17 +140,23 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     throw err
   }
 
+  let map: EditorMap
+  try {
+    map = await EditorMap.load(game)
+  }
+  catch (err) {
+    LoadingScreen.update(`load map failed: ${err && err.message || err}`)
+    throw err
+  }
+
   const { scene, camera, assets } = game,
     canvas = scene.getEngine().getRenderingCanvas(),
 
     keyInput = new KeyEmitter(KEY_MAP),
     keys = keyInput.state,
 
-    map = await EditorMap.load(game),
-
     cursor = new Cursor('cursor', scene, (mesh: Mesh) => !!getTerrainFromSubMeshes[mesh.name]),
     lastSelection = new SelectionBox('select', scene),
-
     grid = new GridPlane('grids', scene, 32),
 
     editorHistory = new EditorHistory()
@@ -160,13 +183,12 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
       </span>
       <div class="float-right">
         <span id="fpsCounterText"></span> / {' '}
-        <a href="javascript:void(0)" title="debug" onClick={ _ => {
-          document.querySelector('.insp-wrapper') ? scene.debugLayer.hide() : scene.debugLayer.show(true)
-        }}><i class="fa fa-info"></i></a> / {' '}
-        <a href="javascript:void(0)" title="help" onClick={ _ => {
-          const isHelpShown = document.querySelector('.doc-help').scrollHeight > 0
-          isHelpShown ? document.body.classList.remove('show-help') : document.body.classList.add('show-help')
-        }}><i class="fa fa-question"></i></a>
+        <a href="javascript:void(0)" title="debug" onClick={ _ => toggleDebugLayer(scene)}>
+          <i class="fa fa-info"></i>
+        </a> / {' '}
+        <a href="javascript:void(0)" title="help" onClick={ _ => toggleHelpDisplay()}>
+          <i class="fa fa-question"></i>
+        </a>
       </div>
     </div>
     <div class="ui-panels">
@@ -180,23 +202,10 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
         <PanelLayers tiles={ assets.tiles } layers={ map.terrains } { ...states } />
       </div>
       <div class={{ 'panel-game': true, hidden: states.panel !== 'game' }}>
-        <button onClick={ _ => {
-          const history = [{ url: 'data:text/json;charset=utf-8,' + encodeURIComponent(map.toJSON()) }],
-            queryDict = { stageHistoryArray: JSON.stringify(history), stageStartPath: 'play' },
-            queryString = queryStringSet(location.search.replace(/^\?/, ''), queryDict)
-          location.href = location.href.replace(/\/editor.html.*/, '') + '?' + queryString
-        }}>Play</button> {' '}
-        <button onClick={ _ => {
-          promptDownloadText('map.json', map.toJSON())
-        }}>Save</button> {' '}
-        <button onClick={ _ => {
-          const projRestoreURL = location.href.split(location.host).pop()
-          requestUploadingText().then(projSavedMap => LocationSearch.set({ projSavedMap, projRestoreURL }))
-        }}>Upload</button> {' '}
-        <button onClick={ _ => {
-          map.reset()
-          location.reload()
-        }}>Reset</button>
+        <button onClick={ _ => playMapInNewWindow(map) }>Play</button> {' '}
+        <button onClick={ _ => promptDownloadText('map.json', map.toJSON())}>Save</button> {' '}
+        <button onClick={ _ => EditorMap.upload() }>Upload</button> {' '}
+        <button onClick={ _ => EditorMap.reset() }>Reset</button>
       </div>
     </div>
   </div>, document.body)
@@ -213,16 +222,13 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     layerId: map.activeTerrain.name,
   })
 
-  let selectedPixel: { t: number, h: number },
-    selectedObject: AbstractMesh
-
   // use shift to draw rectangles
+  let startTileId: number
   attachDragable(evt => {
     return evt.target === canvas && toolbar.state.panel === 'brushes' && !keys.ctrlKey && keys.shiftKey
   }, _ => {
-    const { x, z } = cursor.hover,
-      t = toolbar.state.tileId === TILE_AUTO ? map.activeTerrain.getPixel(x, z).t : toolbar.state.tileId
-    selectedPixel = { t, h: 0 }
+    const { x, z } = cursor.hover
+    startTileId = toolbar.state.tileId === TILE_AUTO ? map.activeTerrain.getPixel(x, z).t : toolbar.state.tileId
 
     lastSelection.scaling.copyFromFloats(1, 1, 1)
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
@@ -232,7 +238,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     lastSelection.scaling.copyFrom(maximum.subtract(minimum))
   }, _ => {
     const { minimum, maximum } = cursor, h = toolbar.state.tileHeight,
-      pixel = { t: selectedPixel.t, h: h && maximum.y - 1 + parseInt(h) }
+      pixel = { t: startTileId, h: h && maximum.y - 1 + parseInt(h) }
     for (let m = minimum.x; m < maximum.x; m ++) {
       for (let n = minimum.z; n < maximum.z; n ++) {
         editorHistory.push(new SetPixelAction(map.activeTerrain, m, n, pixel))
@@ -242,6 +248,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   })
 
   // use ctrl key to draw pixels
+  let selectedPixel = { t: 0, h: 0 }
   attachDragable(evt => {
     return evt.target === canvas && toolbar.state.panel === 'brushes' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
@@ -267,6 +274,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   })
 
   // use shift key to select objects
+  let selectedObject: AbstractMesh
   attachDragable(_ => {
     return toolbar.state.panel === 'objects' && !keys.ctrlKey && keys.shiftKey
   }, _ => {
@@ -468,13 +476,11 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     }
   })
 
-  const objectToolbar = await renderReactComponent(({ object, left, top }: {
+  const objectToolbar = await renderReactComponent(({ object }: {
     object: ObjectBase,
-    left: number,
-    top: number
   }) => {
     return <div class="object-toolbar">
-      <div class="object-float shown-object-selected" style={{ left, top }}>
+      <div id="objectFloating" class="object-float shown-object-selected">
         <i class="action-icon move-object fa fa-arrows" title="drag to move"></i> {' '}
         <i class="action-icon focus-object fa fa-crosshairs" title="look at this"
           onClick={ _ => camera.followTarget.copyFrom(selectedObject.position)}></i> {' '}
@@ -492,7 +498,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
           {
             object.renderConfig(data => {
               editorHistory.commit(new UpdateObjectAction(map, object, data))
-              objectToolbar.forceUpdate()
+              objectToolbar.setStatePartial({ object })
             })
           }
         </div>
@@ -501,18 +507,20 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   }, document.body)
 
   let toolbarDragStarted: { x: number, y: number }
+  const objectFloating = document.getElementById('objectFloating') as HTMLDivElement
   attachDragable(document.querySelector('.object-toolbar .move-object') as HTMLElement, evt => {
     toolbarDragStarted = { ...cursor.offset }
 
-    cursor.offset.x = (objectToolbar.state.left || 0) - evt.clientX
-    cursor.offset.y = (objectToolbar.state.top || 0) - evt.clientY
+    cursor.offset.x = (parseInt(objectFloating.style.left) || 0) - evt.clientX
+    cursor.offset.y = (parseInt(objectFloating.style.top) || 0) - evt.clientY
     cursor.updateFromPickTarget(evt)
   }, evt => {
     cursor.updateFromPickTarget(evt)
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
     editorHistory.push(new MoveObjectAction(map.activeTerrain, selectedObject.name, pos))
     const left = evt.clientX + cursor.offset.x, top = evt.clientY + cursor.offset.y
-    objectToolbar.setStatePartial({ left, top })
+    objectFloating.style.left = left + 'px'
+    objectFloating.style.top = top + 'px'
   }, _ => {
     cursor.offset.x = toolbarDragStarted.x
     cursor.offset.y = toolbarDragStarted.y
@@ -546,6 +554,8 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   canvas.addEventListener('mousedown', evt => {
     cvMouseDownPos.x = evt.clientX
     cvMouseDownPos.y = evt.clientY
+    // hack to resolve selection issue
+    getSelection().removeAllRanges()
   })
   canvas.addEventListener('mouseup', evt => {
     const cvMouseUpPos = new Vector3(evt.clientX, evt.clientY, 0)
@@ -564,10 +574,6 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
         }
       }
     }
-  })
-
-  document.getElementById('docHideHelp').addEventListener('click', _ => {
-    document.body.classList.remove('show-help')
   })
 
   cursor.isVisible = false
@@ -624,7 +630,8 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
       const src = selectedObject.position,
         viewport = camera.viewport.toGlobal(canvas.width, canvas.height),
         pos = Vector3.Project(src, Matrix.Identity(), scene.getTransformMatrix(), viewport)
-      objectToolbar.setStatePartial({ left: pos.x, top: pos.y })
+      objectFloating.style.left = pos.x + 'px'
+      objectFloating.style.top = pos.y + 'px'
     }
 
     if (keys.showCursor) {

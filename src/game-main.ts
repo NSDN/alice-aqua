@@ -62,7 +62,7 @@ class Stage {
     Object.keys(map.terrains).forEach(id => {
       const { x, y, z } = map.terrains[id],
         position = new Vector3(x, y, z).addInPlace(entryPosition)
-      new Terrain('terrain/' + id, game.scene, game.assets.tiles, map.terrains[id], position)
+      this.terrains.push(new Terrain('terrain/' + id, game.scene, game.assets.tiles, map.terrains[id], position))
     })
 
     this.objects = [ ]

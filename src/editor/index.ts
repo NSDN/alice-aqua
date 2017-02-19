@@ -20,6 +20,7 @@ import {
   appendElement,
   drawIconFont,
   LocationSearch,
+  requestUploadingText,
 } from '../utils/dom'
 
 import {
@@ -159,6 +160,11 @@ export class EditorMap extends EventEmitter<{
     console.log(`save chunk data ok (${dataToSave.length} bytes)`)
   }, 1000)
 
+  static upload() {
+    const projRestoreURL = location.href.split(location.host).pop()
+    requestUploadingText().then(projSavedMap => LocationSearch.set({ projSavedMap, projRestoreURL }))
+  }
+
   static async load(game: Game) {
     let dataToLoad: string
     if (dataToLoad = LocationSearch.get('projSavedMap')) {
@@ -190,8 +196,9 @@ export class EditorMap extends EventEmitter<{
     return map
   }
 
-  reset() {
+  static reset() {
     localStorage.setItem('saved-map', '{ }')
+    location.reload()
   }
 }
 

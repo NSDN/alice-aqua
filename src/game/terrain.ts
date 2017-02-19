@@ -108,6 +108,7 @@ export default class Terrain extends EventEmitter<{
       this.edgeMaterial = new ColorNoLightingMaterial(edgeMaterialId, scene)
       this.edgeMaterial.diffuseTexture =
         new DynamicTexture('cache/chunk/edge/mat', this.edgeTextureCacheSize * this.unitTexSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
+      this.edgeMaterial.diffuseTexture.hasAlpha = true
     }
 
     this.sideTileId = restoreData.sideTileId || tilesDefine[0].sideTileId
@@ -171,10 +172,9 @@ export default class Terrain extends EventEmitter<{
     }
   }
 
-  readonly minimumY = 0
   private createChunkData(k: string,
       tiles = Array(this.chunkUnits * this.chunkUnits).fill(0) as number[],
-      heights = Array(this.chunkUnits * this.chunkUnits).fill(this.minimumY) as number[]) {
+      heights = Array(this.chunkUnits * this.chunkUnits).fill(0) as number[]) {
     const [i, j] = k.split('/').map(parseFloat),
       { chunkUnits, scene, chunkSize, textureSize } = this,
       [m0, n0] = [i * chunkUnits, j * chunkUnits],
@@ -266,9 +266,9 @@ export default class Terrain extends EventEmitter<{
   }
 
   private updateHeight(m: number, n: number) {
-    const { chunkUnits, unitSize, scene, minimumY } = this,
+    const { chunkUnits, unitSize, scene } = this,
       { heights, top, edge, side, blocks, m0, n0 } = this.getChunkData(m, n),
-      h0 = Math.max(Math.min.apply(Math, heights) - 1, minimumY),
+      h0 = Math.max(Math.min.apply(Math, heights) - 1, 0),
       chunkBlocks = getBlocksFromHeightMap(heights, chunkUnits, h0)
 
     const topVd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] } as VertexData
@@ -285,6 +285,7 @@ export default class Terrain extends EventEmitter<{
     if (!topVd.indices.length) top.releaseSubMeshes()
 
     const pixelFromUV = (u: number, v: number) => this.getChunkDataIfExists(m0 + u, n0 + v),
+      g = chunkUnits,
       edges = chunkBlocks.map(([u0, u1, v0, v1]) => ({
         top:    arrayRange(u0, u1).map(u => ({ u, v: v1 + 0.001, o: pixelFromUV(u,     v1), i: pixelFromUV(u, v1 - 1) })),
         left:   arrayRange(v0, v1).map(v => ({ u: u0 - 0.001, v, o: pixelFromUV(u0 - 1, v), i: pixelFromUV(u0,     v) })),
@@ -293,27 +294,27 @@ export default class Terrain extends EventEmitter<{
       }))
 
     const edgeVd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] } as VertexData
-    chunkBlocks.forEach(([_u0, _u1, _v0, _v1, _h0, h1], index) => {
+    chunkBlocks.forEach(([u0, u1, v0, v1, _h0, h1], index) => {
       const { top, left, bottom, right } = edges[index]
-      top.filter(({ i, o }) => i.h === h1 && o.h < h1).forEach(({ u, v, i }) => {
+      top.filter(({ i, o }) => i.h === h1 && (v1 === g || o.h < h1)).forEach(({ u, v, i }) => {
         push.apply(edgeVd.indices,   [0, 1, 2, 0, 2, 3].map(v => v + edgeVd.positions.length / 3))
         push.apply(edgeVd.positions, [u, h1, v, u + 1, h1, v, u + 1, h1 - 1, v, u, h1 - 1, v].map(v => v * unitSize))
         push.apply(edgeVd.normals,   [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0])
         push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
       })
-      left.filter(({ i, o }) => i.h === h1 && o.h < h1).forEach(({ u, v, i }) => {
+      left.filter(({ i, o }) => i.h === h1 && (u0 === 0 || o.h < h1)).forEach(({ u, v, i }) => {
         push.apply(edgeVd.indices,   [0, 1, 2, 0, 2, 3].map(v => v + edgeVd.positions.length / 3))
         push.apply(edgeVd.positions, [u, h1, v, u, h1, v + 1, u, h1 - 1, v + 1, u, h1 - 1, v].map(v => v * unitSize))
         push.apply(edgeVd.normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
         push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
       })
-      bottom.filter(({ i, o }) => i.h === h1 && o.h < h1).forEach(({ u, v, i }) => {
+      bottom.filter(({ i, o }) => i.h === h1 && (v0 === 0 || o.h < h1)).forEach(({ u, v, i }) => {
         push.apply(edgeVd.indices,   [0, 2, 1, 0, 3, 2].map(v => v + edgeVd.positions.length / 3))
         push.apply(edgeVd.positions, [u, h1, v, u + 1, h1, v, u + 1, h1 - 1, v, u, h1 - 1, v].map(v => v * unitSize))
         push.apply(edgeVd.normals,   [0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0])
         push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
       })
-      right.filter(({ i, o }) => i.h === h1 && o.h < h1).forEach(({ u, v, i }) => {
+      right.filter(({ i, o }) => i.h === h1 && (u1 === g || o.h < h1)).forEach(({ u, v, i }) => {
         push.apply(edgeVd.indices,   [0, 2, 1, 0, 3, 2].map(v => v + edgeVd.positions.length / 3))
         push.apply(edgeVd.positions, [u, h1, v, u, h1, v + 1, u, h1 - 1, v + 1, u, h1 - 1, v].map(v => v * unitSize))
         push.apply(edgeVd.normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
@@ -328,10 +329,10 @@ export default class Terrain extends EventEmitter<{
     chunkBlocks.forEach(([u0, u1, v0, v1, h0, h1], index) => {
       const { top, left, bottom, right } = edges[index],
         sides =
-          (top   .some(({ o }) => o.h < h1) ? 8 : 0) +
-          (left  .some(({ o }) => o.h < h1) ? 4 : 0) +
-          (bottom.some(({ o }) => o.h < h1) ? 2 : 0) +
-          (right .some(({ o }) => o.h < h1) ? 1 : 0),
+          (top   .some(({ o }) => v1 === g || o.h < h1) ? 8 : 0) +
+          (left  .some(({ o }) => u0 === 0 || o.h < h1) ? 4 : 0) +
+          (bottom.some(({ o }) => v0 === 0 || o.h < h1) ? 2 : 0) +
+          (right .some(({ o }) => u1 === g || o.h < h1) ? 1 : 0),
         vd = getSideVertexDataMemo(u0, u1, v0, v1, h0, h1, sides)
       push.apply(sideVd.indices,   vd.indices.map(i => i + sideVd.positions.length / 3))
       push.apply(sideVd.positions, vd.positions.map(p => p * unitSize))
@@ -463,7 +464,7 @@ export default class Terrain extends EventEmitter<{
       v = p.h - this.position.y
     }
 
-    v = Math.max(v, this.minimumY)
+    v = Math.max(v, 0)
     if (+v === v && h !== v) {
       heights[c] = v
       this.addHeightToUpdate(m, n, k)
