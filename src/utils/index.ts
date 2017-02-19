@@ -77,10 +77,10 @@ export function queue() {
   })
 }
 
-export function promiseObject() {
+export function promiseObject<T>() {
   let resolve = null as Function,
     reject = null as Function,
-    promise = new Promise((res, rej) => [resolve, reject] = [res, rej])
+    promise = new Promise<T>((res, rej) => [resolve, reject] = [res, rej])
   return { resolve, reject, promise }
 }
 

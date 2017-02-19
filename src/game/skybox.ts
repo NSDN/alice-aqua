@@ -90,7 +90,7 @@ export default class Skybox extends Mesh {
     const clouds = Array(20).fill(0).map((_, i) => {
       const c = this.cloud.createInstance('sky/cloud/' + i),
         r = randomRange(0.6, 0.9) * 0.5,
-        y = randomRange(0.1, 1.0) * 0.1,
+        y = randomRange(-0.5, 1.0) * 0.1,
         q = Math.sqrt(r * r - y * y),
         v = randomRange(0.1, 1.0) * 0.001,
         t = randomRange(0.0, 100),

@@ -69,7 +69,7 @@ import {
   checkFontsLoaded,
   renderReactComponent,
   promptDownloadText,
-  getUploadedText,
+  requestUploadingText,
 } from './utils/dom'
 
 const pixelHeightNames: { [key: string]: string } = {
@@ -191,7 +191,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
         }}>Save</button> {' '}
         <button onClick={ _ => {
           const projRestoreURL = location.href.split(location.host).pop()
-          getUploadedText().then(projSavedMap => LocationSearch.set({ projSavedMap, projRestoreURL }))
+          requestUploadingText().then(projSavedMap => LocationSearch.set({ projSavedMap, projRestoreURL }))
         }}>Upload</button> {' '}
         <button onClick={ _ => {
           map.reset()
@@ -205,7 +205,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
   map.activeTerrain = map.createTerrianIfNotExists(activeTerrainId)
   grid.position.y = cursor.baseHeight = map.activeTerrain.position.y
 
-  toolbar.setState({
+  toolbar.setStatePartial({
     panel: 'brushes',
     tileId: assets.tiles[0].tileId,
     clsId: assets.classes[0].clsId,
@@ -315,10 +315,10 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     return !keys.showCursor && im.tagName.toLowerCase() === 'img' && im.classList.contains('cls-icon')
   }, evt => {
     const clsId = parseInt((evt.target as HTMLImageElement).parentElement.getAttribute('class-id'))
-    toolbar.setState({ clsId } as typeof toolbar.state)
+    toolbar.setStatePartial({ clsId })
     cursor.isVisible = false
   }, evt => {
-    if (evt.target === canvas) {
+    if (evt.target === canvas || cursor.isVisible) {
       cursor.updateFromPickTarget(evt)
       if (!cursor.isVisible) {
         cursor.isVisible = true
@@ -396,45 +396,48 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     map.saveDebounced()
   })
 
-  toolbarActions.on('tile-selected', tileId => {
-    if (keys.showCursor) {
-      const { position, scaling } = lastSelection,
-        minimum = position.subtract(scaling.scale(0.5)),
-        maximum = position.add(scaling.scale(0.5)),
-        t = toolbar.state.tileId,
-        h = toolbar.state.tileHeight
-      for (let m = minimum.x; m < maximum.x; m ++) {
-        for (let n = minimum.z; n < maximum.z; n ++) {
-          editorHistory.push(new SetPixelAction(map.activeTerrain, m, n, { t, h }))
-        }
+  function setTilesInSelectedRegion() {
+    const { position, scaling } = lastSelection,
+      minimum = position.subtract(scaling.scale(0.5)),
+      maximum = position.add(scaling.scale(0.5)),
+      t = toolbar.state.tileId,
+      h = toolbar.state.tileHeight
+    for (let m = minimum.x; m < maximum.x; m ++) {
+      for (let n = minimum.z; n < maximum.z; n ++) {
+        editorHistory.push(new SetPixelAction(map.activeTerrain, m, n, { t, h }))
       }
-      editorHistory.commit()
     }
-    toolbar.setState({ tileId } as typeof toolbar.state)
+    editorHistory.commit()
+  }
+
+  toolbarActions.on('tile-selected', tileId => {
+    toolbar.setStatePartial({ tileId })
+    keys.showCursor && setTilesInSelectedRegion()
   })
 
   toolbarActions.on('tile-height-selected', tileHeight => {
-    toolbar.setState({ tileHeight } as typeof toolbar.state)
+    toolbar.setStatePartial({ tileHeight })
+    keys.showCursor && setTilesInSelectedRegion()
   })
 
   toolbarActions.on('class-selected', clsId => {
-    toolbar.setState({ clsId } as typeof toolbar.state)
+    toolbar.setStatePartial({ clsId })
   })
 
   toolbarActions.on('panel-changed', panel => {
     lastSelection.isVisible = panel === 'brushes'
-    toolbar.setState({ panel } as typeof toolbar.state)
+    toolbar.setStatePartial({ panel })
   })
 
   toolbarActions.on('layer-added', () => {
     const layerId = 'Terrain/' + randomBytes()
     editorHistory.commit(new AddLayerAction(map, layerId))
-    toolbar.setState({ layerId } as typeof toolbar.state)
+    toolbar.setStatePartial({ layerId })
   })
 
   toolbarActions.on('layer-selected', layerId => {
     editorHistory.commit(new SelectLayerAction(map, layerId))
-    toolbar.setState({ layerId } as typeof toolbar.state)
+    toolbar.setStatePartial({ layerId })
   })
 
   toolbarActions.on('layer-updated', ({ position, sideTileId }) => {
@@ -461,7 +464,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
         })
       editorHistory.push(new RemoveLayerAction(map))
       editorHistory.commit()
-      toolbar.setState({ layerId: map.activeTerrain.name } as typeof toolbar.state)
+      toolbar.setStatePartial({ layerId: map.activeTerrain.name })
     }
   })
 
@@ -509,7 +512,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
     editorHistory.push(new MoveObjectAction(map.activeTerrain, selectedObject.name, pos))
     const left = evt.clientX + cursor.offset.x, top = evt.clientY + cursor.offset.y
-    objectToolbar.setState({ left, top } as typeof objectToolbar.state)
+    objectToolbar.setStatePartial({ left, top })
   }, _ => {
     cursor.offset.x = toolbarDragStarted.x
     cursor.offset.y = toolbarDragStarted.y
@@ -551,13 +554,13 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
         picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
       if (picked.hit) {
         selectedObject = picked.pickedMesh
-        toolbar.setState({ panel: 'objects' } as typeof toolbar.state)
+        toolbar.setStatePartial({ panel: 'objects' })
       }
       else {
         const picked = scene.pickWithRay(ray, mesh => !!getTerrainFromSubMeshes[mesh.name])
         if (picked.hit) {
           map.activeTerrain = map.terrains[ getTerrainFromSubMeshes[picked.pickedMesh.name] ]
-          toolbar.setState({ panel: 'layers', layerId: map.activeTerrain.name } as typeof toolbar.state)
+          toolbar.setStatePartial({ layerId: map.activeTerrain.name })
         }
       }
     }
@@ -606,9 +609,9 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
       const terrain = map.terrains[ map.objects[newObject.name].terrainId ]
       if (terrain !== map.activeTerrain) {
         editorHistory.commit(new SelectLayerAction(map, terrain.name))
-        toolbar.setState({ layerId: terrain.name } as typeof toolbar.state)
+        toolbar.setStatePartial({ layerId: terrain.name })
       }
-      objectToolbar.setState({ object: newObject as ObjectBase } as typeof objectToolbar.state)
+      objectToolbar.setStatePartial({ object: newObject as ObjectBase })
     }
   }))
 
@@ -621,7 +624,7 @@ function updateLoadingScreenProgress(index: number, total: number, progress: num
       const src = selectedObject.position,
         viewport = camera.viewport.toGlobal(canvas.width, canvas.height),
         pos = Vector3.Project(src, Matrix.Identity(), scene.getTransformMatrix(), viewport)
-      objectToolbar.setState({ left: pos.x, top: pos.y } as typeof objectToolbar.state)
+      objectToolbar.setStatePartial({ left: pos.x, top: pos.y })
     }
 
     if (keys.showCursor) {

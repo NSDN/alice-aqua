@@ -8,6 +8,7 @@ import {
   EventEmitter,
   queryStringGet,
   queryStringSet,
+  promiseObject,
 } from './'
 
 export async function checkFontsLoaded() {
@@ -56,20 +57,20 @@ export function appendElement(tag: string, attrs = { } as ElementAttributes, par
 }
 
 export function renderReactComponent<P, S>(render: (state: S, props?: P) => JSX.Element, container: Element) {
-  return new Promise<Component<P, S>>(resolve => {
-    class Renderer extends Component<P, S> {
-      setStatePartial(state: Partial<S>) {
-        super.setState(state as S)
-      }
-      componentDidMount() {
-        resolve(this)
-      }
-      render() {
-        return render(this.state)
-      }
+  class Renderer extends Component<P, S> {
+    setStatePartial(state: Partial<S>) {
+      super.setState(state as S)
     }
-    renderWithReact(h(Renderer, { }), container)
-  })
+    componentDidMount() {
+      wait.resolve(this as Renderer)
+    }
+    render() {
+      return render(this.state)
+    }
+  }
+  const wait = promiseObject<Renderer>()
+  renderWithReact(h(Renderer, { }), container)
+  return wait.promise
 }
 
 export function drawIconFont(dc: CanvasRenderingContext2D, className: string, x: number, y: number, size: number) {
@@ -96,7 +97,7 @@ export function promptDownloadText(filename: string, content: string) {
   a.parentNode.removeChild(a)
 }
 
-export function getUploadedText() {
+export function requestUploadingText() {
   return new Promise<string>((resolve, reject) => {
     const f = appendElement('input', { type: 'file', className: 'hidden' }) as HTMLInputElement
     f.addEventListener('change', _ => {

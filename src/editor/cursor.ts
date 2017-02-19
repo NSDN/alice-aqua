@@ -21,7 +21,7 @@ const CURSOR_NORMALS = [
 export function getMousePickOnMeshOrPlane(scene: Scene, px: number, py: number, h: number, filter: (mesh: Mesh) => boolean) {
   const ray = scene.createPickingRay(px, py, null, scene.activeCamera),
     picked = scene.pickWithRay(ray, filter),
-    [position, normal] = picked.hit && picked.pickedPoint.y > -0.1 ?
+    [position, normal] = picked.hit && picked.pickedPoint.y > h - 0.1 ?
       [picked.pickedPoint, picked.getNormal(true, false)] :
       [ray.origin.add(ray.direction.scale((h - ray.origin.y) / ray.direction.y)), new Vector3(0, 1, 0)]
   position.copyFromFloats(Math.floor(position.x + 0.001), Math.floor(position.y + 0.001), Math.floor(position.z + 0.001))

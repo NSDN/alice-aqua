@@ -330,7 +330,7 @@ function selectNextConfigItem(delta: number) {
     },
     async text(next, name: string = '', dialogJSON: string = '{ }') {
       const dialogs = JSON.parse(dialogJSON) as { [name: string]: { text: string, options: any } },
-        { text, options } = dialogs[name]
+        { text, options } = dialogs[name] || { text: '...', options: { } }
 
       let isCanceled = false
       const unbindOnEscape = keyInput.down.on('escape', () => {
