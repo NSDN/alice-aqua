@@ -14,10 +14,12 @@ import {
   StandardMaterial,
   Mesh,
   SSAORenderingPipeline,
+  LensRenderingPipeline,
 } from '../babylon'
 
 import {
-  EventEmitter
+  EventEmitter,
+  softClamp,
 } from '../utils'
 
 import {
@@ -170,6 +172,14 @@ export class Game extends EventEmitter<{
       if (this._timers.length && tick > this._timers[0].until) {
         this._timers = this._timers.filter(({ fn, until }) => until > tick || (fn(), false))
       }
+
+      if (this._lensRendering) {
+        const radius = this.camera.radius,
+          lensFocusDistance = softClamp(this._lensFocusDistance, radius - 1, radius + 1)
+        if (lensFocusDistance !== this._lensFocusDistance) {
+          this._lensRendering.setFocusDistance(this._lensFocusDistance = lensFocusDistance)
+        }
+      }
     })
   }
 
@@ -232,13 +242,65 @@ export class Game extends EventEmitter<{
   }
 
   private _ssao: SSAORenderingPipeline
+  get enableSSAO() {
+    return !!this._ssao
+  }
   set enableSSAO(val: boolean) {
     if (val && !this._ssao) {
+      // FIXME:
+      const hasLensRendering = this.enableLensRendering
+      if (hasLensRendering) {
+        this.enableLensRendering = false
+      }
       this._ssao = new SSAORenderingPipeline('ao', this.scene, 1, [this.camera])
+      if (hasLensRendering) {
+        this.enableLensRendering = true
+      }
     }
     else if (!val && this._ssao) {
       this._ssao.dispose()
       this._ssao = null
+    }
+  }
+
+  private _lensFocusDistance = 20
+  private _lensRendering: LensRenderingPipeline
+  get enableLensRendering() {
+    return !!this._lensRendering
+  }
+  set enableLensRendering(val: boolean) {
+    if (val && !this._lensRendering) {
+      this._lensRendering = new LensRenderingPipeline('lensEffects', {
+        edge_blur: 1.0,
+        chromatic_aberration: 2.0,
+        distortion: 1.0,
+        dof_focus_distance: this._lensFocusDistance = this.camera.radius,
+        dof_aperture: 2.0,
+        grain_amount: 1.0,
+        dof_pentagon: true,
+        dof_gain: 1.0,
+        dof_threshold: 1.0,
+        dof_darken: 0.25
+      }, this.scene, 1.0, [this.camera])
+    }
+    else if (!val && this._lensRendering) {
+      // FIXME
+      const hasSSAO = this.enableSSAO
+      if (hasSSAO) {
+        this.enableSSAO = false
+      }
+
+      // FIXME: have to disable effects before disposing
+      this.scene.postProcessRenderPipelineManager.disableEffectInPipeline('lensEffects', this._lensRendering.HighlightsEnhancingEffect, this.scene.cameras)
+      this.scene.postProcessRenderPipelineManager.disableEffectInPipeline('lensEffects', this._lensRendering.LensChromaticAberrationEffect, this.scene.cameras)
+      this.scene.postProcessRenderPipelineManager.disableEffectInPipeline('lensEffects', this._lensRendering.LensDepthOfFieldEffect, this.scene.cameras)
+
+      this._lensRendering.dispose(true)
+      this._lensRendering = null
+
+      if (hasSSAO) {
+        this.enableSSAO = true
+      }
     }
   }
 

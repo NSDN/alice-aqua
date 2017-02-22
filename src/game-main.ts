@@ -26,7 +26,6 @@ import {
   queue,
   step,
   sleep,
-  EventEmitter,
 } from './utils'
 
 import Terrain from './game/terrain'
@@ -139,26 +138,41 @@ class StageManager {
   }
 }
 
-class ConfigManager extends EventEmitter<{
-  change: { key: keyof typeof ConfigManager.defaultValue, val: string }
-}> {
+class ConfigManager {
   private static defaultValue = {
     lang: 'en',
+    lensRendering: 'on',
     ssao: 'off',
     volume: '3',
   }
-  static async load() {
-    const config = new ConfigManager()
+  static async load(game: Game) {
     // TODO: load from somewhere
+    let data = { ...ConfigManager.defaultValue }
     try {
-      Object.assign(config.data, JSON.parse(localStorage.getItem('game-config')))
+      Object.assign(data, JSON.parse(localStorage.getItem('game-config')))
     }
     catch (err) {
       console.error(err)
     }
 
-    Object.keys(config.data).forEach((key: keyof typeof ConfigManager.defaultValue) => {
-      const val = config.data[key],
+    const config = new ConfigManager()
+    config.updater = {
+      ssao(val) {
+        game.enableSSAO = val === 'on'
+      },
+      lensRendering(val) {
+        game.enableLensRendering = val === 'on'
+      },
+      lang(val) {
+        updateGameLanguage(val)
+      },
+      volume(_val) {
+        console.warn('setting up volume is not implemented yet')
+      },
+    }
+
+    Object.keys(data).forEach((key: keyof typeof ConfigManager.defaultValue) => {
+      const val = data[key],
         configItem = document.querySelector(`[config-key="${key}"]`)
       if (configItem) {
         const allValues = configItem.querySelectorAll('[config-val]')
@@ -168,25 +182,22 @@ class ConfigManager extends EventEmitter<{
         const configValue = configItem.querySelector(`[config-val="${val}"]`) || allValues[0]
         configValue.classList.add('active')
       }
+      config.set(key, val)
     })
+
     return config
   }
-  private constructor(private data = ConfigManager.defaultValue) {
-    super()
+  private updater = { } as { [P in keyof typeof ConfigManager.defaultValue]: (val: string) => void }
+  private constructor(private data = { } as typeof ConfigManager.defaultValue) {
   }
   get(key: keyof typeof ConfigManager.defaultValue) {
     return this.data[key]
   }
   set(key: keyof typeof ConfigManager.defaultValue, val: string) {
-    this.data[key] = val
-    this.emit('change', { key, val })
-  }
-  update() {
-    const activeList = MenuManager.activeList(),
-      key = activeList && activeList.getAttribute('config-key'),
-      activeItem = MenuManager.activeItem(),
-      val = activeItem && activeItem.getAttribute('config-val')
-    key && this.set(key as any, val)
+    if (this.data[key] !== val) {
+      this.data[key] = val
+      this.updater[key](val)
+    }
   }
   save() {
     localStorage.setItem('game-config', JSON.stringify(this.data))
@@ -267,6 +278,14 @@ function selectNextConfigItem(delta: number) {
   MenuManager.selectNext(delta, 'menu-config-list', 'menu-config-item')
 }
 
+function updateConfigFromActiveMenu(config: ConfigManager) {
+  const activeList = MenuManager.activeList(),
+    key = activeList && activeList.getAttribute('config-key'),
+    activeItem = MenuManager.activeItem(),
+    val = activeItem && activeItem.getAttribute('config-val')
+  key && config.set(key as any, val)
+}
+
 ; (async function() {
   await checkFontsLoaded()
 
@@ -279,23 +298,20 @@ function selectNextConfigItem(delta: number) {
     throw err
   }
 
+  let config: ConfigManager
+  try {
+    config = await ConfigManager.load(game)
+  }
+  catch (err) {
+    LoadingScreen.update(`load config failed: ${err && err.message || err}`)
+    throw err
+  }
+
   const { scene, camera } = game,
-    configManager = await ConfigManager.load(),
     keyInput = new KeyEmitter(KEY_MAP),
     keys = keyInput.state
 
   new SkyBox('sky', scene)
-
-  game.enableSSAO = configManager.get('ssao') === 'on'
-  updateGameLanguage(configManager.get('lang'))
-  configManager.on('change', ({ key, val }) => {
-    if (key === 'lang') {
-      updateGameLanguage(val)
-    }
-    else if (key === 'ssao') {
-      game.enableSSAO = val === 'on'
-    }
-  })
 
   const gameState = new GameState({
     async main(next) {
@@ -318,11 +334,11 @@ function selectNextConfigItem(delta: number) {
     },
     async config(next) {
       const unbindChangeConfigItem = keyInput.down.on('nav-vertical', () => selectNextConfigItem(keys.up ? -1 : 1)),
-        unbindChangeConfigValue = keyInput.down.on('nav-horizontal', () => configManager.update())
+        unbindChangeConfigValue = keyInput.down.on('nav-horizontal', () => updateConfigFromActiveMenu(config))
       await next()
       unbindChangeConfigItem()
       unbindChangeConfigValue()
-      configManager.save()
+      config.save()
     },
     async clear(next) {
       StageManager.clear()
