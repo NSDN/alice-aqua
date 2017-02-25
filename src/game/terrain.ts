@@ -26,7 +26,6 @@ import {
 import {
   arrayRange,
   throttle,
-  debounce,
   memo,
   compressWithRLE,
   extractWithRLE,
@@ -126,9 +125,6 @@ export default class Terrain extends EventEmitter<{
     }
 
     this.sideTileId = restoreData.sideTileId || tilesDefine[0].sideTileId
-
-    this.mergedSideMesh = new Mesh(this.name + '/side/merged', scene)
-    Terrain.terrainFromChunkMesh[this.mergedSideMesh.name] = this
 
     Object.keys(restoreData.chunks || { }).forEach(k => {
       const { tiles, heights } = restoreData.chunks[k]
@@ -258,96 +254,6 @@ export default class Terrain extends EventEmitter<{
     return data.exists ? data : this.createChunkData(data.k) && this.getChunkDataIfExists(m, n)
   }
 
-  private getChunkVertices(sideVd: VertexData, k: string) {
-    const { chunkUnits, unitSize } = this,
-      { heights, tiles, top: { position: { x, y, z } } } = this.data[k],
-      h0 = Math.max(Math.min.apply(Math, heights) - 1, 0),
-      chunkBlocks = getBlocksFromHeightMap(heights, chunkUnits, h0)
-
-    function getPixel(u: number, v: number) {
-      const isOutofRange = u < 0 || v < 0 || u === chunkUnits || v === chunkUnits,
-        t = isOutofRange ? 0 : tiles[u * chunkUnits + v],
-        h = isOutofRange ? 0 : heights[u * chunkUnits + v]
-      return { t, h }
-    }
-
-    const vdStart = sideVd.positions.length
-    chunkBlocks.forEach(([u0, u1, v0, v1, _h0, h1]) => {
-      // top
-      for (let u = u0, v = v1 - 1; u < u1; u ++) {
-        const i = getPixel(u, v), o = getPixel(u, v + 1)
-        if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
-          push.apply(sideVd.indices,   [0, 1, 2, 0, 2, 3].map(v => v + sideVd.positions.length / 3))
-          push.apply(sideVd.positions, [u, h + 1, v + 1, u + 1, h + 1, v + 1, u + 1, h, v + 1, u, h, v + 1].map(v => v * unitSize))
-          push.apply(sideVd.normals,   [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0])
-          push.apply(sideVd.uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this._sideTileId))
-        }
-      }
-      // left
-      for (let u = u0, v = v0; v < v1; v ++) {
-        const i = getPixel(u, v), o = getPixel(u - 1, v)
-        if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
-          push.apply(sideVd.indices,   [0, 1, 2, 0, 2, 3].map(v => v + sideVd.positions.length / 3))
-          push.apply(sideVd.positions, [u, h + 1, v, u, h + 1, v + 1, u, h, v + 1, u, h, v].map(v => v * unitSize))
-          push.apply(sideVd.normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
-          push.apply(sideVd.uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this._sideTileId))
-        }
-      }
-      // bottom
-      for (let u = u0, v = v0; u < u1; u ++) {
-        const i = getPixel(u, v), o = getPixel(u, v - 1)
-        if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
-          push.apply(sideVd.indices,   [0, 2, 1, 0, 3, 2].map(v => v + sideVd.positions.length / 3))
-          push.apply(sideVd.positions, [u, h + 1, v, u + 1, h + 1, v, u + 1, h, v, u, h, v].map(v => v * unitSize))
-          push.apply(sideVd.normals,   [0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0])
-          push.apply(sideVd.uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this._sideTileId))
-        }
-      }
-      // left
-      for (let u = u1 - 1, v = v0; v < v1; v ++) {
-        const i = getPixel(u, v), o = getPixel(u + 1, v)
-        if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
-          push.apply(sideVd.indices,   [0, 2, 1, 0, 3, 2].map(v => v + sideVd.positions.length / 3))
-          push.apply(sideVd.positions, [u + 1, h + 1, v, u + 1, h + 1, v + 1, u + 1, h, v + 1, u + 1, h, v].map(v => v * unitSize))
-          push.apply(sideVd.normals,   [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0])
-          push.apply(sideVd.uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this._sideTileId))
-        }
-      }
-    })
-
-    for (let i = vdStart; i < sideVd.positions.length; i += 3) {
-      sideVd.positions[i] += x
-      sideVd.positions[i + 1] += y
-      sideVd.positions[i + 2] += z
-    }
-  }
-
-  private readonly mergedSideMesh: Mesh
-  private updateMergedSideMeshDebounced = debounce(() => this.updateMergedSideMesh(), 1000)
-  private updateMergedSideMesh() {
-    Object.keys(this.data).forEach(k => {
-      const { side, edge } = this.data[k]
-      side.isVisible = edge.isVisible = false
-    })
-
-    const sideVd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] } as VertexData
-    Object.keys(this.data).forEach(k => this.getChunkVertices(sideVd, k))
-    Object.assign(new VertexData(), sideVd).applyToMesh(this.mergedSideMesh)
-    // FIXME: babylonjs
-    if (!sideVd.indices.length) this.mergedSideMesh.releaseSubMeshes()
-
-    this.mergedSideMesh.isVisible = true
-  }
-  private beginUpdateMergeSideMesh() {
-    Object.keys(this.data).forEach(k => {
-      const { side, edge } = this.data[k]
-      side.isVisible = edge.isVisible = true
-    })
-
-    this.updateMergedSideMeshDebounced()
-    this.mergedSideMesh.isVisible = false
-  }
-
   private updateTexture(m: number, n: number) {
     const { texture, u, v, t, h } = this.getChunkData(m, n),
       { unitTexSize, textureSize } = this,
@@ -471,7 +377,6 @@ export default class Terrain extends EventEmitter<{
       delete blocks[id]
     })
 
-    this.beginUpdateMergeSideMesh()
     this.emit('height-updated', this.getChunkData(m, n))
   }
 
@@ -528,7 +433,6 @@ export default class Terrain extends EventEmitter<{
   }
   set visibility(val) {
     this._visibility = val
-    this.mergedSideMesh.visibility = val
     Object.keys(this.data).forEach(k => {
       const { top, edge, side } = this.data[k]
       top.visibility = edge.visibility = side.visibility = val
@@ -541,7 +445,6 @@ export default class Terrain extends EventEmitter<{
   }
   set isVisible(val) {
     this._isVisible = val
-    this.mergedSideMesh.isVisible = val
     Object.keys(this.data).forEach(k => {
       const { top, edge, side } = this.data[k]
       top.isVisible = edge.isVisible = side.isVisible = val
