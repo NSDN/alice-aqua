@@ -41,7 +41,6 @@ import {
 } from '../game/objbase'
 
 import Terrain, {
-  Chunk,
 } from '../game/terrain'
 
 export function createDataURLFromIconFontAndSub(mainClass: string, subClass: string, size: number = 32, color = '#333') {
@@ -68,10 +67,6 @@ export class EditorMap extends EventEmitter<{
   'object-created': ObjectBase
   'object-removed': ObjectBase
   'terrain-activated': Terrain
-  'tile-updated': { terrain: Terrain }
-  'height-updated': { terrain: Terrain, chunk: Chunk }
-  'chunk-loaded': { terrain: Terrain, chunk: Chunk }
-  'terrain-moved': { terrain: Terrain, delta: Vector3 }
 }> {
   readonly objects = { } as { [id: string]: MapObjectData }
   readonly terrains = { } as { [id: string]: Terrain }
@@ -89,7 +84,6 @@ export class EditorMap extends EventEmitter<{
       this._activeTerrain.visibility = 0.5
     }
     if (this._activeTerrain = terrain) {
-      this._activeTerrain.isVisible = true
       this._activeTerrain.visibility = 1
       this.emit('terrain-activated', this._activeTerrain)
     }
@@ -103,21 +97,6 @@ export class EditorMap extends EventEmitter<{
     const { x, y, z } = data,
       { scene, assets } = this.game,
       terrain = new Terrain(id, scene, assets.tiles, data, new Vector3(x || 0, y || 0, z || 0))
-    terrain.on('chunk-loaded', chunk => {
-      this.emit('chunk-loaded', { terrain, chunk })
-    })
-    terrain.on('tile-updated', () => {
-      this.emit('tile-updated', { terrain })
-      this.saveDebounced()
-    })
-    terrain.on('height-updated', chunk => {
-      this.emit('height-updated', { terrain, chunk })
-      this.saveDebounced()
-    })
-    terrain.on('position-updated', delta => {
-      this.emit('terrain-moved', { terrain, delta })
-      this.saveDebounced()
-    })
     terrain.visibility = 0.5
     return this.terrains[id] = terrain
   }

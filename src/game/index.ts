@@ -18,8 +18,9 @@ import {
 } from '../babylon'
 
 import {
-  EventEmitter,
   softClamp,
+  propGet,
+  propSet,
 } from '../utils'
 
 import {
@@ -135,19 +136,15 @@ async function loadAllPlugins() {
   return { images, tiles, classes }
 }
 
-export class Game extends EventEmitter<{
-  loadProgress: { index: number, total: number, progress: number }
-}> {
+export class Game {
   readonly scene: Scene
   readonly camera: FollowCamera
   readonly engine: Engine
   readonly canvas: ScreenSpaceCanvas2D
   private constructor() {
-    super()
-
     const attrs = { style: { width: '100%', height: '100%' }, tabIndex: -1 },
       elem = appendElement('canvas', attrs) as HTMLCanvasElement,
-      engine = this.engine = new Engine(elem, true),
+      engine = this.engine = new Engine(elem, true, { stencil: true }),
       scene = this.scene = new Scene(engine)
 
     scene.enablePhysics(new Vector3(0, -3, 0))
@@ -180,6 +177,20 @@ export class Game extends EventEmitter<{
           this._lensRendering.setFocusDistance(this._lensFocusDistance = lensFocusDistance)
         }
       }
+
+      Object.keys(this.animations).forEach(id => {
+        const { object, key, target, step } = this.animations[id],
+          current = propGet(object, key)
+        if (Math.abs(current - target) > step) {
+          propSet(object, key, current < target ?
+            Math.min(target, current + step) :
+            Math.max(target, current - step))
+        }
+        else {
+          propSet(object, key, target)
+          delete this.animations[id]
+        }
+      })
     })
   }
 
@@ -247,7 +258,7 @@ export class Game extends EventEmitter<{
   }
   set enableSSAO(val: boolean) {
     if (val && !this._ssao) {
-      // FIXME:
+      // FIXME
       const hasLensRendering = this.enableLensRendering
       if (hasLensRendering) {
         this.enableLensRendering = false
@@ -302,6 +313,11 @@ export class Game extends EventEmitter<{
         this.enableSSAO = true
       }
     }
+  }
+
+  private animations = { } as { [id: string]: { object: any, key: string, target: number, step: number } }
+  startAnimation(id: string, object: any, key: string, target: number, step = (target - propGet(object, key)) / 100) {
+    this.animations[id] = { object, key, target, step }
   }
 
   static async load(onProgress: (index: number, total: number, progress: number) => void) {

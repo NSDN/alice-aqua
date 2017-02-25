@@ -58,6 +58,20 @@ export function extractWithRLE(packed: number[]) {
   return array
 }
 
+export function propGet(object: any, key: string | string[]) {
+  const path = Array.isArray(key) ? key : key.split('.')
+  return path.reduce((v, c) => v !== undefined && v !== null ? v[c] : v, object)
+}
+
+export function propSet(object: any, key: string | string[], val: any) {
+  const path = Array.isArray(key) ? key : key.split('.'),
+    lastKey = path.pop(),
+    lastObject = propGet(object, path)
+  if (lastObject !== undefined && lastObject !== null) {
+    lastObject[lastKey] = val
+  }
+}
+
 export function queue() {
   let running = null as {
     start: () => Promise<any>
@@ -101,7 +115,7 @@ export async function sleep(delay: number) {
   await new Promise(resolve => setTimeout(resolve, delay))
 }
 
-export function fpsCounter(n = 30) {
+export function fpsCounter(n = 101) {
   let a = Array(n).fill(0), c = 0
   return () => {
     const i = c,
@@ -157,12 +171,10 @@ function equal<T>(a: T, b: T) {
   }
 }
 
-export function watch<T>(test: (...args: any[]) => T,
-    update: (newVal?: T, oldVal?: T) => void, oldVal?: T) {
-  return (...args: any[]) => {
-    const newVal = test.apply(null, args)
+export function check<T>(fn: (newVal?: T, oldVal?: T) => void, oldVal?: T) {
+  return (newVal: T) => {
     if (!equal(newVal, oldVal)) {
-      update(newVal, oldVal)
+      fn(newVal, oldVal)
       oldVal = newVal
     }
   }

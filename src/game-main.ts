@@ -1,5 +1,7 @@
 import {
   Vector3,
+  Ray,
+  Scene,
 } from './babylon'
 
 import {
@@ -26,6 +28,7 @@ import {
   queue,
   step,
   sleep,
+  check,
 } from './utils'
 
 import Terrain from './game/terrain'
@@ -86,13 +89,14 @@ class Stage {
 }
 
 class StageManager {
-  static DEFAULT_HISTORY_VALUE = JSON.stringify([{ url: 'assets/stage/startup.json', x: 0, y: 0, z: 0 }])
+  static readonly defaultHistory = JSON.stringify([{ url: 'assets/stage/startup.json', x: 0, y: 0, z: 0 }])
+
   static async restore(game: Game) {
     const stageManager = new StageManager(game),
       history = [ ] as { url: string, x: number, y: number, z: number }[]
     // TODO: load from somewhere
     try {
-      const historyJSON = LocationSearch.get('stageHistoryArray') || localStorage.getItem('stage-history') || StageManager.DEFAULT_HISTORY_VALUE
+      const historyJSON = LocationSearch.get('stageHistoryArray') || localStorage.getItem('stage-history') || StageManager.defaultHistory
       history.push.apply(history, JSON.parse(historyJSON))
     }
     catch (err) {
@@ -107,7 +111,7 @@ class StageManager {
     return !!localStorage.getItem('stage-history')
   }
   static clear() {
-    localStorage.setItem('stage-history', StageManager.DEFAULT_HISTORY_VALUE)
+    localStorage.setItem('stage-history', StageManager.defaultHistory)
   }
 
   private stages = [ ] as Stage[]
@@ -139,15 +143,16 @@ class StageManager {
 }
 
 class ConfigManager {
-  private static defaultValue = {
+  private static defaultValues = {
     lang: 'en',
     lensRendering: 'on',
     ssao: 'off',
     volume: '3',
   }
+
   static async load(game: Game) {
     // TODO: load from somewhere
-    let data = { ...ConfigManager.defaultValue }
+    let data = { ...ConfigManager.defaultValues }
     try {
       Object.assign(data, JSON.parse(localStorage.getItem('game-config')))
     }
@@ -171,7 +176,7 @@ class ConfigManager {
       },
     }
 
-    Object.keys(data).forEach((key: keyof typeof ConfigManager.defaultValue) => {
+    Object.keys(data).forEach((key: keyof typeof ConfigManager.defaultValues) => {
       const val = data[key],
         configItem = document.querySelector(`[config-key="${key}"]`)
       if (configItem) {
@@ -187,13 +192,14 @@ class ConfigManager {
 
     return config
   }
-  private updater = { } as { [P in keyof typeof ConfigManager.defaultValue]: (val: string) => void }
-  private constructor(private data = { } as typeof ConfigManager.defaultValue) {
+  private data = { } as typeof ConfigManager.defaultValues
+  private updater = { } as { [P in keyof typeof ConfigManager.defaultValues]: (val: string) => void }
+  private constructor() {
   }
-  get(key: keyof typeof ConfigManager.defaultValue) {
+  get(key: keyof typeof ConfigManager.defaultValues) {
     return this.data[key]
   }
-  set(key: keyof typeof ConfigManager.defaultValue, val: string) {
+  set(key: keyof typeof ConfigManager.defaultValues, val: string) {
     if (this.data[key] !== val) {
       this.data[key] = val
       this.updater[key](val)
@@ -284,6 +290,13 @@ function updateConfigFromActiveMenu(config: ConfigManager) {
     activeItem = MenuManager.activeItem(),
     val = activeItem && activeItem.getAttribute('config-val')
   key && config.set(key as any, val)
+}
+
+function checkCoverTerrain(scene: Scene, origin: Vector3, target: Vector3) {
+  const delta = target.subtract(origin),
+    ray = new Ray(origin, delta.clone().normalize(), delta.length()),
+    picked = scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh))
+    return picked.hit && Terrain.getTerrainFromMesh(picked.pickedMesh)
 }
 
 ; (async function() {
@@ -387,8 +400,7 @@ function updateConfigFromActiveMenu(config: ConfigManager) {
       await next()
     },
     async dialog(next, dialogJSON: string = '') {
-      const player = scene.getMeshesByTags(Player.PLAYER_TAG)
-        .find(player => (player as Player).isPlayerActive) as Player
+      const player = Player.getActive(scene)
       player.isPlayerActive = false
       document.body.classList.add('keep-dialog-screen-open')
 
@@ -433,6 +445,21 @@ function updateConfigFromActiveMenu(config: ConfigManager) {
   BulletinBoard.eventEmitter.on('read-bulletin-content', dialogContent => {
     const dialogJSON = JSON.stringify(dialogContent)
     gameState.goto(`dialog:${encodeURIComponent(dialogJSON)}`)
+  })
+
+  const checkHoverTerrainChange = check<Terrain>((newTerrain, oldTerrain) => {
+    oldTerrain && game.startAnimation(oldTerrain.name + '/fade', oldTerrain, 'visibility', 1.0, 0.03)
+    newTerrain && game.startAnimation(newTerrain.name + '/fade', newTerrain, 'visibility', 0.3, 0.03)
+  })
+
+  scene.registerBeforeRender(() => {
+    const player = Player.getActive(scene)
+    if (player) {
+      const spritePosition = player.spriteBody.getAbsolutePosition(),
+        offset = new Vector3(0, player.spriteBody.scaling.y * 0.4, 0),
+        coverTop = checkCoverTerrain(scene, camera.position, spritePosition.add(offset))
+      checkHoverTerrainChange(coverTop)
+    }
   })
 
   await sleep(1000)

@@ -15,6 +15,9 @@ import {
   Game,
 } from './game'
 
+import Terrain, {
+} from './game/terrain'
+
 import {
   ObjectBase,
 } from './game/objbase'
@@ -54,7 +57,7 @@ import {
 
 import {
   queryStringSet,
-  watch,
+  check,
   memo,
   sleep,
   randomBytes,
@@ -155,7 +158,7 @@ function playMapInNewWindow(map: EditorMap) {
     keyInput = new KeyEmitter(KEY_MAP),
     keys = keyInput.state,
 
-    cursor = new Cursor('cursor', scene, (mesh: Mesh) => !!getTerrainFromSubMeshes[mesh.name]),
+    cursor = new Cursor('cursor', scene, mesh => !!Terrain.getTerrainFromMesh(mesh)),
     lastSelection = new SelectionBox('select', scene),
     grid = new GridPlane('grids', scene, 32),
 
@@ -368,7 +371,11 @@ function playMapInNewWindow(map: EditorMap) {
     }
   })
 
-  map.on('height-updated', ({ terrain, chunk }) => {
+  Terrain.eventEmitter.on('tile-updated', () => {
+    map.saveDebounced()
+  })
+
+  Terrain.eventEmitter.on('height-updated', ({ terrain, chunk }) => {
     const pos = chunk.top.position, size = terrain.chunkSize,
       box = new BoundingBox(pos, pos.add(new Vector3(size, 0, size)))
     Object.keys(map.objects)
@@ -380,9 +387,10 @@ function playMapInNewWindow(map: EditorMap) {
           mesh.position.y = terrain.getPixel(x, z).h
         }
       })
+    map.saveDebounced()
   })
 
-  map.on('terrain-moved', ({ terrain, delta }) => {
+  Terrain.eventEmitter.on('position-updated', ({ terrain, delta }) => {
     Object.keys(map.objects)
       .filter(id => map.objects[id].terrainId === terrain.name)
       .map(id => scene.getMeshByName(id))
@@ -390,13 +398,7 @@ function playMapInNewWindow(map: EditorMap) {
     if (terrain === map.activeTerrain) {
       cursor.baseHeight = grid.position.y = terrain.position.y
     }
-  })
-
-  const getTerrainFromSubMeshes = { } as { [id: string]: string }
-  map.on('chunk-loaded', ({ terrain, chunk }) => {
-    getTerrainFromSubMeshes[chunk.top.name] = terrain.name
-    getTerrainFromSubMeshes[chunk.edge.name] = terrain.name
-    getTerrainFromSubMeshes[chunk.side.name] = terrain.name
+    map.saveDebounced()
   })
 
   editorHistory.on('change', () => {
@@ -567,9 +569,9 @@ function playMapInNewWindow(map: EditorMap) {
         toolbar.setStatePartial({ panel: 'objects' })
       }
       else {
-        const picked = scene.pickWithRay(ray, mesh => !!getTerrainFromSubMeshes[mesh.name])
+        const picked = scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh))
         if (picked.hit) {
-          map.activeTerrain = map.terrains[ getTerrainFromSubMeshes[picked.pickedMesh.name] ]
+          map.activeTerrain = Terrain.getTerrainFromMesh(picked.pickedMesh)
           toolbar.setStatePartial({ layerId: map.activeTerrain.name })
         }
       }
@@ -581,11 +583,7 @@ function playMapInNewWindow(map: EditorMap) {
     (cursor.isVisible = isDown) ? camera.detachControl(canvas) : camera.attachControl(canvas, true)
   })
 
-  keyInput.any.on('change', watch(() => [
-    toolbar.state.panel === 'brushes' ? pixelHeightNames[toolbar.state.tileHeight] : toolbar.state.panel,
-    keys.ctrlKey ? '-ctrl' : '',
-    keys.shiftKey ? '-shift' : ''
-  ], keyStates => {
+  const checkCursorStateChange = check<string[]>(keyStates => {
     const cursorClass = 'cursor-' + keyStates.join(''),
       iconClass = iconClassFromCursorClass[cursorClass]
     Object.keys(iconClassFromCursorClass).forEach(cursorClass => canvas.classList.remove(cursorClass))
@@ -593,15 +591,19 @@ function playMapInNewWindow(map: EditorMap) {
       appendCursorStyle(cursorClass)
       canvas.classList.add(cursorClass)
     }
-  }))
+  })
+
+  keyInput.any.on('change', () => checkCursorStateChange([
+    toolbar.state.panel === 'brushes' ? pixelHeightNames[toolbar.state.tileHeight] : toolbar.state.panel,
+    keys.ctrlKey ? '-ctrl' : '',
+    keys.shiftKey ? '-shift' : ''
+  ]))
 
   keyInput.down.on('focus', () => camera.followTarget.copyFrom(cursor.hover))
   keyInput.down.on('undo',  () => editorHistory.undo())
   keyInput.down.on('redo',  () => editorHistory.redo())
 
-  scene.registerBeforeRender(watch(() => {
-    return toolbar.state.panel === 'objects' && selectedObject
-  }, (newObject, oldObject) => {
+  const checkSelectedObjectChange = check<AbstractMesh>((newObject, oldObject) => {
     document.body.classList[newObject ? 'add' : 'remove']('has-object-selected')
 
     if (oldObject) {
@@ -619,11 +621,13 @@ function playMapInNewWindow(map: EditorMap) {
       }
       objectToolbar.setStatePartial({ object: newObject as ObjectBase })
     }
-  }))
+  })
 
   const fpsCounterText = document.getElementById('fpsCounterText'),
     computeFps = fpsCounter()
   scene.registerBeforeRender(() => {
+    checkSelectedObjectChange(toolbar.state.panel === 'objects' && selectedObject)
+
     fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
 
     if (toolbar.state.panel === 'objects' && selectedObject && !toolbarDragStarted) {

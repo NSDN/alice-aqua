@@ -12,6 +12,7 @@ import {
   Quaternion,
   Tags,
   ParticleSystem,
+  HighlightLayer,
 } from '../babylon'
 
 import {
@@ -60,12 +61,17 @@ const KEY_MAP = {
 
 export default class Player extends Mesh {
   static readonly PLAYER_TAG = 'player-tag'
+  static getActive(scene: Scene) {
+    return (scene as any as { currentActivePlayer: Player }).currentActivePlayer
+  }
+
   private static keyInput = new KeyEmitter(KEY_MAP)
 
   readonly spriteBody: Mesh
   readonly playerHead: Mesh
   readonly shadow: AbstractMesh
   readonly particle: ParticleSystem
+  readonly highlightLayer: HighlightLayer
   readonly lastShadowDropPosition = Vector3.Zero()
 
   private isPlayerOnGround = false
@@ -83,13 +89,23 @@ export default class Player extends Mesh {
       this.playerHead.physicsImpostor.dispose()
       this.playerHead.physicsImpostor = new PhysicsImpostor(this.playerHead, PhysicsImpostor.SphereImpostor)
       this.physicsImpostor.forceUpdate()
+      /*
+      const sprite = this.spriteBody
+      val ? this.highlightLayer.addMesh(sprite, Color3.White()) : this.highlightLayer.removeMesh(sprite)
+      */
+      const withActivePlayer = this.getScene() as any as { currentActivePlayer: Player }
+      if (val) {
+        withActivePlayer.currentActivePlayer = this
+      }
+      else if (withActivePlayer.currentActivePlayer === this) {
+        withActivePlayer.currentActivePlayer = null
+      }
     }
     this._isPlayerActive = val
   }
 
   private canJumpFromPickedMesh(mesh: Mesh) {
-    return mesh.isVisible && mesh.visibility === 1 &&
-      mesh !== this && mesh.parent !== this && mesh !== this.shadow
+    return mesh.isVisible && mesh !== this && mesh.parent !== this && mesh !== this.shadow
   }
   private pickFromBottom(x = 0, z = 0, dist = 0.1) {
     const origin = this.position.add(new Vector3(x, dist - this.opts.width / 2, z)),
@@ -185,6 +201,11 @@ export default class Player extends Mesh {
     }
     this.shadow = shadowCache.createInstance(this.name + '/shadow')
 
+    const sceneWithHighlight = scene as any as { playerHighlightLayer: HighlightLayer }
+    if (!(this.highlightLayer = sceneWithHighlight.playerHighlightLayer)) {
+      this.highlightLayer = sceneWithHighlight.playerHighlightLayer = new HighlightLayer('player/highlight', scene)
+    }
+
     const ps = this.particle = new ParticleSystem(this.name + '/particles', 20, scene)
     ps.particleTexture = new Texture('assets/Flare.png', scene)
     ps.gravity = new Vector3(0, -5, 0)
@@ -206,6 +227,7 @@ export default class Player extends Mesh {
 
     const unBindKeys = Player.keyInput.any.on('change', onKeyChange)
     this.onDisposeObservable.add(_ => {
+      this.isPlayerActive = false
       this.usableObject && this.usableObject.displayUsable(this, false)
       this.shadow.dispose()
       this.particle.dispose()
