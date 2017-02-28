@@ -21,15 +21,12 @@ import {
 } from '../game/objbase'
 
 import {
-  KeyEmitter,
-} from '../utils/dom'
-
-import {
   VERTEX_PLANE,
   VERTEX_GROUND,
   VERTEX_SPHERE,
   VERTEX_DUMMY,
   FollowCamera,
+  GamepadInput,
 } from '../utils/babylon'
 
 import Sprite from './sprite'
@@ -53,10 +50,11 @@ const KEY_MAP = {
   moveBack: 'S',
   moveLeft: 'A',
   moveRight: 'D',
-  jump: 'SPACE',
+  jump: 'SPACE | PAD-A',
   crunch: 'C',
-  switch: 'Q',
-  use: 'E'
+  switchPrev: 'PAD-LB',
+  switchNext: 'Q | PAD-Y | PAD-RB',
+  use: 'E | PAD-X',
 }
 
 export default class Player extends Mesh {
@@ -65,7 +63,7 @@ export default class Player extends Mesh {
     return (scene as any as { currentActivePlayer: Player }).currentActivePlayer
   }
 
-  private static keyInput = new KeyEmitter(KEY_MAP)
+  private static input = new GamepadInput(KEY_MAP)
 
   readonly spriteBody: Mesh
   readonly playerHead: Mesh
@@ -75,6 +73,7 @@ export default class Player extends Mesh {
   readonly lastShadowDropPosition = Vector3.Zero()
 
   private isPlayerOnGround = false
+  private isPlayerWalking = false
   private forwardDirection = new Vector3(0, 0, 1)
   private usableObject = null as IUsable
 
@@ -89,6 +88,7 @@ export default class Player extends Mesh {
       this.playerHead.physicsImpostor.dispose()
       this.playerHead.physicsImpostor = new PhysicsImpostor(this.playerHead, PhysicsImpostor.SphereImpostor)
       this.physicsImpostor.forceUpdate()
+      this.shadow.scaling.copyFromFloats(val ? 1 : 0.5, 1, val ? 1 : 0.5)
       /*
       const sprite = this.spriteBody
       val ? this.highlightLayer.addMesh(sprite, Color3.White()) : this.highlightLayer.removeMesh(sprite)
@@ -200,6 +200,8 @@ export default class Player extends Mesh {
       shadowTexture.hasAlpha = true
     }
     this.shadow = shadowCache.createInstance(this.name + '/shadow')
+    this.shadow.scaling.copyFromFloats(0.5, 1, 0.5)
+    this.shadow.scaling.copyFromFloats(1, 1, 1)
 
     const sceneWithHighlight = scene as any as { playerHighlightLayer: HighlightLayer }
     if (!(this.highlightLayer = sceneWithHighlight.playerHighlightLayer)) {
@@ -207,11 +209,15 @@ export default class Player extends Mesh {
     }
 
     const ps = this.particle = new ParticleSystem(this.name + '/particles', 20, scene)
-    ps.particleTexture = new Texture('assets/Flare.png', scene)
+    const particleTexture = ps.particleTexture = new DynamicTexture('player/dust', 1, scene, false),
+      dc = particleTexture.getContext()
+    dc.fillStyle = '#888'
+    dc.fillRect(0, 0, 1, 1)
+    particleTexture.update()
     ps.gravity = new Vector3(0, -5, 0)
     ps.emitter = this
-    ps.minSize = 0.2
-    ps.maxSize = 0.4
+    ps.minSize = 0.1
+    ps.maxSize = 0.2
     ps.minLifeTime = 0.3
     ps.maxLifeTime = 0.5
     ps.minEmitBox = new Vector3(-opts.width / 2, -opts.width / 2, -opts.width / 2)
@@ -219,13 +225,10 @@ export default class Player extends Mesh {
     ps.direction1 = new Vector3(0, 0, 1)
     ps.direction1 = new Vector3(1, 0, 0)
 
-    const onKeyChange = (key: { name: keyof typeof KEY_MAP, down: boolean }) => {
-      if (this.isPlayerActive) {
-        this.updatePlayerFromKey(key.name, key.down)
-      }
-    }
+    const unBindKeys = Player.input.any.on('change', ({ name, down }) => {
+      this._isPlayerActive && this.updatePlayerFromKey(name, down)
+    })
 
-    const unBindKeys = Player.keyInput.any.on('change', onKeyChange)
     this.onDisposeObservable.add(_ => {
       this.isPlayerActive = false
       this.usableObject && this.usableObject.displayUsable(this, false)
@@ -261,10 +264,12 @@ export default class Player extends Mesh {
       // you can not update the physics in the loop
       setImmediate(() => {
         const vc = this.forwardDirection,
-          keys = Player.keyInput.state,
-          dz = (keys.moveForward ? 1 : 0) + (keys.moveBack ? -1 : 0),
-          dx = (keys.moveLeft ? -1 : 0) + (keys.moveRight ? 1 : 0)
-        if (this._isPlayerActive && (dx || dz)) {
+          keys = Player.input.state,
+          leftStick = Player.input.leftStick,
+          [dx, dz] = leftStick && new Vector3(leftStick.x, leftStick.y, 0).length() > 0.15 ?
+            [leftStick.x, -leftStick.y] :
+            [(keys.moveLeft ? -1 : 0) + (keys.moveRight ? 1 : 0), (keys.moveForward ? 1 : 0) + (keys.moveBack ? -1 : 0)]
+        if (this._isPlayerActive && (this.isPlayerWalking = dx || dz)) {
           const mf = this.opts.moveForce * (this.isPlayerOnGround ? 1 : 0.08),
             ay = Math.atan2(dx, dz) + Math.atan2(vc.x, vc.z),
             fx = mf * Math.sin(ay), fz = mf * Math.cos(ay)
@@ -286,8 +291,7 @@ export default class Player extends Mesh {
       angle = Math.PI * 4 - Math.atan2(delta.z, delta.x) - offset,
       vIndex = Math.floor(angle / (Math.PI * 2 / 8) + 0.5) + 1
     texture.vOffset = vIndex % 8 * 32 / 256
-    const keys = Player.keyInput.state
-    if (this._isPlayerActive && (keys.moveLeft || keys.moveRight || keys.moveForward || keys.moveBack)) {
+    if (this._isPlayerActive && this.isPlayerWalking) {
       const uIndex = Math.floor(this.frameIndex ++ / 10)
       texture.uOffset = uIndex % 4 * 24 / 256
     }
@@ -320,9 +324,10 @@ export default class Player extends Mesh {
         mesh = pick.hit && pick.pickedMesh as any as IUsable
       mesh && mesh.useFrom && mesh.useFrom(this)
     }
-    else if (key === 'switch' && !down) {
-      const allPlayers = this.getScene().getMeshesByTags(Player.PLAYER_TAG),
-        nextPlayer = allPlayers[(allPlayers.indexOf(this) + 1) % allPlayers.length] as Player
+    else if ((key === 'switchNext' || key === 'switchPrev') && !down) {
+      const delta = key === 'switchNext' ? 1 : -1,
+        allPlayers = this.getScene().getMeshesByTags(Player.PLAYER_TAG),
+        nextPlayer = allPlayers[(allPlayers.indexOf(this) + delta + allPlayers.length) % allPlayers.length] as Player
       allPlayers.filter(mesh => mesh !== nextPlayer).forEach(mesh => (mesh as Player).isPlayerActive = false)
       setImmediate(_ => nextPlayer.isPlayerActive = true)
     }

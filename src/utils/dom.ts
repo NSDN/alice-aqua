@@ -286,10 +286,9 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
     down:   keyof KM
   }>()
 
+  protected keyEvents = new EventEmitter<{ [key: string]: boolean }>()
   constructor(keyMap: KM) {
     super()
-
-    const keyEvents = new EventEmitter<{ [key: string]: boolean }>()
 
     for (const name in keyMap) {
       const comboKeys = (keyMap[name] + '').split('|'),
@@ -297,7 +296,7 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
       comboKeys.forEach((combKey, order) => {
         const keys = combKey.split('+').map(s => s.replace(/^\s+/, '').replace(/\s+$/, '')),
           keyDown = keys.map(_ => false)
-        keys.forEach((key, index) => keyEvents.on(key, isDown => {
+        keys.forEach((key, index) => this.keyEvents.on(key, isDown => {
           keyDown[index] = isDown
           comboKeyDown[order] = keyDown.every(Boolean)
           const down = comboKeyDown.some(Boolean)
@@ -313,12 +312,12 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
 
     window.addEventListener('keydown', evt => {
       const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which.toString()
-      keyEvents.emit(key, true)
+      this.keyEvents.emit(key, true)
     })
 
     window.addEventListener('keyup', evt => {
       const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which.toString()
-      keyEvents.emit(key, false)
+      this.keyEvents.emit(key, false)
     })
   }
 }

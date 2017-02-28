@@ -142,7 +142,7 @@ export class Game {
   readonly engine: Engine
   readonly canvas: ScreenSpaceCanvas2D
   private constructor() {
-    const attrs = { style: { width: '100%', height: '100%' }, tabIndex: -1 },
+    const attrs = { style: { width: '100%', height: '100%' }, tabIndex: -1, className: 'canvas-main' },
       elem = appendElement('canvas', attrs) as HTMLCanvasElement,
       engine = this.engine = new Engine(elem, true, { stencil: true }),
       scene = this.scene = new Scene(engine)
@@ -152,10 +152,10 @@ export class Game {
     scene.clearColor = Color3.FromHexString('#607f9a').scale(0.7).toColor4()
 
     const camera = this.camera = scene.activeCamera = new FollowCamera('camera', 0, 0, 50, Vector3.Zero(), scene)
-    camera.lowerRadiusLimit = 20
+    camera.lowerRadiusLimit = 15
     camera.upperRadiusLimit = 100
     camera.lowerBetaLimit = Math.PI * 0.15
-    camera.upperBetaLimit = Math.PI * 0.45
+    camera.upperBetaLimit = Math.PI * 0.48
     camera.attachControl(elem, true)
     camera.keysUp = camera.keysDown = camera.keysLeft = camera.keysRight = [ ]
 
@@ -165,32 +165,9 @@ export class Game {
     window.addEventListener('resize', () => engine.resize())
 
     scene.registerAfterRender(() => {
-      const tick = this.tickNow
-      if (this._timers.length && tick > this._timers[0].until) {
-        this._timers = this._timers.filter(({ fn, until }) => until > tick || (fn(), false))
-      }
-
-      if (this._lensRendering) {
-        const radius = this.camera.radius,
-          lensFocusDistance = softClamp(this._lensFocusDistance, radius - 1, radius + 1)
-        if (lensFocusDistance !== this._lensFocusDistance) {
-          this._lensRendering.setFocusDistance(this._lensFocusDistance = lensFocusDistance)
-        }
-      }
-
-      Object.keys(this.animations).forEach(id => {
-        const { object, key, target, step } = this.animations[id],
-          current = propGet(object, key)
-        if (Math.abs(current - target) > step) {
-          propSet(object, key, current < target ?
-            Math.min(target, current + step) :
-            Math.max(target, current - step))
-        }
-        else {
-          propSet(object, key, target)
-          delete this.animations[id]
-        }
-      })
+      this.updateTimeout()
+      this.updateAnimation()
+      this.lensFocusDistance = softClamp(this._lensFocusDistance, this.camera.radius - 1, this.camera.radius + 1)
     })
   }
 
@@ -216,6 +193,12 @@ export class Game {
   }
 
   private _timers = [ ] as { fn: Function, until: number }[]
+  updateTimeout() {
+    const tick = this.tickNow
+    if (this._timers.length && tick > this._timers[0].until) {
+      this._timers = this._timers.filter(({ fn, until }) => until > tick || (fn(), false))
+    }
+  }
   timeout(fn: Function, delay: number) {
     const until = this.tickNow + delay,
       timer = { fn, until }
@@ -275,6 +258,16 @@ export class Game {
   }
 
   private _lensFocusDistance = 20
+  get lensFocusDistance() {
+    return this._lensFocusDistance
+  }
+  set lensFocusDistance(val) {
+    if (val !== this._lensFocusDistance) {
+      this._lensRendering && this._lensRendering.setFocusDistance(val)
+      this._lensFocusDistance = val
+    }
+  }
+
   private _lensRendering: LensRenderingPipeline
   get enableLensRendering() {
     return !!this._lensRendering
@@ -283,10 +276,10 @@ export class Game {
     if (val && !this._lensRendering) {
       this._lensRendering = new LensRenderingPipeline('lensEffects', {
         edge_blur: 1.0,
-        chromatic_aberration: 2.0,
+        chromatic_aberration: 1.0,
         distortion: 1.0,
         dof_focus_distance: this._lensFocusDistance = this.camera.radius,
-        dof_aperture: 2.0,
+        dof_aperture: 3.0,
         grain_amount: 1.0,
         dof_pentagon: true,
         dof_gain: 1.0,
@@ -316,8 +309,26 @@ export class Game {
   }
 
   private animations = { } as { [id: string]: { object: any, key: string, target: number, step: number } }
+  updateAnimation() {
+    Object.keys(this.animations).forEach(id => {
+      const { object, key, target, step } = this.animations[id],
+        current = propGet(object, key)
+      if (Math.abs(current - target) > step) {
+        propSet(object, key, current < target ?
+          Math.min(target, current + step) :
+          Math.max(target, current - step))
+      }
+      else {
+        propSet(object, key, target)
+        delete this.animations[id]
+      }
+    })
+  }
   startAnimation(id: string, object: any, key: string, target: number, step = (target - propGet(object, key)) / 100) {
     this.animations[id] = { object, key, target, step }
+  }
+  stopAnimation(id: string) {
+    delete this.animations[id]
   }
 
   static async load(onProgress: (index: number, total: number, progress: number) => void) {

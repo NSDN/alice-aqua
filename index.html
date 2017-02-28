@@ -54,15 +54,15 @@
       opacity: 1;
     }
 
+    .screen {
+      z-index: 1;
+    }
     .screen .title {
       font-size: 250%;
     }
 
     .screen-main {
       color: #eee;
-    }
-    .game-play.game-main .screen-main {
-      visibility: hidden;
     }
     .screen-main .title {
       font-size: 150%;
@@ -71,14 +71,23 @@
       min-width: 200px;
     }
     
+    .canvas-main {
+      transition: all 0.5s;
+    }
+    .game-pause .canvas-main {
+      filter: blur(3px);
+    }
     .screen-pause {
-      background: rgba(255, 255, 255, 0.5);
+      color: #eee;
       transition: visibility 0s 0.2s, opacity 0.2s linear;
       opacity: 0;
     }
     .game-pause .screen-pause {
       transition: visibility 0s 0s, opacity 0.2s linear;
       opacity: 1;
+    }
+    .screen-pause .title {
+      font-size: 400%;
     }
     .screen-pause .content {
       position: absolute;

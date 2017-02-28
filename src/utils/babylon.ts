@@ -6,11 +6,18 @@ import {
   PhysicsImpostor,
   ArcRotateCamera,
   StandardMaterial,
+  Xbox360Button,
+  Xbox360Dpad,
 } from '../babylon'
 
 import {
   softClamp,
+  EventEmitter,
 } from './'
+
+import {
+  KeyEmitter,
+} from './dom'
 
 export function Vector3Map(vec: Vector3, fn: (x: number, a?: 'x' | 'y' | 'z') => number) {
   return new Vector3(fn(vec.x, 'x'), fn(vec.y, 'y'), fn(vec.z, 'z'))
@@ -230,15 +237,38 @@ function nearestAngle(a: number, b: number) {
 
 export class FollowCamera extends ArcRotateCamera {
   public readonly followTarget = Vector3.Zero()
-  public readonly followSpeed = new Vector3(0.1, 0.05, 0.1)
+  public readonly followSpeed = new Vector3(0.1, 0.1, 0.1)
   public followAlpha = undefined as number | undefined
   public lowerBetaSoftLimit = 0
   public upperBetaSoftLimit = 1 / 0
   public lowerRadiusSoftLimit = 0
   public upperRadiusSoftLimit = 1 / 0
+  public rotationSensibility = 15
+  public rotationDeadZone = 0.15
+  public zoomSensibility = 1
+  public zoomDeadZone = 0.15
+
+  updateRotation({ x, y }: { x: number, y: number }) {
+    if (Math.abs(x) > this.rotationDeadZone) {
+      this.alpha += x / this.rotationSensibility * 0.5
+    }
+    if (Math.abs(y) > this.rotationDeadZone) {
+      this.beta += y / this.rotationSensibility
+    }
+  }
+
+  updateDistance(d: number) {
+    if (Math.abs(d) > this.zoomDeadZone) {
+      this.radius += d / this.zoomSensibility
+    }
+  }
 
   constructor(name: string, alpha: number, beta: number, radius: number, target: Vector3, scene: Scene) {
     super(name, alpha, beta, radius, target, scene)
+
+    this.inputs.removeByType('ArcRotateCameraGamepadInput')
+    this.inputs.removeByType('ArcRotateCameraKeyboardMoveInput')
+
     this.followTarget.copyFrom(target)
 
     let isMouseDown = false
@@ -267,5 +297,86 @@ export class FollowCamera extends ArcRotateCamera {
         this.radius = softClamp(this.radius, this.lowerRadiusSoftLimit, this.upperRadiusSoftLimit)
       }
     })
+  }
+}
+
+const GAMEPAD_MAP = {
+  [Xbox360Button.A]: 'A',
+  [Xbox360Button.B]: 'B',
+  [Xbox360Button.X]: 'X',
+  [Xbox360Button.Y]: 'Y',
+  [Xbox360Button.LB]: 'LB',
+  [Xbox360Button.RB]: 'RB',
+}
+
+const GAMEDPAD_MAP = {
+  [Xbox360Dpad.Up]: 'UP',
+  [Xbox360Dpad.Down]: 'DOWN',
+  [Xbox360Dpad.Left]: 'LEFT',
+  [Xbox360Dpad.Right]: 'RIGHT',
+}
+
+const gamepadEvents = new EventEmitter<{
+  connect: BABYLON.Xbox360Pad
+  down: string
+  up: string
+}>()
+
+let activeGamepad: BABYLON.Xbox360Pad
+new BABYLON.Gamepads(gamepad => {
+  gamepadEvents.emit('connect', activeGamepad = gamepad as BABYLON.Xbox360Pad)
+  console.log(`gamepad "${activeGamepad.id}" connected`)
+  if (gamepad instanceof BABYLON.Xbox360Pad) {
+    gamepad.onbuttondown(b => {
+      const k = GAMEPAD_MAP[b]
+      k && gamepadEvents.emit('down', 'PAD-' + k)
+    })
+    gamepad.onbuttonup(b => {
+      const k = GAMEPAD_MAP[b]
+      k && gamepadEvents.emit('up', 'PAD-' + k)
+    })
+    gamepad.ondpaddown(b => {
+      const k = GAMEDPAD_MAP[b]
+      k && gamepadEvents.emit('down', 'PAD-' + k)
+    })
+    gamepad.ondpadup(b => {
+      const k = GAMEDPAD_MAP[b]
+      k && gamepadEvents.emit('up', 'PAD-' + k)
+    })
+  }
+  else if (gamepad instanceof BABYLON.GenericPad) {
+    gamepad.onbuttondown(b => {
+      const k = GAMEPAD_MAP[b]
+      k && gamepadEvents.emit('down', 'PAD-' + k)
+    })
+    gamepad.onbuttonup(b => {
+      const k = GAMEPAD_MAP[b]
+      k && gamepadEvents.emit('up', 'PAD-' + k)
+    })
+  }
+})
+
+export class GamepadInput<KM> extends KeyEmitter<KM> {
+  public gamepad: BABYLON.Xbox360Pad
+
+  get leftStick() {
+    return this.gamepad && this.gamepad.leftStick
+  }
+  get rightStick() {
+    return this.gamepad && this.gamepad.rightStick
+  }
+  get leftTrigger() {
+    return this.gamepad && this.gamepad.leftTrigger
+  }
+  get rightTrigger() {
+    return this.gamepad && this.gamepad.rightTrigger
+  }
+
+  constructor(map: KM) {
+    super(map)
+    this.gamepad = activeGamepad
+    gamepadEvents.on('connect', gamepad => this.gamepad = gamepad)
+    gamepadEvents.on('down', button => this.keyEvents.emit(button, true))
+    gamepadEvents.on('up', button => this.keyEvents.emit(button, false))
   }
 }

@@ -435,7 +435,10 @@ export default class Terrain extends EventEmitter<{
     this._visibility = val
     Object.keys(this.data).forEach(k => {
       const { top, edge, side } = this.data[k]
-      top.visibility = edge.visibility = side.visibility = val
+      // a simple hack to grid of flashing
+      const threshold = 0.8
+      edge.visibility = val > threshold ? (val - threshold) / (1 - threshold) : 0
+      top.visibility = side.visibility = val > threshold ? 1 : val / threshold
     })
   }
 

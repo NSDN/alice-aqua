@@ -1,7 +1,6 @@
 import {
   Vector3,
   Ray,
-  Scene,
 } from './babylon'
 
 import {
@@ -18,7 +17,6 @@ import {
   LoadingScreen,
   LocationSearch,
   MenuManager,
-  KeyEmitter,
   loadWithXHR,
   checkFontsLoaded,
 } from './utils/dom'
@@ -29,7 +27,12 @@ import {
   step,
   sleep,
   check,
+  debounce,
 } from './utils'
+
+import {
+  GamepadInput,
+} from './utils/babylon'
 
 import Terrain from './game/terrain'
 import SkyBox from './game/skybox'
@@ -38,14 +41,14 @@ import BulletinBoard from './objs/bulletin'
 import Player from './objs/player'
 
 const KEY_MAP = {
-  escape: 'ESCAPE',
-  return: 'RETURN',
-  up: 'UP',
-  down: 'DOWN',
-  left: 'LEFT',
-  right: 'RIGHT',
-  'nav-vertical': 'UP | DOWN',
-  'nav-horizontal': 'LEFT | RIGHT',
+  escape: 'ESCAPE | PAD-B',
+  return: 'RETURN | PAD-A',
+  up: 'UP | PAD-UP',
+  down: 'DOWN | PAD-DOWN',
+  left: 'LEFT | PAD-LEFT',
+  right: 'RIGHT | PAD-RIGHT',
+  'nav-vertical': 'UP | DOWN | PAD-UP | PAD-DOWN',
+  'nav-horizontal': 'LEFT | RIGHT | PAD-LEFT | PAD-RIGHT',
   'finish-dialog': 'CTRL',
 }
 
@@ -292,11 +295,17 @@ function updateConfigFromActiveMenu(config: ConfigManager) {
   key && config.set(key as any, val)
 }
 
-function checkCoverTerrain(scene: Scene, origin: Vector3, target: Vector3) {
-  const delta = target.subtract(origin),
-    ray = new Ray(origin, delta.clone().normalize(), delta.length()),
-    picked = scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh))
+function getTerrainIfPlayerConvered(game: Game) {
+  const player = Player.getActive(game.scene)
+  if (player) {
+    const spritePosition = player.spriteBody.getAbsolutePosition(),
+      target = spritePosition.add(new Vector3(0, player.spriteBody.scaling.y * 0.4, 0)),
+      origin = game.camera.position,
+      delta = target.subtract(origin),
+      ray = new Ray(origin, delta.clone().normalize(), delta.length()),
+      picked = game.scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh))
     return picked.hit && Terrain.getTerrainFromMesh(picked.pickedMesh)
+  }
 }
 
 ; (async function() {
@@ -321,8 +330,8 @@ function checkCoverTerrain(scene: Scene, origin: Vector3, target: Vector3) {
   }
 
   const { scene, camera } = game,
-    keyInput = new KeyEmitter(KEY_MAP),
-    keys = keyInput.state
+    input = new GamepadInput(KEY_MAP),
+    keys = input.state
 
   new SkyBox('sky', scene)
 
@@ -346,8 +355,8 @@ function checkCoverTerrain(scene: Scene, origin: Vector3, target: Vector3) {
       game.isPaused = false
     },
     async config(next) {
-      const unbindChangeConfigItem = keyInput.down.on('nav-vertical', () => selectNextConfigItem(keys.up ? -1 : 1)),
-        unbindChangeConfigValue = keyInput.down.on('nav-horizontal', () => updateConfigFromActiveMenu(config))
+      const unbindChangeConfigItem = input.down.on('nav-vertical', () => selectNextConfigItem(keys.up ? -1 : 1)),
+        unbindChangeConfigValue = input.down.on('nav-horizontal', () => updateConfigFromActiveMenu(config))
       await next()
       unbindChangeConfigItem()
       unbindChangeConfigValue()
@@ -362,7 +371,7 @@ function checkCoverTerrain(scene: Scene, origin: Vector3, target: Vector3) {
         { text, options } = dialogs[name] || { text: '...', options: { } }
 
       let isCanceled = false
-      const unbindOnEscape = keyInput.down.on('escape', () => {
+      const unbindOnEscape = input.down.on('escape', () => {
         isCanceled = true
         unbindOnEscape()
       })
@@ -414,28 +423,28 @@ function checkCoverTerrain(scene: Scene, origin: Vector3, target: Vector3) {
     }
   })
 
-  keyInput.down.on('escape', () => {
+  input.down.on('escape', () => {
     const activeList = MenuManager.activeList()
     if (activeList) {
       gameState.goto(activeList.getAttribute('menu-escape') || '')
     }
   })
 
-  keyInput.down.on('return', () => {
+  input.down.on('return', () => {
     const activeItem = MenuManager.activeItem()
     if (activeItem) {
       gameState.goto(activeItem.getAttribute('menu-goto') || '')
     }
   })
 
-  keyInput.down.on('nav-vertical', () => {
+  input.down.on('nav-vertical', () => {
     const activeList = MenuManager.activeList()
     if (activeList && !activeList.classList.contains('menu-horizontal')) {
       MenuManager.selectNext(keys.up ? -1 : 1)
     }
   })
 
-  keyInput.down.on('nav-horizontal', () => {
+  input.down.on('nav-horizontal', () => {
     const activeList = MenuManager.activeList()
     if (activeList && !activeList.classList.contains('menu-vertical')) {
       MenuManager.selectNext(keys.left ? -1 : 1)
@@ -447,24 +456,22 @@ function checkCoverTerrain(scene: Scene, origin: Vector3, target: Vector3) {
     gameState.goto(`dialog:${encodeURIComponent(dialogJSON)}`)
   })
 
-  const checkHoverTerrainChange = check<Terrain>((newTerrain, oldTerrain) => {
+  const hideTerrainDebounced = check(debounce(check<Terrain>((newTerrain, oldTerrain) => {
     oldTerrain && game.startAnimation(oldTerrain.name + '/fade', oldTerrain, 'visibility', 1.0, 0.03)
     newTerrain && game.startAnimation(newTerrain.name + '/fade', newTerrain, 'visibility', 0.3, 0.03)
-  })
+  }), 500))
 
   scene.registerBeforeRender(() => {
-    const player = Player.getActive(scene)
-    if (player) {
-      const spritePosition = player.spriteBody.getAbsolutePosition(),
-        offset = new Vector3(0, player.spriteBody.scaling.y * 0.4, 0),
-        coverTop = checkCoverTerrain(scene, camera.position, spritePosition.add(offset))
-      checkHoverTerrainChange(coverTop)
-    }
+    hideTerrainDebounced(getTerrainIfPlayerConvered(game))
+    input.rightStick && camera.updateRotation(input.rightStick)
+    ; (input.leftTrigger || input.rightTrigger) && camera.updateDistance(input.rightTrigger - input.leftTrigger)
   })
 
   await sleep(1000)
 
   camera.lowerBetaSoftLimit = Math.PI * 0.35
+  camera.upperBetaSoftLimit = Math.PI * 0.45
+  camera.lowerRadiusSoftLimit = 25
   camera.upperRadiusSoftLimit = 40
 
   LoadingScreen.hide()
