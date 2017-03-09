@@ -6,7 +6,6 @@ import {
   DynamicTexture,
   StandardMaterial,
   Vector3,
-  Color3,
   PhysicsImpostor,
   VertexData,
 } from '../babylon'
@@ -18,13 +17,11 @@ import {
 
 import {
   getChunkGroundVertexData,
-  getChunkSideVertexData,
   StaticBoxImpostor,
   ColorNoLightingMaterial,
 } from '../utils/babylon'
 
 import {
-  arrayRange,
   throttle,
   memo,
   compressWithRLE,
@@ -37,10 +34,14 @@ export interface Chunk {
   tiles: number[]
   heights: number[]
   top: Mesh
-  edge: Mesh
-  side: Mesh
   blocks: { [id: string]: PhysicsImpostor }
   texture: DynamicTexture
+  vertices: {
+    positions: number[],
+    indices: number[],
+    uvs: number[],
+    normals: number[],
+  }
   m0: number
   n0: number
   k: string
@@ -49,7 +50,6 @@ export interface Chunk {
 export interface TerrainData {
   unit: number
   size: number
-  sideTileId: number
   chunks: {
     [key: string]: {
       tiles: number[]
@@ -69,8 +69,7 @@ export interface TileDefine {
 }
 
 const push = [ ].push,
-  getGroundVertexDataWithUVMemo = memo(getChunkGroundVertexData),
-  getSideVertexDataMemo = memo(getChunkSideVertexData)
+  getGroundVertexDataWithUVMemo = memo(getChunkGroundVertexData)
 
 export default class Terrain extends EventEmitter<{
   'tile-updated': void
@@ -90,7 +89,8 @@ export default class Terrain extends EventEmitter<{
     'position-updated': { terrain: Terrain, delta: Vector3 }
   }>()
 
-  private readonly edgeMaterial: StandardMaterial
+  private readonly sideMesh: Mesh
+
   private readonly tilesDefine: { [id: number]: TileDefine }
   private readonly data: { [key: string]: Chunk } = { }
 
@@ -115,51 +115,25 @@ export default class Terrain extends EventEmitter<{
     this.tilesDefine = { }
     tilesDefine.forEach(tile => this.tilesDefine[tile.tileId] = tile)
 
-    const edgeMaterialId = 'cache/chunk/edge/' + this.chunkUnits
-    this.edgeMaterial = scene.getMaterialByName(edgeMaterialId) as StandardMaterial
-    if (!this.edgeMaterial) {
-      this.edgeMaterial = new ColorNoLightingMaterial(edgeMaterialId, scene)
-      this.edgeMaterial.diffuseTexture =
-        new DynamicTexture('cache/chunk/edge/mat', this.edgeTextureCacheSize * this.unitTexSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
-      this.edgeMaterial.diffuseTexture.hasAlpha = true
-    }
+    this.sideMesh = new Mesh(this.name + '/side', scene)
+    this.sideMesh.position.copyFrom(this.position)
+    Terrain.terrainFromChunkMesh[this.sideMesh.name] = this
 
-    this.sideTileId = restoreData.sideTileId || tilesDefine[0].sideTileId
+    const sideMaterialId = 'cache/chunk/edge/' + this.chunkUnits
+    this.sideMesh.material = scene.getMaterialByName(sideMaterialId) as StandardMaterial
+    if (!this.sideMesh.material) {
+      const sideMaterial = this.sideMesh.material = new StandardMaterial(sideMaterialId, scene)
+      sideMaterial.diffuseTexture =
+        new DynamicTexture('cache/chunk/edge/mat', this.edgeTextureCacheSize * this.unitTexSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
+      sideMaterial.specularPower = 0.5
+      sideMaterial.specularColor.copyFromFloats(0.1, 0.1, 0.1)
+      sideMaterial.emissiveColor.copyFromFloats(0.5, 0.5, 0.5)
+    }
 
     Object.keys(restoreData.chunks || { }).forEach(k => {
       const { tiles, heights } = restoreData.chunks[k]
       this.createChunkData(k, extractWithRLE(tiles), extractWithRLE(heights))
     })
-  }
-
-  private _sideTileId = 1
-  get sideTileId() {
-    return this._sideTileId
-  }
-  set sideTileId(val) {
-    if (this._sideTileId !== val) {
-      this._sideTileId = val
-      Object.keys(this.data).forEach(k => {
-        this.data[k].side.material = this.getSideMaterial()
-      })
-    }
-  }
-
-  private getSideMaterial() {
-    const { sideTileId } = this,
-      sideMaterialId = ['cache/chunk/side', sideTileId, this.unitTexSize, this.chunkUnits].join('/')
-    let sideMaterial = this.scene.getMaterialByName(sideMaterialId) as StandardMaterial
-    if (!sideMaterial) {
-      sideMaterial = new ColorNoLightingMaterial(sideMaterialId, this.scene)
-      const texture = sideMaterial.diffuseTexture =
-        new DynamicTexture('cache/' + this.name + '/side/mat', this.unitTexSize, this.scene, true, Texture.NEAREST_SAMPLINGMODE),
-        { src, offsetX, offsetY, size } = this.tilesDefine[sideTileId]
-      texture.getContext().drawImage(src, offsetX, offsetY, size, size, 0, 0, this.unitTexSize, this.unitTexSize)
-      texture.update()
-      texture.wrapU = texture.wrapV = Texture.WRAP_ADDRESSMODE
-      texture.uScale = texture.vScale = this.chunkUnits
-    }
-    return sideMaterial
   }
 
   readonly edgeTextureCacheSize = 16
@@ -169,11 +143,12 @@ export default class Terrain extends EventEmitter<{
       return this.edgeTextureCaches[tileId]
     }
     else {
-      const { sideTileId } = this.tilesDefine[tileId] || { sideTileId: this._sideTileId },
-        { src, offsetX, offsetY, size } = this.tilesDefine[sideTileId] || this.tilesDefine[this._sideTileId],
+      const { sideTileId } = this.tilesDefine[tileId],
+        { src, offsetX, offsetY, size } = this.tilesDefine[sideTileId],
         index = Object.keys(this.edgeTextureCaches).length,
         i = Math.floor(index / this.edgeTextureCacheSize), j = index % this.edgeTextureCacheSize,
-        texture = this.edgeMaterial.diffuseTexture as DynamicTexture,
+        material = this.sideMesh.material as StandardMaterial,
+        texture = material.diffuseTexture as DynamicTexture,
         dc = texture.getContext()
       dc.drawImage(src, offsetX, offsetY, size, size,
         i * this.unitTexSize, j * this.unitTexSize, this.unitTexSize, this.unitTexSize)
@@ -198,40 +173,25 @@ export default class Terrain extends EventEmitter<{
     top.position.copyFromFloats(x0 + x, y, y0 + z)
     Terrain.terrainFromChunkMesh[top.name] = this
 
-    const edge = new Mesh(this.name + '/edge/' + k, scene)
-    edge.material = this.edgeMaterial
-    edge.parent = top
-    Terrain.terrainFromChunkMesh[edge.name] = this
-
-    const side = new Mesh(this.name + '/side/' + k, scene)
-    side.material = this.getSideMaterial()
-    side.parent = top
-    Terrain.terrainFromChunkMesh[side.name] = this
-
-    const blocks = { }
-
-    const material = top.material = new StandardMaterial(this.name + '/mat/' + k, scene)
-    material.disableLighting = true
-    material.emissiveColor = new Color3(1, 1, 1)
-
+    const material = top.material = new ColorNoLightingMaterial(this.name + '/mat/' + k, scene)
     const texture = material.diffuseTexture =
       new DynamicTexture(this.name + '/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
 
-    setImmediate(() => {
-      for (let u = 0; u < chunkUnits; u ++) {
-        for (let v = 0; v < chunkUnits; v ++) {
-          this.updateTexture(m0 + u, n0 + v)
-        }
+    const blocks = { }
+    const vertices = { positions: [] as number[], indices: [] as number[], normals: [] as number[], uvs: [] as number[] }
+
+    for (let u = 0; u < chunkUnits; u ++) {
+      for (let v = 0; v < chunkUnits; v ++) {
+        this.chunkTextureToUpdate[ [m0 + u, n0 + v].join('/') ] = true
       }
-      texture.update()
+    }
+    this.chunkHeightToUpdate[k] = true
+    this.throttleUpdate()
 
-      this.updateHeight(m0, n0)
+    this.emit('chunk-loaded', this.data[k])
+    Terrain.eventEmitter.emit('chunk-loaded', { terrain: this, chunk: this.data[k] })
 
-      this.emit('chunk-loaded', this.data[k])
-      Terrain.eventEmitter.emit('chunk-loaded', { terrain: this, chunk: this.data[k] })
-    })
-
-    return this.data[k] = { tiles, heights, top, edge, side, blocks, texture, m0, n0, k }
+    return this.data[k] = { tiles, heights, top, blocks, vertices, texture, m0, n0, k }
   }
 
   private getChunkDataIfExists(m: number, n: number) {
@@ -243,8 +203,8 @@ export default class Terrain extends EventEmitter<{
       v = n - j * g,
       c = u * g + v,
       d = this.data[k],
-      t = d && d.tiles[c],
-      h = d && d.heights[c],
+      t = d ? d.tiles[c] : 0,
+      h = d ? d.heights[c] : 0,
       exists = !!d
     return { ...d, k, u, v, c, t, h, exists }
   }
@@ -281,9 +241,73 @@ export default class Terrain extends EventEmitter<{
     }
   }
 
-  private updateHeight(m: number, n: number) {
+  private getSideVertices(k: string) {
+    const { chunkUnits, unitSize } = this,
+      { heights, top, m0, n0 } = this.data[k],
+      pixel = (u: number, v: number) => this.getChunkDataIfExists(m0 + u, n0 + v),
+      h0 = Math.max(Math.min.apply(Math, heights) - 1, 0),
+      chunkBlocks = getBlocksFromHeightMap(heights, chunkUnits, h0)
+
+    const positions = [ ] as number[],
+      normals = [ ] as number[],
+      indices = [ ] as number[],
+      uvs = [ ] as number[]
+    chunkBlocks.forEach(([u0, u1, v0, v1, _h0, h1]) => {
+      // top
+      for (let u = u0, v = v1 - 1; u < u1; u ++) {
+        const i = pixel(u, v), o = pixel(u, v + 1)
+        if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
+          push.apply(indices,   [0, 1, 2, 0, 2, 3].map(v => v + positions.length / 3))
+          push.apply(positions, [u, h + 1, v + 1, u + 1, h + 1, v + 1, u + 1, h, v + 1, u, h, v + 1].map(v => v * unitSize))
+          push.apply(normals,   [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1])
+          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+        }
+      }
+      // left
+      for (let u = u0, v = v0; v < v1; v ++) {
+        const i = pixel(u, v), o = pixel(u - 1, v)
+        if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
+          push.apply(indices,   [0, 1, 2, 0, 2, 3].map(v => v + positions.length / 3))
+          push.apply(positions, [u, h + 1, v, u, h + 1, v + 1, u, h, v + 1, u, h, v].map(v => v * unitSize))
+          push.apply(normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
+          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+        }
+      }
+      // bottom
+      for (let u = u0, v = v0; u < u1; u ++) {
+        const i = pixel(u, v), o = pixel(u, v - 1)
+        if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
+          push.apply(indices,   [0, 2, 1, 0, 3, 2].map(v => v + positions.length / 3))
+          push.apply(positions, [u, h + 1, v, u + 1, h + 1, v, u + 1, h, v, u, h, v].map(v => v * unitSize))
+          push.apply(normals,   [0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1])
+          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+        }
+      }
+      // left
+      for (let u = u1 - 1, v = v0; v < v1; v ++) {
+        const i = pixel(u, v), o = pixel(u + 1, v)
+        if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
+          push.apply(indices,   [0, 2, 1, 0, 3, 2].map(v => v + positions.length / 3))
+          push.apply(positions, [u + 1, h + 1, v, u + 1, h + 1, v + 1, u + 1, h, v + 1, u + 1, h, v].map(v => v * unitSize))
+          push.apply(normals,   [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0])
+          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+        }
+      }
+    })
+
+    const { x, y, z } = top.position.subtract(this.position)
+    for (let i = 0; i < positions.length; i += 3) {
+      positions[i] += x
+      positions[i + 1] += y
+      positions[i + 2] += z
+    }
+
+    return { positions, normals, indices, uvs }
+  }
+
+  private updateHeight(k: string) {
     const { chunkUnits, unitSize, scene } = this,
-      { heights, top, edge, side, blocks, m0, n0 } = this.getChunkData(m, n),
+      { heights, top, blocks } = this.data[k],
       h0 = Math.max(Math.min.apply(Math, heights) - 1, 0),
       chunkBlocks = getBlocksFromHeightMap(heights, chunkUnits, h0)
 
@@ -299,65 +323,6 @@ export default class Terrain extends EventEmitter<{
     Object.assign(new VertexData(), topVd).applyToMesh(top)
     // FIXME: babylonjs
     if (!topVd.indices.length) top.releaseSubMeshes()
-
-    const edgeVd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] } as VertexData
-    const pixelFromUV = (u: number, v: number) => this.getChunkDataIfExists(m0 + u, n0 + v),
-      g = chunkUnits,
-      edges = chunkBlocks.map(([u0, u1, v0, v1]) => ({
-        top:    arrayRange(u0, u1).map(u => ({ u, v: v1, o: pixelFromUV(u,     v1), i: pixelFromUV(u, v1 - 1) })),
-        left:   arrayRange(v0, v1).map(v => ({ u: u0, v, o: pixelFromUV(u0 - 1, v), i: pixelFromUV(u0,     v) })),
-        bottom: arrayRange(u0, u1).map(u => ({ u, v: v0, o: pixelFromUV(u, v0 - 1), i: pixelFromUV(u,     v0) })),
-        right:  arrayRange(v0, v1).map(v => ({ u: u1, v, o: pixelFromUV(u1,     v), i: pixelFromUV(u1 - 1, v) })),
-      }))
-
-    chunkBlocks.forEach(([u0, u1, v0, v1, _h0, h1], index) => {
-      const { top, left, bottom, right } = edges[index]
-      top.filter(({ i, o }) => i.h === h1 && (v1 === g || o.h < h1)).forEach(({ u, v, i }) => {
-        push.apply(edgeVd.indices,   [0, 1, 2, 0, 2, 3].map(v => v + edgeVd.positions.length / 3))
-        push.apply(edgeVd.positions, [u, h1, v, u + 1, h1, v, u + 1, h1 - 1, v + 0.01, u, h1 - 1, v + 0.01].map(v => v * unitSize))
-        push.apply(edgeVd.normals,   [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0])
-        push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
-      })
-      left.filter(({ i, o }) => i.h === h1 && (u0 === 0 || o.h < h1)).forEach(({ u, v, i }) => {
-        push.apply(edgeVd.indices,   [0, 1, 2, 0, 2, 3].map(v => v + edgeVd.positions.length / 3))
-        push.apply(edgeVd.positions, [u, h1, v, u, h1, v + 1, u - 0.01, h1 - 1, v + 1, u - 0.01, h1 - 1, v].map(v => v * unitSize))
-        push.apply(edgeVd.normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
-        push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
-      })
-      bottom.filter(({ i, o }) => i.h === h1 && (v0 === 0 || o.h < h1)).forEach(({ u, v, i }) => {
-        push.apply(edgeVd.indices,   [0, 2, 1, 0, 3, 2].map(v => v + edgeVd.positions.length / 3))
-        push.apply(edgeVd.positions, [u, h1, v, u + 1, h1, v, u + 1, h1 - 1, v - 0.01, u, h1 - 1, v - 0.01].map(v => v * unitSize))
-        push.apply(edgeVd.normals,   [0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0])
-        push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
-      })
-      right.filter(({ i, o }) => i.h === h1 && (u1 === g || o.h < h1)).forEach(({ u, v, i }) => {
-        push.apply(edgeVd.indices,   [0, 2, 1, 0, 3, 2].map(v => v + edgeVd.positions.length / 3))
-        push.apply(edgeVd.positions, [u, h1, v, u, h1, v + 1, u + 0.01, h1 - 1, v + 1, u + 0.01, h1 - 1, v].map(v => v * unitSize))
-        push.apply(edgeVd.normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
-        push.apply(edgeVd.uvs,       this.getEdgeTileTextureUV(i.t))
-      })
-    })
-    Object.assign(new VertexData(), edgeVd).applyToMesh(edge)
-    // FIXME: babylonjs
-    if (!edgeVd.indices.length) edge.releaseSubMeshes()
-
-    const sideVd = { positions: [ ], normals: [ ], indices: [ ], uvs: [ ] } as VertexData
-    chunkBlocks.forEach(([u0, u1, v0, v1, h0, h1], index) => {
-      const { top, left, bottom, right } = edges[index],
-        sides =
-          (v1 === g || top   .some(({ o }) => o.h < h1) ? 8 : 0) +
-          (u0 === 0 || left  .some(({ o }) => o.h < h1) ? 4 : 0) +
-          (v0 === 0 || bottom.some(({ o }) => o.h < h1) ? 2 : 0) +
-          (u1 === g || right .some(({ o }) => o.h < h1) ? 1 : 0),
-        vd = getSideVertexDataMemo(u0, u1, v0, v1, h0, h1, sides)
-      push.apply(sideVd.indices,   vd.indices.map(i => i + sideVd.positions.length / 3))
-      push.apply(sideVd.positions, vd.positions.map(p => p * unitSize))
-      push.apply(sideVd.normals,   vd.normals)
-      push.apply(sideVd.uvs,       vd.uvs.map(v => v / chunkUnits))
-    })
-    Object.assign(new VertexData(), sideVd).applyToMesh(side)
-    // FIXME: babylonjs
-    if (!sideVd.indices.length) side.releaseSubMeshes()
 
     const keepInBlocks = { } as { [id: string]: boolean }
     chunkBlocks.forEach(([u0, u1, v0, v1, h0, h1]) => {
@@ -377,12 +342,37 @@ export default class Terrain extends EventEmitter<{
       delete blocks[id]
     })
 
-    this.emit('height-updated', this.getChunkData(m, n))
+    this.chunkSideToUpdate[k] = true
+    this.throttleUpdateSide()
+
+    this.emit('height-updated', this.data[k])
+    Terrain.eventEmitter.emit('height-updated', { terrain: this, chunk: this.data[k] })
+  }
+
+  private throttleUpdateSide = throttle(this.batchUpdateSide.bind(this), 50)
+  private chunkSideToUpdate = { } as { [index: string]: boolean }
+  private batchUpdateSide() {
+    Object.keys(this.chunkSideToUpdate).forEach(k => {
+      this.data[k].vertices = this.getSideVertices(k)
+    })
+    this.chunkSideToUpdate = { }
+
+    const vd = Object.assign(new VertexData(), { positions: [], normals: [], indices: [], uvs: [] })
+    Object.keys(this.data).forEach(k => {
+      const { vertices } = this.data[k]
+      push.apply(vd.indices, vertices.indices.map(i => i + vd.positions.length / 3))
+      push.apply(vd.positions, vertices.positions)
+      push.apply(vd.normals, vertices.normals)
+      push.apply(vd.uvs, vertices.uvs)
+    })
+    vd.applyToMesh(this.sideMesh)
+    // FIXME: babylonjs
+    if (!vd.indices.length) this.sideMesh.releaseSubMeshes()
   }
 
   private throttleUpdate = throttle(this.batchUpdateChunk.bind(this), 50)
-  private chunkTextureToUpdate = { } as { [index: string]: number }
-  private chunkHeightToUpdate = { } as { [index: string]: string }
+  private chunkTextureToUpdate = { } as { [index: string]: boolean }
+  private chunkHeightToUpdate = { } as { [index: string]: boolean }
   private batchUpdateChunk() {
     const texturesToRefresh = { } as { [key: string]: DynamicTexture }
 
@@ -394,10 +384,8 @@ export default class Terrain extends EventEmitter<{
     })
     this.chunkTextureToUpdate = { }
 
-    Object.keys(this.chunkHeightToUpdate).forEach(index => {
-      const mn = this.chunkHeightToUpdate[index],
-        [m, n] = mn.split('/').map(parseFloat)
-      this.updateHeight(m, n)
+    Object.keys(this.chunkHeightToUpdate).forEach(k => {
+      this.updateHeight(k)
     })
     this.chunkHeightToUpdate = { }
 
@@ -409,21 +397,33 @@ export default class Terrain extends EventEmitter<{
     })
   }
   private addTextureToUpdate(m: number, n: number, v: number, u: number) {
-    this.chunkTextureToUpdate[ [m, n].join('/') ] = v
+    this.chunkTextureToUpdate[ [m, n].join('/') ] = true
     const tileV = this.tilesDefine[v], tileU = this.tilesDefine[u]
     if ((tileV && tileV.autoTileType) || (tileU && tileU.autoTileType)) {
       AUTO_TILE_NEIGHBORS.forEach(([i, j]) => {
-        const pixel = this.getChunkData(m + i, n + j),
+        const pixel = this.getChunkDataIfExists(m + i, n + j),
           tile = this.tilesDefine[pixel.t]
         if (tile && tile.autoTileType) {
-          this.chunkTextureToUpdate[ [m + i, n + j].join('/') ] = pixel.t
+          this.chunkTextureToUpdate[ [m + i, n + j].join('/') ] = true
         }
       })
     }
     this.throttleUpdate()
   }
-  private addHeightToUpdate(m: number, n: number, k: string) {
-    this.chunkHeightToUpdate[k] = [m, n].join('/')
+  private addHeightToUpdate(m: number, n: number) {
+    const addNeighbourToUpdate = (m: number, n: number) => {
+      const { k, exists } = this.getChunkDataIfExists(m, n)
+      if (exists) {
+        this.chunkSideToUpdate[k] = true
+      }
+    }
+    const { u, v, k } = this.getChunkData(m, n)
+    this.chunkHeightToUpdate[k] = true
+    addNeighbourToUpdate(u, v)
+    u === 0 && addNeighbourToUpdate(m - 1, n)
+    v === 0 && addNeighbourToUpdate(m, n - 1)
+    u === this.chunkUnits && addNeighbourToUpdate(m + 1, n)
+    v === this.chunkUnits && addNeighbourToUpdate(m, n + 1)
     this.throttleUpdate()
   }
 
@@ -432,13 +432,9 @@ export default class Terrain extends EventEmitter<{
     return this._visibility
   }
   set visibility(val) {
-    this._visibility = val
+    this._visibility = this.sideMesh.visibility = val
     Object.keys(this.data).forEach(k => {
-      const { top, edge, side } = this.data[k]
-      // a simple hack to grid of flashing
-      const threshold = 0.8
-      edge.visibility = val > threshold ? (val - threshold) / (1 - threshold) : 0
-      top.visibility = side.visibility = val > threshold ? 1 : val / threshold
+      this.data[k].top.visibility = val
     })
   }
 
@@ -447,10 +443,9 @@ export default class Terrain extends EventEmitter<{
     return this._isVisible
   }
   set isVisible(val) {
-    this._isVisible = val
+    this._isVisible = this.sideMesh.isVisible = val
     Object.keys(this.data).forEach(k => {
-      const { top, edge, side } = this.data[k]
-      top.isVisible = edge.isVisible = side.isVisible = val
+      this.data[k].top.isVisible = val
     })
   }
 
@@ -464,6 +459,7 @@ export default class Terrain extends EventEmitter<{
       })
     })
     this.position.copyFrom(position)
+    this.sideMesh.position.copyFrom(position)
     this.emit('position-updated', delta)
     Terrain.eventEmitter.emit('position-updated', { terrain: this, delta })
   }
@@ -471,7 +467,7 @@ export default class Terrain extends EventEmitter<{
   setPixel(x: number, z: number, p: { t?: number, h?: number | string }) {
     const m = Math.floor((x - this.position.x) / this.unitSize),
       n = Math.floor((z - this.position.z) / this.unitSize),
-      { tiles, heights, k, c, t, h } = this.getChunkData(m, n)
+      { tiles, heights, c, t, h } = this.getChunkData(m, n)
 
     if (+p.t === p.t && t !== p.t) {
       tiles[c] = p.t
@@ -489,7 +485,7 @@ export default class Terrain extends EventEmitter<{
     v = Math.max(v, 0)
     if (+v === v && h !== v) {
       heights[c] = v
-      this.addHeightToUpdate(m, n, k)
+      this.addHeightToUpdate(m, n)
       this.addTextureToUpdate(m, n, t, t)
     }
     return { t: tiles[c], h: heights[c] + this.position.y }
@@ -506,7 +502,6 @@ export default class Terrain extends EventEmitter<{
     const data: TerrainData = {
       unit: this.unitSize,
       size: this.chunkSize,
-      sideTileId: this.sideTileId,
       chunks: { }
     }
     Object.keys(this.data).forEach(k => {
@@ -521,18 +516,18 @@ export default class Terrain extends EventEmitter<{
 
   dispose() {
     Object.keys(this.data).forEach(k => {
-      const { top, edge, side, texture, blocks } = this.data[k]
+      const { top, texture, blocks } = this.data[k]
 
       delete Terrain.terrainFromChunkMesh[top.name]
       top.dispose()
-      delete Terrain.terrainFromChunkMesh[edge.name]
-      edge.dispose()
-      delete Terrain.terrainFromChunkMesh[side.name]
-      side.dispose()
 
       texture.dispose()
       Object.keys(blocks).forEach(id => blocks[id].dispose())
       delete this.data[k]
     })
+
+    new VertexData().applyToMesh(this.sideMesh)
+    // FIXME: babylonjs
+    this.sideMesh.releaseSubMeshes()
   }
 }

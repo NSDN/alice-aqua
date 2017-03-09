@@ -41,7 +41,6 @@ import {
   AddLayerAction,
   MoveLayerAction,
   SelectLayerAction,
-  UpdateLayerSideTileAction,
   RemoveLayerAction,
   EditorHistory,
 } from './editor/history'
@@ -450,13 +449,10 @@ function playMapInNewWindow(map: EditorMap) {
     toolbar.setStatePartial({ layerId })
   })
 
-  toolbarActions.on('layer-updated', ({ position, sideTileId }) => {
+  toolbarActions.on('layer-updated', ({ position }) => {
     if (position) {
       const { x, y, z } = position
       editorHistory.push(new MoveLayerAction(map, new Vector3(x, y, z)))
-    }
-    if (sideTileId) {
-      editorHistory.push(new UpdateLayerSideTileAction(map, sideTileId))
     }
     editorHistory.commit()
     toolbar.forceUpdate()

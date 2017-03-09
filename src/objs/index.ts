@@ -11,83 +11,28 @@ import Box, { BoxGenerator } from './box'
 import Player, { PlayerGenerator } from './player'
 import { StageEntry, StageLoader } from './stage'
 
-const images: { [id: string]: string } = {
+const imgres = {
   imAssetTile0: 'assets/tileset0.png',
   imAssetTile1: 'assets/rpg_maker_vx_rtp_tileset_by_telles0808.png',
   imAssetTile2: 'assets/tileset_pokemon_rpgmaker_xp_by_kutoal-d59p9c9.png',
 }
 
-const tiles: [number, keyof typeof images, number, number, number, string, number][] = [
-  [ 1, 'imAssetTile0',    0,    0, 32,     '', 61],
-  [ 2, 'imAssetTile1',    0,  576, 32, 'h4x6', 61],
-  [ 3, 'imAssetTile1',    0,  480, 32, 'h4x6', 61],
-  [ 4, 'imAssetTile1',   64,  480, 32, 'h4x6', 61],
-  [ 5, 'imAssetTile1',   64,  576, 32, 'h4x6', 61],
-  [ 6, 'imAssetTile1',  256, 1088, 32, 'h4x6', 61],
-  [ 7, 'imAssetTile1',  384, 1088, 32, 'h4x6', 61],
-  [ 8, 'imAssetTile1',  256, 1184, 32, 'h4x6', 61],
-  [ 9, 'imAssetTile1',  384, 1184, 32, 'h4x6', 61],
-  [10, 'imAssetTile1',  512,    0, 32, 'h4x6', 61],
-  [11, 'imAssetTile1',  576,    0, 32, 'h4x6', 61],
-  [12, 'imAssetTile1',  640,    0, 32, 'h4x6', 61],
-  [13, 'imAssetTile1',  704,    0, 32, 'h4x6', 61],
-  [14, 'imAssetTile1',  768,    0, 32, 'h4x6', 61],
-  [15, 'imAssetTile1',  832,    0, 32, 'h4x6', 61],
-  [16, 'imAssetTile1',  896,    0, 32, 'h4x6', 61],
-  [17, 'imAssetTile1',  960,    0, 32, 'h4x6', 61],
-  [18, 'imAssetTile1',  512,  160, 32, 'h4x6', 61],
-  [19, 'imAssetTile1',  576,  160, 32, 'h4x6', 61],
-  [20, 'imAssetTile1',  640,  160, 32, 'h4x6', 61],
-  [21, 'imAssetTile1',  704,  160, 32, 'h4x6', 61],
-  [22, 'imAssetTile1',  768,  160, 32, 'h4x6', 61],
-  [23, 'imAssetTile1',  832,  160, 32, 'h4x6', 61],
-  [24, 'imAssetTile1',  896,  160, 32, 'h4x6', 61],
-  [25, 'imAssetTile1',  960,  160, 32, 'h4x6', 61],
-  [26, 'imAssetTile1',  512,  320, 32, 'h4x6', 61],
-  [27, 'imAssetTile1',  576,  320, 32, 'h4x6', 61],
-  [28, 'imAssetTile1',  640,  320, 32, 'h4x6', 61],
-  [29, 'imAssetTile1',  704,  320, 32, 'h4x6', 61],
-  [30, 'imAssetTile1',  768,  320, 32, 'h4x6', 61],
-  [31, 'imAssetTile1',  832,  320, 32, 'h4x6', 61],
-  [32, 'imAssetTile1',  896,  320, 32, 'h4x6', 61],
-  [33, 'imAssetTile1',  960,  320, 32, 'h4x6', 61],
-  [61, 'imAssetTile2',   16,  720, 16,     '', 61],
-  [56, 'imAssetTile2',  208,  720, 32,     '', 60],
-  [60, 'imAssetTile2',   16,  704, 16,     '', 60],
-  [34, 'imAssetTile2',    0,  704, 32, 'h5x3', 60],
-  [36, 'imAssetTile2',    0,  800, 32, 'h5x3', 60],
-  [40, 'imAssetTile2',    0,  656, 32, 'h5x3', 60],
-  [41, 'imAssetTile2',    0,  752, 32, 'h5x3', 60],
-  [54, 'imAssetTile2',  128,  656, 32, 'h5x3', 60],
-  [46, 'imAssetTile2',  128,    0, 32, 'h5x3', 60],
-  [35, 'imAssetTile2',  128,   48, 32, 'h5x3', 60],
-  [47, 'imAssetTile2',  128,   96, 32, 'h5x3', 60],
-  [48, 'imAssetTile2',  128,  144, 32, 'h5x3', 60],
-  [50, 'imAssetTile2',  128,  240, 32, 'h5x3', 60],
-  /*
-  [57, 'imAssetTile2',  112,  624, 32,     '', 61],
-  [43, 'imAssetTile2',    0,  896, 32, 'h5x3', 61],
-  [55, 'imAssetTile2',  128,  704, 32, 'h5x3', 61],
-  */
-  [58, 'imAssetTile2',  176,  992, 32,     '', 61],
-  [59, 'imAssetTile2',  208,  800, 32,     '', 61],
-  [52, 'imAssetTile2',  128,  800, 32, 'h5x3', 61],
-  [53, 'imAssetTile2',  128,  944, 32, 'h5x3', 61],
-  /*
-  [51, 'imAssetTile2',  128,  288, 32, 'h5x3', 61],
-  [37, 'imAssetTile2',    0,  384, 32, 'h5x3', 61],
-  [38, 'imAssetTile2',    0,  432, 32, 'h5x3', 61],
-  [39, 'imAssetTile2',    0,  480, 32, 'h5x3', 61],
-  [44, 'imAssetTile2',    0,  944, 32, 'h5x3', 61],
-  */
+const images = imgres as { [id: string]: string }
+
+const tiles: [number, keyof typeof imgres, number, number, number, string, number][] = [
+  [ 6, 'imAssetTile0',    0,   96, 32,     '',  3],
+  [ 2, 'imAssetTile0',    0,    0, 32, 'h4x6',  3],
+  [ 3, 'imAssetTile0',   16,   32, 32, 'edge',  4],
+  [ 4, 'imAssetTile0',   16,   48, 32, 'side',  4],
+  [ 5, 'imAssetTile0',   64,    0, 32, 'h4x6',  3],
 ]
 
-const classes: [number, keyof typeof images, number, number, number, number, typeof ObjectBase, any, any][] = [
+const classes: [number, keyof typeof imgres, number, number, number, number, typeof ObjectBase, any, any][] = [
   [ 0, 'imAssetTile1',   96, 1632, 64, 96, Sprite,       { spriteHeight: 4 }, { }],
   [ 1, 'imAssetTile1',    0, 1440, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 2, 'imAssetTile1',    0, 1504, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 3, 'imAssetTile1',  192, 1344, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
-  [ 4, 'imAssetTile1',  512,  256, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 5 }, { }],
+  [ 4, 'imAssetTile1',  512,  256, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 10 }, { }],
   [33, 'imAssetTile1',  768,   32, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }, { }],
   [ 5, 'imAssetTile1',  160, 1024, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 6, 'imAssetTile1',  128, 1120, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
@@ -122,6 +67,5 @@ const classes: [number, keyof typeof images, number, number, number, number, typ
   [31, 'imAssetTile1', 1184,    0, 32, 32, PlayerGenerator,  { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { }],
   [32, 'imAssetTile1', 1216,    0, 32, 32, PlayerGenerator,  { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { }],
 ]
-
 
 export { images, tiles, classes }

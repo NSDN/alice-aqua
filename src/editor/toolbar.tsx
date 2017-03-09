@@ -36,7 +36,6 @@ export interface LayerDefine {
     y: number
     z: number
   }
-  sideTileId: number
 }
 
 const THUMB_URL_CACHE = { } as { [key: string]: string },
@@ -103,7 +102,7 @@ export function PanelTabs({ panel, panels }: {
 }
 
 export const TILE_AUTO = -1
-export const TILE_NONE = -1
+export const TILE_NONE = 0
 export function PanelBrushes({ tileHeight, tileId, tiles }: {
   tileHeight: string
   tileId: number
@@ -138,10 +137,12 @@ export function PanelBrushes({ tileHeight, tileId, tiles }: {
         })
       }
       {
-        tiles.map(tile => <span class={{ 'list-item': true, active: tileId === tile.tileId }}
-          title={ 'tileId: ' + tile.tileId } onClick={ _ => eventEmitter.emit('tile-selected', tile.tileId) }>
-          <img src={ tileThumbUrl(tile) } />
-        </span>)
+        tiles
+          .filter(({ autoTileType }) => autoTileType === '' || autoTileType === 'h5x3' || autoTileType === 'h4x6')
+          .map(tile => <span class={{ 'list-item': true, active: tileId === tile.tileId }}
+            title={ 'tileId: ' + tile.tileId } onClick={ _ => eventEmitter.emit('tile-selected', tile.tileId) }>
+            <img src={ tileThumbUrl(tile) } />
+          </span>)
       }
     </div>
   </div>
@@ -163,7 +164,7 @@ export function PanelClasses({ clsId, classes }: {
   </div>
 }
 
-export function PanelLayers({ layerId, layers, tiles }: {
+export function PanelLayers({ layerId, layers }: {
   layerId: string
   layers: { [id: string]: LayerDefine }
   tiles: TileDefine[]
@@ -190,17 +191,6 @@ export function PanelLayers({ layerId, layers, tiles }: {
                 eventEmitter.emit('layer-updated', { position })
               }
             } />)
-        }
-      </div>
-      <div class="ui-layer-config">
-        <label>sideTile: </label>
-        {
-          tiles.filter(({ tileId }) => tiles.find(tile => tile.sideTileId === tileId))
-            .map(tile => <span class={{ 'list-item': true, active: layers[layerId].sideTileId === tile.tileId }}
-              title={ 'tileId: ' + tile.tileId }
-              onClick={ _ => eventEmitter.emit('layer-updated', { sideTileId: tile.tileId }) }>
-              <img src={ tileThumbUrl(tile) } />
-            </span>)
         }
       </div>
       <div class={{ 'ui-layer-config': true, hidden: Object.keys(layers).length <= 1 }}>

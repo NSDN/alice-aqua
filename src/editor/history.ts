@@ -201,21 +201,6 @@ export class SelectLayerAction implements EditorAction {
   }
 }
 
-export class UpdateLayerSideTileAction implements EditorAction {
-  constructor(map: EditorMap,
-      private readonly sideTileId: number,
-      private readonly terrain = map.activeTerrain,
-      private readonly oldTileId = terrain.sideTileId) {
-    this.exec()
-  }
-  exec() {
-    this.terrain.sideTileId = this.sideTileId
-  }
-  revert() {
-    this.terrain.sideTileId = this.oldTileId
-  }
-}
-
 export class RemoveLayerAction implements EditorAction {
   constructor(private readonly map: EditorMap,
       terrain = map.activeTerrain,

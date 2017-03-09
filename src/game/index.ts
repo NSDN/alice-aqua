@@ -139,6 +139,7 @@ async function loadAllPlugins() {
 export class Game {
   readonly scene: Scene
   readonly camera: FollowCamera
+  readonly light: BABYLON.DirectionalLight
   readonly engine: Engine
   readonly canvas: ScreenSpaceCanvas2D
   private constructor() {
@@ -150,6 +151,8 @@ export class Game {
     scene.enablePhysics(new Vector3(0, -3, 0))
     scene.workerCollisions = true
     scene.clearColor = Color3.FromHexString('#607f9a').scale(0.7).toColor4()
+
+    this.light = new BABYLON.DirectionalLight('dir', new Vector3(0, 0, 1), scene)
 
     const camera = this.camera = scene.activeCamera = new FollowCamera('camera', 0, 0, 50, Vector3.Zero(), scene)
     camera.lowerRadiusLimit = 15
@@ -168,6 +171,7 @@ export class Game {
       this.updateTimeout()
       this.updateAnimation()
       this.lensFocusDistance = softClamp(this._lensFocusDistance, this.camera.radius - 1, this.camera.radius + 1)
+      this.light.direction.copyFrom(camera.target.subtract(camera.position).normalize().add(new Vector3(0, 0, 1)))
     })
   }
 
