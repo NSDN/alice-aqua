@@ -99,7 +99,7 @@ export class BoxGenerator extends Sprite {
   public velocityThreshold = 0
   private boxName = ''
 
-  startPlaying() {
+  onPlayStart() {
     const { material, texSize, offsetX, offsetY, width, height } = this.opts.icon,
       cacheId = ['cache/box', material.name, offsetX, offsetY].join('/')
 
@@ -124,7 +124,7 @@ export class BoxGenerator extends Sprite {
     this.spriteBody.isVisible = false
   }
 
-  stopPlaying() {
+  onPlayStop() {
     const box = this.getScene().getMeshByName(this.boxName)
     box && box.dispose()
     this.spriteBody.isVisible = true

@@ -53,6 +53,9 @@ interface ObjectEvents {
       options: { [title: string]: string }
     }
   }
+  'player-activated': {
+    name: string
+  }
 }
 
 export class ObjectBase extends InstancedMesh {
@@ -61,10 +64,12 @@ export class ObjectBase extends InstancedMesh {
   constructor(name: string, readonly opts: ObjectOptions) {
     super(name, opts.source)
   }
-  startPlaying() {
+
+  onPlayStart() {
   }
-  stopPlaying() {
+  onPlayStop() {
   }
+
   renderConfig(_save: (args: Partial<ObjectBase>) => void) {
     return [ ] as JSX.Element[]
   }

@@ -18,7 +18,6 @@ import {
 import {
   getChunkGroundVertexData,
   StaticBoxImpostor,
-  ColorNoLightingMaterial,
 } from '../utils/babylon'
 
 import {
@@ -117,18 +116,22 @@ export default class Terrain extends EventEmitter<{
 
     this.sideMesh = new Mesh(this.name + '/side', scene)
     this.sideMesh.position.copyFrom(this.position)
+    this.sideMesh.receiveShadows = true
     Terrain.terrainFromChunkMesh[this.sideMesh.name] = this
 
     const sideMaterialId = 'cache/chunk/edge/' + this.chunkUnits
     this.sideMesh.material = scene.getMaterialByName(sideMaterialId) as StandardMaterial
     if (!this.sideMesh.material) {
-      const sideMaterial = this.sideMesh.material = new StandardMaterial(sideMaterialId, scene)
-      sideMaterial.diffuseTexture =
+      const material = this.sideMesh.material = new StandardMaterial(sideMaterialId, scene)
+      material.diffuseTexture =
         new DynamicTexture('cache/chunk/edge/mat', this.edgeTextureCacheSize * this.unitTexSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
-      sideMaterial.specularPower = 0.5
-      sideMaterial.specularColor.copyFromFloats(0.1, 0.1, 0.1)
-      sideMaterial.emissiveColor.copyFromFloats(0.5, 0.5, 0.5)
+      material.specularPower = 0.5
+      material.specularColor.copyFromFloats(0.1, 0.1, 0.1)
+      material.emissiveColor.copyFromFloats(0.8, 0.8, 0.8)
     }
+
+    const edgeTextureCacheContainer = this.sideMesh.material as any as { edgeTextureCaches: any }
+    this.edgeTextureCaches = edgeTextureCacheContainer.edgeTextureCaches || (edgeTextureCacheContainer.edgeTextureCaches = { })
 
     Object.keys(restoreData.chunks || { }).forEach(k => {
       const { tiles, heights } = restoreData.chunks[k]
@@ -137,7 +140,7 @@ export default class Terrain extends EventEmitter<{
   }
 
   readonly edgeTextureCacheSize = 16
-  private edgeTextureCaches = { } as { [tileId: number]: [number, number, number, number] }
+  private readonly edgeTextureCaches: { [tileId: number]: [number, number, number, number] }
   private getEdgeTileTextureUV(tileId: number) {
     if (this.edgeTextureCaches[tileId]) {
       return this.edgeTextureCaches[tileId]
@@ -171,9 +174,12 @@ export default class Terrain extends EventEmitter<{
     const top = new Mesh(this.name + '/top/' + k, scene),
       { x, y, z } = this.position
     top.position.copyFromFloats(x0 + x, y, y0 + z)
+    top.receiveShadows = true
     Terrain.terrainFromChunkMesh[top.name] = this
 
-    const material = top.material = new ColorNoLightingMaterial(this.name + '/mat/' + k, scene)
+    const material = top.material = new StandardMaterial(this.name + '/mat/' + k, scene)
+    material.specularColor.copyFromFloats(0, 0, 0)
+    material.emissiveColor.copyFromFloats(0.8, 0.8, 0.8)
     const texture = material.diffuseTexture =
       new DynamicTexture(this.name + '/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
 
@@ -214,21 +220,16 @@ export default class Terrain extends EventEmitter<{
     return data.exists ? data : this.createChunkData(data.k) && this.getChunkDataIfExists(m, n)
   }
 
-  private updateTexture(m: number, n: number) {
-    const { texture, u, v, t, h } = this.getChunkData(m, n),
-      { unitTexSize, textureSize } = this,
-      dc = texture.getContext(),
-      dx = u * unitTexSize,
-      dy = textureSize - (v + 1) * unitTexSize
-
-    dc.imageSmoothingEnabled = dc.webkitImageSmoothingEnabled = false
+  private drawTileTo(dc: CanvasRenderingContext2D, m: number, n: number, dx: number, dy: number) {
+    const { t, h } = this.getChunkData(m, n),
+      { unitTexSize } = this
     if (this.tilesDefine[t]) {
       const { src, offsetX, offsetY, size, autoTileType } = this.tilesDefine[t]
-      if (autoTileType) {
+      if (autoTileType === 'h4x6' || autoTileType === 'h5x3') {
         const neighbors = AUTO_TILE_NEIGHBORS
             .map(([i, j]) => this.getChunkData(m + i, n + j))
             .reduce((s, p, j) => s + (p.t === t && p.h === h ? 1 << j : 0), 0)
-        const { im, sx, sy } = getAutoTileImage(src, offsetX, offsetY, size, neighbors, autoTileType as any)
+        const { im, sx, sy } = getAutoTileImage(src, offsetX, offsetY, size, neighbors, autoTileType)
         dc.drawImage(im, sx, sy, size, size, dx, dy, unitTexSize, unitTexSize)
       }
       else {
@@ -239,6 +240,17 @@ export default class Terrain extends EventEmitter<{
       dc.fillStyle = 'rgb(180, 180, 180)'
       dc.fillRect(dx, dy, unitTexSize, unitTexSize)
     }
+  }
+
+  private updateTexture(m: number, n: number) {
+    const { texture, u, v } = this.getChunkData(m, n),
+      { unitTexSize, textureSize } = this,
+      dc = texture.getContext(),
+      dx = u * unitTexSize,
+      dy = textureSize - (v + 1) * unitTexSize
+
+    dc.imageSmoothingEnabled = dc.webkitImageSmoothingEnabled = false
+    this.drawTileTo(dc, m, n, dx, dy)
   }
 
   private getSideVertices(k: string) {
@@ -496,6 +508,19 @@ export default class Terrain extends EventEmitter<{
       n = Math.floor((z - this.position.z) / this.unitSize),
       { t, h } = this.getChunkData(m, n)
     return { t, h: h + this.position.y }
+  }
+
+  copyTextureTo(dc: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
+    const { unitSize, unitTexSize } = this,
+      [m, n, uc, vc] = [x, y, w, h].map(v => Math.floor(v / unitSize))
+    dc.imageSmoothingEnabled = dc.webkitImageSmoothingEnabled = false
+    for (let u = 0; u < uc; u ++) {
+      for (let v = 0; v < vc; v ++) {
+        const dx = u * unitTexSize,
+          dy = h * unitTexSize - (v + 1) * unitTexSize
+        this.drawTileTo(dc, m + u, n + v, dx, dy)
+      }
+    }
   }
 
   serialize() {

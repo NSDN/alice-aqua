@@ -24,7 +24,7 @@ export function Vector3Map(vec: Vector3, fn: (x: number, a?: 'x' | 'y' | 'z') =>
 }
 
 export const VERTEX_BOX      = VertexData.CreateBox({ })
-export const VERTEX_SPHERE   = VertexData.CreateSphere({ segments: 6, slice: 4, arc: 4 })
+export const VERTEX_SPHERE   = VertexData.CreateSphere({ segments: 8 })
 export const VERTEX_PLANE    = VertexData.CreatePlane({ })
 export const VERTEX_GROUND   = VertexData.CreateGround({ })
 export const VERTEX_CYLINDER = VertexData.CreateCylinder({ height: 1, diameter: 1 })

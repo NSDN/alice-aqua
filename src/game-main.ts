@@ -37,7 +37,6 @@ import {
 import Terrain from './game/terrain'
 import SkyBox from './game/skybox'
 
-import BulletinBoard from './objs/bulletin'
 import Player from './objs/player'
 
 const KEY_MAP = {
@@ -81,11 +80,11 @@ class Stage {
         console.warn(`restore object failed: ${err && err.message || err}`)
       }
     })
-    this.objects.forEach(object => object.startPlaying())
+    this.objects.forEach(object => object.onPlayStart())
   }
 
   dispose() {
-    this.objects.forEach(object => object.stopPlaying())
+    this.objects.forEach(object => object.onPlayStop())
     this.objects.forEach(object => object.dispose())
     this.terrains.forEach(terrain => terrain.dispose())
   }
@@ -329,7 +328,8 @@ function getTerrainIfPlayerConvered(game: Game) {
     throw err
   }
 
-  const { scene, camera } = game,
+  const { scene, camera, light } = game,
+    shadow = new BABYLON.ShadowGenerator(1024, light),
     input = new GamepadInput(KEY_MAP),
     keys = input.state
 
@@ -451,9 +451,18 @@ function getTerrainIfPlayerConvered(game: Game) {
     }
   })
 
-  BulletinBoard.eventEmitter.on('read-bulletin-content', dialogContent => {
+  ObjectBase.eventEmitter.on('read-bulletin-content', dialogContent => {
     const dialogJSON = JSON.stringify(dialogContent)
     gameState.goto(`dialog:${encodeURIComponent(dialogJSON)}`)
+  })
+
+  ObjectBase.eventEmitter.on('player-activated', ({ name }) => {
+    const player = scene.getMeshByName(name) as Player,
+      state = player as any as { hasBeenAddedToShadowMap: boolean }
+    if (!state.hasBeenAddedToShadowMap) {
+      state.hasBeenAddedToShadowMap = true
+      shadow.getShadowMap().renderList.push(player.spriteBody)
+    }
   })
 
   const hideTerrainDebounced = check(debounce(check<Terrain>((newTerrain, oldTerrain) => {

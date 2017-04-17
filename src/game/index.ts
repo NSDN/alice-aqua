@@ -15,6 +15,7 @@ import {
   Mesh,
   SSAORenderingPipeline,
   LensRenderingPipeline,
+  DirectionalLight,
 } from '../babylon'
 
 import {
@@ -139,9 +140,11 @@ async function loadAllPlugins() {
 export class Game {
   readonly scene: Scene
   readonly camera: FollowCamera
-  readonly light: BABYLON.DirectionalLight
   readonly engine: Engine
+
   readonly canvas: ScreenSpaceCanvas2D
+  readonly light: DirectionalLight
+
   private constructor() {
     const attrs = { style: { width: '100%', height: '100%' }, tabIndex: -1, className: 'canvas-main' },
       elem = appendElement('canvas', attrs) as HTMLCanvasElement,
@@ -152,8 +155,6 @@ export class Game {
     scene.workerCollisions = true
     scene.clearColor = Color3.FromHexString('#607f9a').scale(0.7).toColor4()
 
-    this.light = new BABYLON.DirectionalLight('dir', new Vector3(0, 0, 1), scene)
-
     const camera = this.camera = scene.activeCamera = new FollowCamera('camera', 0, 0, 50, Vector3.Zero(), scene)
     camera.lowerRadiusLimit = 15
     camera.upperRadiusLimit = 100
@@ -162,16 +163,16 @@ export class Game {
     camera.attachControl(elem, true)
     camera.keysUp = camera.keysDown = camera.keysLeft = camera.keysRight = [ ]
 
-    this.canvas = new ScreenSpaceCanvas2D(scene)
-
     engine.runRenderLoop(() => scene.render())
     window.addEventListener('resize', () => engine.resize())
+
+    this.canvas = new ScreenSpaceCanvas2D(scene)
+    this.light = new DirectionalLight('dir', new Vector3(0.1, -0.2, 0.2), scene)
 
     scene.registerAfterRender(() => {
       this.updateTimeout()
       this.updateAnimation()
       this.lensFocusDistance = softClamp(this._lensFocusDistance, this.camera.radius - 1, this.camera.radius + 1)
-      this.light.direction.copyFrom(camera.target.subtract(camera.position).normalize().add(new Vector3(0, 0, 1)))
     })
   }
 
@@ -288,7 +289,7 @@ export class Game {
         dof_pentagon: true,
         dof_gain: 1.0,
         dof_threshold: 1.0,
-        dof_darken: 0.25
+        dof_darken: 0.1
       }, this.scene, 1.0, [this.camera])
     }
     else if (!val && this._lensRendering) {

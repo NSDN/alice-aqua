@@ -24,9 +24,9 @@ import {
   VERTEX_PLANE,
   VERTEX_GROUND,
   VERTEX_SPHERE,
-  VERTEX_DUMMY,
   FollowCamera,
   GamepadInput,
+  ColorWireframeNoLightingMaterial,
 } from '../utils/babylon'
 
 import Sprite from './sprite'
@@ -38,7 +38,7 @@ const DEFAULT_CONFIG = {
   restitution: 0,
   moveForce: 3,
   jumpForce: 20,
-  minimumY: -5,
+  minimumY: -10,
   angularDamping: 0.9,
   linearDamping: 0.97,
   dynamicFriction: 0,
@@ -96,6 +96,7 @@ export default class Player extends Mesh {
       const withActivePlayer = this.getScene() as any as { currentActivePlayer: Player }
       if (val) {
         withActivePlayer.currentActivePlayer = this
+        PlayerGenerator.eventEmitter.emit('player-activated', this)
       }
       else if (withActivePlayer.currentActivePlayer === this) {
         withActivePlayer.currentActivePlayer = null
@@ -133,6 +134,7 @@ export default class Player extends Mesh {
     VERTEX_SPHERE.applyToMesh(this)
     this.scaling.copyFromFloats(opts.width, opts.width, opts.width)
     this.isVisible = false
+    this.material = ColorWireframeNoLightingMaterial.getCached(scene, Color3.White())
     this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.SphereImpostor, {
       mass: opts.mass,
       friction: 0,
@@ -153,6 +155,7 @@ export default class Player extends Mesh {
       material.disableLighting = true
       material.emissiveColor = new Color3(1, 1, 1)
       material.diffuseTexture = texture
+      material.backFaceCulling = false
     }
 
     const sprite = this.spriteBody = new Mesh(name + '/sprite', scene)
@@ -166,11 +169,12 @@ export default class Player extends Mesh {
     sprite.registerBeforeRender(_ => this.updatePlayerFrame())
 
     const head = this.playerHead = new Mesh(name + '/head', scene)
-    VERTEX_DUMMY.applyToMesh(head)
+    VERTEX_SPHERE.applyToMesh(head)
     head.position.copyFromFloats(0, opts.height - opts.width * Math.sqrt(2) / 2 - opts.width / 2, 0)
     head.scaling.copyFromFloats(opts.width, opts.width, opts.width)
     head.rotation.x = Math.PI / 4
     head.isVisible = false
+    head.material = this.material
     head.parent = this
     head.physicsImpostor = new PhysicsImpostor(head, PhysicsImpostor.SphereImpostor)
 
@@ -189,19 +193,14 @@ export default class Player extends Mesh {
       const shadowSize = 32,
         shadowTexture = shadowMaterial.diffuseTexture = new DynamicTexture('cache/player/shadow/tex', shadowSize, scene, false),
         dc = shadowTexture.getContext(),
-        x = shadowSize / 2, y = shadowSize / 2, r = shadowSize / 2,
-        grad = dc.createRadialGradient(x, y, r * 0.1, x, y, r)
-      grad.addColorStop(0, 'black')
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0)')
-      dc.fillStyle = grad
+        x = shadowSize / 2, y = shadowSize / 2, r = shadowSize * 0.3
+      dc.fillStyle = '#333333'
       dc.arc(x, y, r, 0, Math.PI * 2)
       dc.fill()
       shadowTexture.update()
       shadowTexture.hasAlpha = true
     }
     this.shadow = shadowCache.createInstance(this.name + '/shadow')
-    this.shadow.scaling.copyFromFloats(0.5, 1, 0.5)
-    this.shadow.scaling.copyFromFloats(1, 1, 1)
 
     const sceneWithHighlight = scene as any as { playerHighlightLayer: HighlightLayer }
     if (!(this.highlightLayer = sceneWithHighlight.playerHighlightLayer)) {
@@ -249,12 +248,6 @@ export default class Player extends Mesh {
     im.setAngularVelocity(im.getAngularVelocity().multiplyByFloats(0, this.opts.angularDamping, 0))
     im.setLinearVelocity(im.getLinearVelocity().scale(this.opts.linearDamping))
 
-    if (this.position.y < this.opts.minimumY) setImmediate(() => {
-      this.position.copyFrom(this.lastShadowDropPosition)
-      this.position.y += 2
-      this.physicsImpostor.setLinearVelocity(Vector3.Zero())
-    })
-
     if (this.isPlayerActive) {
       const camera = this.getScene().activeCamera as FollowCamera
       if (camera && camera.target) {
@@ -300,8 +293,13 @@ export default class Player extends Mesh {
       posY = pickBottom.hit ? pickBottom.pickedPoint.y + 1e-4 : -1000
     this.shadow.position.copyFromFloats(this.position.x, posY, this.position.z)
     this.isPlayerOnGround = this.position.y - this.shadow.position.y < 1e-2
-    if (pickBottom.hit && pickBottom.pickedPoint.y > this.opts.minimumY) {
+    if (pickBottom.hit && pickBottom.pickedPoint.y > this.lastShadowDropPosition.y + this.opts.minimumY) {
       this.lastShadowDropPosition.copyFrom(pickBottom.pickedPoint)
+    }
+    if (this.position.y < this.lastShadowDropPosition.y + this.opts.minimumY) {
+      this.position.copyFrom(this.lastShadowDropPosition)
+      this.position.y += 2
+      this.physicsImpostor.setLinearVelocity(Vector3.Zero())
     }
 
     const pick = this.isPlayerActive && this.pickUsableFromCenter(),
@@ -364,7 +362,7 @@ export class PlayerGenerator extends Sprite {
     Tags.AddTagsTo(this, PlayerGenerator.PLAYER_GENERATOR_TAG)
   }
 
-  startPlaying() {
+  onPlayStart() {
     const ref = PlayerGenerator.playerReferenceCount
     ref[this.playerName] = (ref[this.playerName] || 0) + 1
 
@@ -376,7 +374,7 @@ export class PlayerGenerator extends Sprite {
 
     this.spriteBody.isVisible = false
   }
-  stopPlaying() {
+  onPlayStop() {
     const ref = PlayerGenerator.playerReferenceCount
     ref[this.playerName] = (ref[this.playerName] || 0) - 1
 

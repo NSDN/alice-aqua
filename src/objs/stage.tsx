@@ -28,10 +28,10 @@ class SpriteWithOffset extends Sprite {
 }
 
 export class StageEntry extends SpriteWithOffset {
-  startPlaying() {
+  onPlayStart() {
     this.spriteBody.isVisible = false
   }
-  stopPlaying() {
+  onPlayStop() {
     this.spriteBody.isVisible = true
   }
 }

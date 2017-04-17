@@ -295,13 +295,13 @@ export default class Sensor extends ObjectBase implements ITriggerable {
     })
   }
 
-  startPlaying() {
+  onPlayStart() {
     // wait until other objects are created
     setImmediate(() => this.registerTrigger())
     this.triggerSensor.isVisible = false
   }
 
-  stopPlaying() {
+  onPlayStop() {
     this.clearTriggered()
     this.triggerSensor.isVisible = true
   }

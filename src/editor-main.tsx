@@ -3,7 +3,6 @@ import {
 } from 'preact'
 
 import {
-  Mesh,
   Vector3,
   BoundingBox,
   Matrix,
@@ -276,7 +275,7 @@ function playMapInNewWindow(map: EditorMap) {
   })
 
   // use shift key to select objects
-  let selectedObject: AbstractMesh
+  let selectedObject: ObjectBase
   attachDragable(_ => {
     return toolbar.state.panel === 'objects' && !keys.ctrlKey && keys.shiftKey
   }, _ => {
@@ -285,9 +284,9 @@ function playMapInNewWindow(map: EditorMap) {
     // mouse move
   }, _ => {
     const box = new BoundingBox(cursor.minimum, cursor.maximum),
-      objects = Object.keys(map.objects).map(id => scene.getMeshByName(id)),
+      objects = Object.keys(map.objects).map(id => scene.getMeshByName(id) as ObjectBase),
       intersected = objects.filter(mesh => box.intersectsPoint(mesh.position)),
-      index = intersected.indexOf(selectedObject as Mesh)
+      index = intersected.indexOf(selectedObject)
     selectedObject = intersected[(index + 1) % objects.length]
   })
 
@@ -561,7 +560,7 @@ function playMapInNewWindow(map: EditorMap) {
       const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
         picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
       if (picked.hit) {
-        selectedObject = picked.pickedMesh
+        selectedObject = picked.pickedMesh as ObjectBase
         toolbar.setStatePartial({ panel: 'objects' })
       }
       else {
