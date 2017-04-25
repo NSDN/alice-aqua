@@ -5,7 +5,6 @@ import {
 import {
   Vector3,
   BoundingBox,
-  Matrix,
   AbstractMesh,
   Scene,
 } from './babylon'
@@ -15,6 +14,7 @@ import {
 } from './game'
 
 import Terrain, {
+  eventEmitter as terrainEvents,
 } from './game/terrain'
 
 import {
@@ -25,6 +25,7 @@ import {
   SelectionBox,
   GridPlane,
   ObjectBoundary,
+  ArrowBoundary,
   createDataURLFromIconFontAndSub,
   EditorMap,
 } from './editor'
@@ -369,11 +370,11 @@ function playMapInNewWindow(map: EditorMap) {
     }
   })
 
-  Terrain.eventEmitter.on('tile-updated', () => {
+  terrainEvents.on('tile-updated', () => {
     map.saveDebounced()
   })
 
-  Terrain.eventEmitter.on('height-updated', ({ terrain, chunk }) => {
+  terrainEvents.on('height-updated', ({ terrain, chunk }) => {
     const pos = chunk.top.position, size = terrain.chunkSize,
       box = new BoundingBox(pos, pos.add(new Vector3(size, 0, size)))
     Object.keys(map.objects)
@@ -388,7 +389,7 @@ function playMapInNewWindow(map: EditorMap) {
     map.saveDebounced()
   })
 
-  Terrain.eventEmitter.on('position-updated', ({ terrain, delta }) => {
+  terrainEvents.on('position-updated', ({ terrain, delta }) => {
     Object.keys(map.objects)
       .filter(id => map.objects[id].terrainId === terrain.name)
       .map(id => scene.getMeshByName(id))
@@ -476,58 +477,49 @@ function playMapInNewWindow(map: EditorMap) {
   const objectToolbar = await renderReactComponent(({ object }: {
     object: ObjectBase,
   }) => {
-    return <div class="object-toolbar">
-      <div id="objectFloating" class="object-float shown-object-selected">
-        <i class="action-icon move-object fa fa-arrows" title="drag to move"></i> {' '}
-        <i class="action-icon focus-object fa fa-crosshairs" title="look at this"
-          onClick={ _ => camera.followTarget.copyFrom(selectedObject.position)}></i> {' '}
-        <i class="action-icon remove-object fa fa-trash" title="remove"
-          onClick={ _ => editorHistory.commit(new RemoveObjectAction(map, selectedObject))}></i> {' '}
-      </div>
-      {
-        object && <div class="object-editor shown-object-selected">
-          <div>
-            <b>{ object.name }</b>
-            <i class="action-icon fa fa-close float-right" title="cancel"
-              onClick={ _ => selectedObject = null }></i>
-          </div>
-          <div>({ object.position.x }, { object.position.y }, { object.position.z })</div>
-          {
-            object.renderConfig(data => {
-              editorHistory.commit(new UpdateObjectAction(map, object, data))
-              objectToolbar.setStatePartial({ object })
-            })
-          }
+    return object && <div class="object-editor shown-object-selected">
+      <div>
+        <b>{ object.name }</b>
+        <div class="float-right">
+          <i class="action-icon fa fa-crosshairs" title="look at this"
+            onClick={ _ => camera.followTarget.copyFrom(selectedObject.position)}></i> {' '}
+          <i class="action-icon fa fa-trash" title="remove"
+            onClick={ _ => editorHistory.commit(new RemoveObjectAction(map, selectedObject))}></i> {' '}
+          <i class="action-icon fa fa-close" title="cancel"
+            onClick={ _ => selectedObject = null }></i>
         </div>
+      </div>
+      <div>({ object.position.x }, { object.position.y }, { object.position.z })</div>
+      {
+        object.renderConfig(data => {
+          editorHistory.commit(new UpdateObjectAction(map, object, data))
+          objectToolbar.setStatePartial({ object })
+        })
       }
     </div>
   }, document.body)
 
-  let toolbarDragStarted: { x: number, y: number }
-  const objectFloating = document.getElementById('objectFloating') as HTMLDivElement
-  attachDragable(document.querySelector('.object-toolbar .move-object') as HTMLElement, evt => {
-    toolbarDragStarted = { ...cursor.offset }
-
-    cursor.offset.x = (parseInt(objectFloating.style.left) || 0) - evt.clientX
-    cursor.offset.y = (parseInt(objectFloating.style.top) || 0) - evt.clientY
+  attachDragable(evt => {
+    const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
+      picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
+    if (picked.hit) {
+      checkSelectedObjectChange(selectedObject = picked.pickedMesh as any as ObjectBase)
+    }
+    return picked.hit
+  }, evt => {
+    camera.detachControl(canvas)
     cursor.updateFromPickTarget(evt)
   }, evt => {
     cursor.updateFromPickTarget(evt)
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
     editorHistory.push(new MoveObjectAction(map.activeTerrain, selectedObject.name, pos))
-    const left = evt.clientX + cursor.offset.x, top = evt.clientY + cursor.offset.y
-    objectFloating.style.left = left + 'px'
-    objectFloating.style.top = top + 'px'
+    objectHoverCursor.position.copyFrom(pos)
   }, _ => {
-    cursor.offset.x = toolbarDragStarted.x
-    cursor.offset.y = toolbarDragStarted.y
-    toolbarDragStarted = null
-
     editorHistory.commit()
+    camera.attachControl(canvas, true)
   })
 
-  const objectHoverCursor = game.objectSource.createInstance('object-hover')
-  objectHoverCursor.scaling.copyFromFloats(1.15, 1.15, 1.15)
+  const objectHoverCursor = new ArrowBoundary('arrow', scene)
   objectHoverCursor.isVisible = false
 
   const cursorHoverInfo = document.getElementById('cursorHoverInfo') as HTMLDivElement
@@ -624,14 +616,6 @@ function playMapInNewWindow(map: EditorMap) {
     checkSelectedObjectChange(toolbar.state.panel === 'objects' && selectedObject)
 
     fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
-
-    if (toolbar.state.panel === 'objects' && selectedObject && !toolbarDragStarted) {
-      const src = selectedObject.position,
-        viewport = camera.viewport.toGlobal(canvas.width, canvas.height),
-        pos = Vector3.Project(src, Matrix.Identity(), scene.getTransformMatrix(), viewport)
-      objectFloating.style.left = pos.x + 'px'
-      objectFloating.style.top = pos.y + 'px'
-    }
 
     if (keys.showCursor) {
       const { x, z } = cursor.hover, g = map.activeTerrain.chunkSize,

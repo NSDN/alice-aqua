@@ -1,20 +1,23 @@
 import { ObjectBase } from '../game/objbase'
 
 import Sprite from './sprite'
+import Player, { PlayerGenerator } from './player'
+import Box, { BoxGenerator } from './box'
 import Slope from './slope'
-import Gate from './gate'
 import Trigger from './trigger'
+/*
+import Gate from './gate'
 import BulltinBoard from './bulletin'
 import Jump from './jump'
 import Block from './block'
-import Box, { BoxGenerator } from './box'
-import Player, { PlayerGenerator } from './player'
 import { StageEntry, StageLoader } from './stage'
+*/
 
 const imgres = {
   imAssetTile0: 'assets/tileset0.png',
-  imAssetTile1: 'assets/rpg_maker_vx_rtp_tileset_by_telles0808.png',
-  imAssetTile2: 'assets/tileset_pokemon_rpgmaker_xp_by_kutoal-d59p9c9.png',
+  imAssetSprite0: 'assets/sprites0.png',
+  imPlayerFlandre: 'assets/flandre.png',
+  imPlayerRemilia: 'assets/remilia.png',
 }
 
 const images = imgres as { [id: string]: string }
@@ -28,12 +31,17 @@ const tiles: [number, keyof typeof imgres, number, number, number, string, numbe
 ]
 
 const classes: [number, keyof typeof imgres, number, number, number, number, typeof ObjectBase, any, any][] = [
-  [ 0, 'imAssetTile1',   96, 1632, 64, 96, Sprite,       { spriteHeight: 4 }, { }],
-  [ 1, 'imAssetTile1',    0, 1440, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
+  [ 1, 'imAssetSprite0',    0,    0, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
+  [ 2, 'imAssetSprite0',    0,   64, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
+  [ 5, 'imAssetSprite0',    0,  128, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 10 }, { }],
+  [ 6, 'imAssetSprite0',   64,  128, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }, { }],
+  [ 3, 'imPlayerRemilia',   0,  128, 28, 28, PlayerGenerator,  { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { }],
+  [ 4, 'imPlayerFlandre',   0,  128, 28, 28, PlayerGenerator,  { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { }],
+  [21, 'imAssetSprite0',    0,  192, 32, 32, Slope,        { }, { title: '两个 slope 相连形成斜坡' }],
+  [22, 'imAssetSprite0',   32,  192, 32, 32, Trigger,      { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }, { title: '触发器' }],
+  /*
   [ 2, 'imAssetTile1',    0, 1504, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 3, 'imAssetTile1',  192, 1344, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
-  [ 4, 'imAssetTile1',  512,  256, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 10 }, { }],
-  [33, 'imAssetTile1',  768,   32, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }, { }],
   [ 5, 'imAssetTile1',  160, 1024, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 6, 'imAssetTile1',  128, 1120, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 7, 'imAssetTile1',    0, 1120, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
@@ -58,14 +66,12 @@ const classes: [number, keyof typeof imgres, number, number, number, number, typ
   [26, 'imAssetTile1',  160, 1664, 32, 32, Sprite,       { }, { }],
   [27, 'imAssetTile1',  160, 1696, 32, 32, Sprite,       { }, { }],
   [28, 'imAssetTile1', 1024,    0, 32, 32, Gate,         { }, { title: '可触发的门' }],
-  [29, 'imAssetTile1', 1056,    0, 32, 32, Slope,        { }, { title: '两个 slope 相连形成斜坡' }],
   [36, 'imAssetTile1', 1088,    0, 32, 32, Block,        { }, { title: '可触发移动的方块' }],
   [34, 'imAssetTile1', 1120,    0, 32, 32, Jump,         { listenTags: [Player.PLAYER_TAG] }, { title: '跳！' }],
   [30, 'imAssetTile1', 1152,    0, 32, 32, Trigger,      { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }, { title: '触发器' }],
   [35, 'imAssetTile1', 1248,    0, 32, 32, StageLoader,  { editorSingletonId: 'stage/loader' }, { title: '在此载入新关卡' }],
   [37, 'imAssetTile1', 1280,    0, 32, 32, StageEntry,   { editorSingletonId: 'stage/entry'  }, { title: '关卡载入时使用的原点' }],
-  [31, 'imAssetTile1', 1184,    0, 32, 32, PlayerGenerator,  { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { }],
-  [32, 'imAssetTile1', 1216,    0, 32, 32, PlayerGenerator,  { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { }],
+  */
 ]
 
 export { images, tiles, classes }

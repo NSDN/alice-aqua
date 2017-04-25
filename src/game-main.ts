@@ -1,6 +1,5 @@
 import {
   Vector3,
-  Ray,
 } from './babylon'
 
 import {
@@ -10,6 +9,7 @@ import {
 
 import {
   ObjectBase,
+  IPlayStartStopListener,
 } from './game/objbase'
 
 import {
@@ -26,8 +26,6 @@ import {
   queue,
   step,
   sleep,
-  check,
-  debounce,
 } from './utils'
 
 import {
@@ -65,8 +63,9 @@ class Stage {
     this.terrains = [ ]
     Object.keys(map.terrains).forEach(id => {
       const { x, y, z } = map.terrains[id],
-        position = new Vector3(x, y, z).addInPlace(entryPosition)
-      this.terrains.push(new Terrain('terrain/' + id, game.scene, game.assets.tiles, map.terrains[id], position))
+        position = new Vector3(x, y, z).addInPlace(entryPosition),
+        terrain = new Terrain('terrain/' + id, game.scene, game.assets.tiles, map.terrains[id], position)
+      this.terrains.push(terrain)
     })
 
     this.objects = [ ]
@@ -80,11 +79,15 @@ class Stage {
         console.warn(`restore object failed: ${err && err.message || err}`)
       }
     })
-    this.objects.forEach(object => object.onPlayStart())
+
+    const playListeners = this.objects as any[] as IPlayStartStopListener[]
+    playListeners.forEach(object => object.onPlayStart && object.onPlayStart())
   }
 
   dispose() {
-    this.objects.forEach(object => object.onPlayStop())
+    const playListeners = this.objects as any[] as IPlayStartStopListener[]
+    playListeners.forEach(object => object.onPlayStop && object.onPlayStop())
+
     this.objects.forEach(object => object.dispose())
     this.terrains.forEach(terrain => terrain.dispose())
   }
@@ -294,19 +297,6 @@ function updateConfigFromActiveMenu(config: ConfigManager) {
   key && config.set(key as any, val)
 }
 
-function getTerrainIfPlayerConvered(game: Game) {
-  const player = Player.getActive(game.scene)
-  if (player) {
-    const spritePosition = player.spriteBody.getAbsolutePosition(),
-      target = spritePosition.add(new Vector3(0, player.spriteBody.scaling.y * 0.4, 0)),
-      origin = game.camera.position,
-      delta = target.subtract(origin),
-      ray = new Ray(origin, delta.clone().normalize(), delta.length()),
-      picked = game.scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh))
-    return picked.hit && Terrain.getTerrainFromMesh(picked.pickedMesh)
-  }
-}
-
 ; (async function() {
   await checkFontsLoaded()
 
@@ -328,8 +318,7 @@ function getTerrainIfPlayerConvered(game: Game) {
     throw err
   }
 
-  const { scene, camera, light } = game,
-    shadow = new BABYLON.ShadowGenerator(1024, light),
+  const { scene, camera } = game,
     input = new GamepadInput(KEY_MAP),
     keys = input.state
 
@@ -451,29 +440,13 @@ function getTerrainIfPlayerConvered(game: Game) {
     }
   })
 
-  ObjectBase.eventEmitter.on('read-bulletin-content', dialogContent => {
-    const dialogJSON = JSON.stringify(dialogContent)
-    gameState.goto(`dialog:${encodeURIComponent(dialogJSON)}`)
-  })
-
-  ObjectBase.eventEmitter.on('player-activated', ({ name }) => {
-    const player = scene.getMeshByName(name) as Player,
-      state = player as any as { hasBeenAddedToShadowMap: boolean }
-    if (!state.hasBeenAddedToShadowMap) {
-      state.hasBeenAddedToShadowMap = true
-      shadow.getShadowMap().renderList.push(player.spriteBody)
-    }
-  })
-
-  const hideTerrainDebounced = check(debounce(check<Terrain>((newTerrain, oldTerrain) => {
-    oldTerrain && game.startAnimation(oldTerrain.name + '/fade', oldTerrain, 'visibility', 1.0, 0.03)
-    newTerrain && game.startAnimation(newTerrain.name + '/fade', newTerrain, 'visibility', 0.3, 0.03)
-  }), 500))
-
   scene.registerBeforeRender(() => {
-    hideTerrainDebounced(getTerrainIfPlayerConvered(game))
-    input.rightStick && camera.updateRotation(input.rightStick)
-    ; (input.leftTrigger || input.rightTrigger) && camera.updateDistance(input.rightTrigger - input.leftTrigger)
+    if (input.rightStick) {
+      camera.updateRotation(input.rightStick)
+    }
+    if (input.leftTrigger || input.rightTrigger) {
+      camera.updateDistance(input.rightTrigger - input.leftTrigger)
+    }
   })
 
   await sleep(1000)

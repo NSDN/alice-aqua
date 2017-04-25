@@ -32,29 +32,19 @@ export interface ObjectOptions {
   source: Mesh
 }
 
-export interface ITriggerable {
+export interface IObjectTriggerable {
   onTrigger(isOn: boolean, by?: AbstractMesh): void
 }
 
-export interface IUsable {
-  canBeUsedBy(mesh: AbstractMesh): boolean
-  displayUsable(mesh: AbstractMesh, show: boolean): void
-  useFrom(mesh: AbstractMesh): void
+export interface IPlayStartStopListener {
+  onPlayStart(): void
+  onPlayStop(): void
 }
 
 interface ObjectEvents {
   'load-stage': {
     url: string,
     position: Vector3
-  }
-  'read-bulletin-content': {
-    [name: string]: {
-      text: string
-      options: { [title: string]: string }
-    }
-  }
-  'player-activated': {
-    name: string
   }
 }
 
@@ -63,11 +53,6 @@ export class ObjectBase extends InstancedMesh {
 
   constructor(name: string, readonly opts: ObjectOptions) {
     super(name, opts.source)
-  }
-
-  onPlayStart() {
-  }
-  onPlayStop() {
   }
 
   renderConfig(_save: (args: Partial<ObjectBase>) => void) {

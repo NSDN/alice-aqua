@@ -67,6 +67,13 @@ export interface TileDefine {
   sideTileId: number
 }
 
+export const eventEmitter = new EventEmitter<{
+  'tile-updated': { terrain: Terrain }
+  'height-updated': { terrain: Terrain, chunk: Chunk }
+  'chunk-loaded': { terrain: Terrain, chunk: Chunk }
+  'position-updated': { terrain: Terrain, delta: Vector3 }
+}>()
+
 const push = [ ].push,
   getGroundVertexDataWithUVMemo = memo(getChunkGroundVertexData)
 
@@ -80,13 +87,6 @@ export default class Terrain extends EventEmitter<{
   static getTerrainFromMesh(mesh: AbstractMesh) {
     return Terrain.terrainFromChunkMesh[mesh.name]
   }
-
-  static readonly eventEmitter = new EventEmitter<{
-    'tile-updated': { terrain: Terrain }
-    'height-updated': { terrain: Terrain, chunk: Chunk }
-    'chunk-loaded': { terrain: Terrain, chunk: Chunk }
-    'position-updated': { terrain: Terrain, delta: Vector3 }
-  }>()
 
   private readonly sideMesh: Mesh
 
@@ -195,7 +195,7 @@ export default class Terrain extends EventEmitter<{
     this.throttleUpdate()
 
     this.emit('chunk-loaded', this.data[k])
-    Terrain.eventEmitter.emit('chunk-loaded', { terrain: this, chunk: this.data[k] })
+    eventEmitter.emit('chunk-loaded', { terrain: this, chunk: this.data[k] })
 
     return this.data[k] = { tiles, heights, top, blocks, vertices, texture, m0, n0, k }
   }
@@ -358,7 +358,7 @@ export default class Terrain extends EventEmitter<{
     this.throttleUpdateSide()
 
     this.emit('height-updated', this.data[k])
-    Terrain.eventEmitter.emit('height-updated', { terrain: this, chunk: this.data[k] })
+    eventEmitter.emit('height-updated', { terrain: this, chunk: this.data[k] })
   }
 
   private throttleUpdateSide = throttle(this.batchUpdateSide.bind(this), 50)
@@ -405,7 +405,7 @@ export default class Terrain extends EventEmitter<{
       const texture = texturesToRefresh[index]
       texture.update()
       this.emit('tile-updated', null)
-      Terrain.eventEmitter.emit('tile-updated', { terrain: this })
+      eventEmitter.emit('tile-updated', { terrain: this })
     })
   }
   private addTextureToUpdate(m: number, n: number, v: number, u: number) {
@@ -473,7 +473,7 @@ export default class Terrain extends EventEmitter<{
     this.position.copyFrom(position)
     this.sideMesh.position.copyFrom(position)
     this.emit('position-updated', delta)
-    Terrain.eventEmitter.emit('position-updated', { terrain: this, delta })
+    eventEmitter.emit('position-updated', { terrain: this, delta })
   }
 
   setPixel(x: number, z: number, p: { t?: number, h?: number | string }) {

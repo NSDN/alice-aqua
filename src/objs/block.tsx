@@ -16,10 +16,10 @@ import {
 import {
   ObjectBase,
   ObjectOptions,
-  ITriggerable,
+  IObjectTriggerable,
 } from '../game/objbase'
 
-export default class Block extends ObjectBase implements ITriggerable {
+export default class Block extends ObjectBase implements IObjectTriggerable {
   public triggerSpeed = 0.02
 
   private _blockSize = new Vector3(1, 1, 1)

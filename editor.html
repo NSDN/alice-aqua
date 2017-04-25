@@ -44,16 +44,8 @@
       transition: visibility 0s 0.1s, opacity 0.1s linear;
     }
 
-    .object-toolbar .action-icon {
+    .object-editor .action-icon {
       cursor: pointer;
-    }
-    .object-toolbar .move-object {
-      cursor: -webkit-grab;
-    }
-    .object-float {
-      font-size: 120%;
-      padding: 5px;
-      background-color: rgba(255, 255, 255, 0.3);
     }
     .object-editor {
       right: 20px;
@@ -287,10 +279,6 @@
     </div>
   </div>
   <script src="build/screen.bundle.js"></script>
-  <script src="//localhost:8080/webpack-dev-server.js"></script>
-  <script src="babylonjs/cannon.js"></script>
-  <script src="babylonjs/babylon.max.js"></script>
-  <script src="babylonjs/canvas2D/babylon.canvas2d.js"></script>
-  <script src="build/editor.bundle.js"></script>
+  <script>window.startWithEntry('build/editor.bundle.js')</script>
 </body>
 </html>

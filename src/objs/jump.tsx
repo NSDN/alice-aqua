@@ -13,14 +13,14 @@ import {
 
 import {
   ObjectOptions,
-  ITriggerable,
+  IObjectTriggerable,
 } from '../game/objbase'
 
 import {
   drawIconFont,
 } from '../utils/dom'
 
-export default class Jump extends Trigger implements ITriggerable {
+export default class Jump extends Trigger implements IObjectTriggerable {
   get upForce() {
     return this._upForce
   }

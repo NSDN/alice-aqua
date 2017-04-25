@@ -191,6 +191,34 @@ export class SelectionBox extends LinesMesh {
   }
 }
 
+export class ArrowBoundary extends LinesMesh {
+  constructor(name: string, scene: Scene) {
+    super(name, scene)
+
+    const lines = [
+      [new Vector3( 1, 0, 0), new Vector3( 0.75, 0,  0.5)],
+      [new Vector3( 1, 0, 0), new Vector3( 0.75, 0, -0.5)],
+      [new Vector3( 0.5, 0,  0.25), new Vector3( 0.875, 0,  0.25)],
+      [new Vector3( 0.5, 0, -0.25), new Vector3( 0.875, 0, -0.25)],
+      [new Vector3(-1, 0, 0), new Vector3(-0.75, 0,  0.5)],
+      [new Vector3(-1, 0, 0), new Vector3(-0.75, 0, -0.5)],
+      [new Vector3(-0.5, 0,  0.25), new Vector3(-0.875, 0,  0.25)],
+      [new Vector3(-0.5, 0, -0.25), new Vector3(-0.875, 0, -0.25)],
+      [new Vector3( 0, 0, 1), new Vector3( 0.5, 0, 0.75)],
+      [new Vector3( 0, 0, 1), new Vector3(-0.5, 0, 0.75)],
+      [new Vector3( 0.25, 0,  0.5), new Vector3( 0.25, 0,  0.875)],
+      [new Vector3(-0.25, 0,  0.5), new Vector3(-0.25, 0,  0.875)],
+      [new Vector3(0, 0, -1), new Vector3( 0.5, 0, -0.75)],
+      [new Vector3(0, 0, -1), new Vector3(-0.5, 0, -0.75)],
+      [new Vector3( 0.25, 0, -0.5), new Vector3( 0.25, 0, -0.875)],
+      [new Vector3(-0.25, 0, -0.5), new Vector3(-0.25, 0, -0.875)],
+    ]
+    VertexData.CreateLineSystem({ lines }).applyToMesh(this)
+    this.color = Color3.Red()
+    this.renderingGroupId = 1
+  }
+}
+
 export class ObjectBoundary extends Mesh {
   constructor(name: string, scene: Scene) {
     super(name, scene)

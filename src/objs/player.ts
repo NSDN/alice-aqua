@@ -12,12 +12,10 @@ import {
   Quaternion,
   Tags,
   ParticleSystem,
-  HighlightLayer,
 } from '../babylon'
 
 import {
-  ObjectOptions,
-  IUsable,
+  IPlayStartStopListener,
 } from '../game/objbase'
 
 import {
@@ -69,13 +67,11 @@ export default class Player extends Mesh {
   readonly playerHead: Mesh
   readonly shadow: AbstractMesh
   readonly particle: ParticleSystem
-  readonly highlightLayer: HighlightLayer
   readonly lastShadowDropPosition = Vector3.Zero()
 
   private isPlayerOnGround = false
   private isPlayerWalking = false
   private forwardDirection = new Vector3(0, 0, 1)
-  private usableObject = null as IUsable
 
   private _isPlayerActive = false
   get isPlayerActive() {
@@ -89,14 +85,9 @@ export default class Player extends Mesh {
       this.playerHead.physicsImpostor = new PhysicsImpostor(this.playerHead, PhysicsImpostor.SphereImpostor)
       this.physicsImpostor.forceUpdate()
       this.shadow.scaling.copyFromFloats(val ? 1 : 0.5, 1, val ? 1 : 0.5)
-      /*
-      const sprite = this.spriteBody
-      val ? this.highlightLayer.addMesh(sprite, Color3.White()) : this.highlightLayer.removeMesh(sprite)
-      */
       const withActivePlayer = this.getScene() as any as { currentActivePlayer: Player }
       if (val) {
         withActivePlayer.currentActivePlayer = this
-        PlayerGenerator.eventEmitter.emit('player-activated', this)
       }
       else if (withActivePlayer.currentActivePlayer === this) {
         withActivePlayer.currentActivePlayer = null
@@ -115,18 +106,7 @@ export default class Player extends Mesh {
     return pick
   }
 
-  private canUsePickedMesh(mesh: Mesh) {
-    const usable = mesh as any as IUsable
-    return mesh.isVisible && usable.canBeUsedBy && usable.canBeUsedBy(this)
-  }
-  private pickUsableFromCenter() {
-    const origin = new Vector3(0, this.opts.height / 2 - this.opts.width / 2, - this.opts.width / 2),
-      ray = Ray.Transform(new Ray(origin, new Vector3(0, 0, 1), this.opts.width), this.worldMatrixFromCache),
-      pick = this.getScene().pickWithRay(ray, mesh => this.canUsePickedMesh(mesh), false)
-    return pick
-  }
-
-  constructor(name: string, scene: Scene, private opts: Partial<typeof DEFAULT_CONFIG>) {
+  constructor(name: string, scene: Scene, readonly opts: Partial<typeof DEFAULT_CONFIG>) {
     super(name, scene)
 
     opts = this.opts = Object.assign({ }, DEFAULT_CONFIG, opts)
@@ -202,11 +182,6 @@ export default class Player extends Mesh {
     }
     this.shadow = shadowCache.createInstance(this.name + '/shadow')
 
-    const sceneWithHighlight = scene as any as { playerHighlightLayer: HighlightLayer }
-    if (!(this.highlightLayer = sceneWithHighlight.playerHighlightLayer)) {
-      this.highlightLayer = sceneWithHighlight.playerHighlightLayer = new HighlightLayer('player/highlight', scene)
-    }
-
     const ps = this.particle = new ParticleSystem(this.name + '/particles', 20, scene)
     const particleTexture = ps.particleTexture = new DynamicTexture('player/dust', 1, scene, false),
       dc = particleTexture.getContext()
@@ -230,7 +205,6 @@ export default class Player extends Mesh {
 
     this.onDisposeObservable.add(_ => {
       this.isPlayerActive = false
-      this.usableObject && this.usableObject.displayUsable(this, false)
       this.shadow.dispose()
       this.particle.dispose()
       this.physicsImpostor.dispose()
@@ -301,28 +275,10 @@ export default class Player extends Mesh {
       this.position.y += 2
       this.physicsImpostor.setLinearVelocity(Vector3.Zero())
     }
-
-    const pick = this.isPlayerActive && this.pickUsableFromCenter(),
-      mesh = pick && pick.hit && pick.pickedMesh,
-      usable = mesh as any as IUsable,
-      usableObject = usable && usable.canBeUsedBy && usable.canBeUsedBy(this) && usable
-    if (this.usableObject !== usableObject) {
-      if (this.usableObject) {
-        this.usableObject.displayUsable(this, false)
-      }
-      if (this.usableObject = usableObject) {
-        this.usableObject.displayUsable(this, true)
-      }
-    }
   }
 
   protected updatePlayerFromKey(key: keyof typeof KEY_MAP, down: boolean) {
-    if (key === 'use' && !down) {
-      const pick = this.pickUsableFromCenter(),
-        mesh = pick.hit && pick.pickedMesh as any as IUsable
-      mesh && mesh.useFrom && mesh.useFrom(this)
-    }
-    else if ((key === 'switchNext' || key === 'switchPrev') && !down) {
+    if ((key === 'switchNext' || key === 'switchPrev') && !down) {
       const delta = key === 'switchNext' ? 1 : -1,
         allPlayers = this.getScene().getMeshesByTags(Player.PLAYER_TAG),
         nextPlayer = allPlayers[(allPlayers.indexOf(this) + delta + allPlayers.length) % allPlayers.length] as Player
@@ -351,16 +307,10 @@ export default class Player extends Mesh {
   }
 }
 
-export class PlayerGenerator extends Sprite {
-  static readonly PLAYER_GENERATOR_TAG = 'player-generator'
+export class PlayerGenerator extends Sprite implements IPlayStartStopListener {
   private static playerReferenceCount = { } as { [playerName: string]: number }
 
   public playerName = ''
-
-  constructor(name: string, opts: ObjectOptions) {
-    super(name, opts)
-    Tags.AddTagsTo(this, PlayerGenerator.PLAYER_GENERATOR_TAG)
-  }
 
   onPlayStart() {
     const ref = PlayerGenerator.playerReferenceCount
@@ -374,6 +324,7 @@ export class PlayerGenerator extends Sprite {
 
     this.spriteBody.isVisible = false
   }
+
   onPlayStop() {
     const ref = PlayerGenerator.playerReferenceCount
     ref[this.playerName] = (ref[this.playerName] || 0) - 1
@@ -383,9 +334,5 @@ export class PlayerGenerator extends Sprite {
     }
 
     this.spriteBody.isVisible = true
-  }
-
-  renderConfig(_save: (args: Partial<PlayerGenerator>) => void) {
-    return [ ] as JSX.Element[]
   }
 }

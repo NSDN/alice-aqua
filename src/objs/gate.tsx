@@ -24,10 +24,10 @@ import {
 import {
   ObjectBase,
   ObjectOptions,
-  ITriggerable,
+  IObjectTriggerable,
 } from '../game/objbase'
 
-export default class Gate extends ObjectBase implements ITriggerable {
+export default class Gate extends ObjectBase implements IObjectTriggerable {
   public direction = 'x' as 'x' | 'z'
   public isOpen = false
 

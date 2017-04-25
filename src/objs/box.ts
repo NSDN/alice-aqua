@@ -5,7 +5,6 @@ import {
   PhysicsImpostor,
   MeshBuilder,
   Tags,
-  AbstractMesh,
   InstancedMesh,
 } from '../babylon'
 
@@ -14,15 +13,15 @@ import {
 } from '../utils'
 
 import {
-  IUsable,
+  IPlayStartStopListener,
 } from '../game/objbase'
 
 import Sprite from './sprite'
 
-export default class Box extends InstancedMesh implements IUsable {
+export default class Box extends InstancedMesh {
   static readonly BOX_TAG = 'generated-box'
 
-  constructor(name: string, source: Mesh, private generator: BoxGenerator) {
+  constructor(name: string, source: Mesh, generator: BoxGenerator) {
     super(name, source)
 
     const origin = generator.position.add(new Vector3(0, 2, 0))
@@ -55,53 +54,16 @@ export default class Box extends InstancedMesh implements IUsable {
       impostor.setAngularVelocity(a.scale(0.98))
     })
   }
-
-  canBeUsedBy(mesh: AbstractMesh) {
-    return mesh.name === 'flandre'
-  }
-
-  displayUsable(_mesh: AbstractMesh, show: boolean) {
-    const canvas = this.generator.opts.canvas
-
-    const markCache = canvas as any as { boxMarkCache: BABYLON.Group2D },
-      mark = markCache.boxMarkCache || (markCache.boxMarkCache = new BABYLON.Group2D({
-      position: new BABYLON.Vector2(-10000, -10000),
-      parent: canvas,
-      children: [
-        new BABYLON.Rectangle2D({
-          width: 150,
-          height: 30,
-          fill: '#404080FF',
-          children: [
-            new BABYLON.Text2D('press [ E ] to kick', {
-              marginAlignment: 'v: center, h: center'
-            })
-          ]
-        })
-      ]
-    }))
-    mark.trackedNode = this
-    mark.levelVisible = show
-    // TODO
-    mark.opacity = show ? 1 : 0
-  }
-
-  useFrom(mesh: AbstractMesh) {
-    if (mesh.name === 'flandre') {
-      const direction = this.position.subtract(mesh.position).multiplyByFloats(1, 0, 1).normalize()
-      this.physicsImpostor.applyImpulse(direction.scale(150 * 5 / this.generator.boxMass), this.position)
-    }
-  }
 }
 
-export class BoxGenerator extends Sprite {
+export class BoxGenerator extends Sprite implements IPlayStartStopListener {
   public boxMass = 5
   public velocityThreshold = 0
   private boxName = ''
 
   onPlayStart() {
     const { material, texSize, offsetX, offsetY, width, height } = this.opts.icon,
-      cacheId = ['cache/box', material.name, offsetX, offsetY].join('/')
+      cacheId = ['cache/box', material.name, offsetX, offsetY, this.spriteHeight].join('/')
 
     let cache = this.getScene().getMeshByName(cacheId) as Mesh
     if (!cache) {
@@ -109,9 +71,9 @@ export class BoxGenerator extends Sprite {
         v0 = 1 - (offsetY + height) / texSize,
         u1 = (offsetX + width) / texSize,
         v1 = 1 - offsetY / texSize,
-        faceUV = Array(6).fill(new Vector4(u0, v0, u1, v1))
-      cache = MeshBuilder.CreateBox(cacheId, { faceUV }, this.getScene())
-      cache.scaling.copyFromFloats(1.9, 1.9, 1.9)
+        faceUV = Array(6).fill(new Vector4(u0, v0, u1, v1)),
+        size = this.spriteHeight
+      cache = MeshBuilder.CreateBox(cacheId, { size, faceUV }, this.getScene())
       cache.material = material
       cache.isVisible = false
     }

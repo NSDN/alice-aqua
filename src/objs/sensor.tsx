@@ -22,7 +22,8 @@ import {
 import {
   ObjectBase,
   ObjectOptions,
-  ITriggerable,
+  IObjectTriggerable,
+  IPlayStartStopListener,
 } from '../game/objbase'
 
 export const TRIGGER_ON_COLOR = new Color3(1, 0.5, 0.5),
@@ -87,7 +88,7 @@ class TriggerLocker extends Mesh {
   }
 }
 
-export default class Sensor extends ObjectBase implements ITriggerable {
+export default class Sensor extends ObjectBase implements IObjectTriggerable, IPlayStartStopListener {
   private showLockerSprite(timeout: number) {
     const spriteId = 'trigger/lock/sprite',
       sprite = (this.getScene().getMeshByName(spriteId) as TriggerLocker) ||
@@ -161,7 +162,7 @@ export default class Sensor extends ObjectBase implements ITriggerable {
 
   renderConfig(save: (args: Partial<Sensor>) => void) {
     const availTargets = this.getScene().meshes
-        .filter(mesh => (mesh as any as ITriggerable).onTrigger && mesh !== this)
+        .filter(mesh => (mesh as any as IObjectTriggerable).onTrigger && mesh !== this)
         .map(mesh => mesh.name),
       savedTargets = (this.targetName || '').split(',')
         .filter(target => availTargets.indexOf(target) >= 0)
@@ -250,7 +251,7 @@ export default class Sensor extends ObjectBase implements ITriggerable {
     ; (this._targetName || '').split(',').forEach(target => {
       const isNe = target[0] === '!',
         name = isNe ? target.substr(1) : target,
-        mesh = this.getScene().getMeshByName(name) as any as ITriggerable
+        mesh = this.getScene().getMeshByName(name) as any as IObjectTriggerable
       if (mesh && mesh.onTrigger) {
         mesh.onTrigger(isNe ? !isOn : isOn, this)
       }

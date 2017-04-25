@@ -3,7 +3,8 @@ import {
 } from 'preact'
 
 import {
-  ITriggerable,
+  IObjectTriggerable,
+  IPlayStartStopListener,
 } from '../game/objbase'
 
 import Sprite from './sprite'
@@ -27,7 +28,7 @@ class SpriteWithOffset extends Sprite {
   }
 }
 
-export class StageEntry extends SpriteWithOffset {
+export class StageEntry extends SpriteWithOffset implements IPlayStartStopListener {
   onPlayStart() {
     this.spriteBody.isVisible = false
   }
@@ -36,7 +37,7 @@ export class StageEntry extends SpriteWithOffset {
   }
 }
 
-export class StageLoader extends StageEntry implements ITriggerable {
+export class StageLoader extends StageEntry implements IObjectTriggerable {
   public stageURL = ''
 
   renderConfig(save: (args: Partial<StageLoader>) => void) {

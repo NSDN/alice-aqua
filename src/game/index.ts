@@ -217,7 +217,7 @@ export class Game {
   objectSource = null as Mesh
   createObject(id: string, clsId: number, position = Vector3.Zero(), restoreArgs = null as any) {
     if (!this._classes[clsId]) {
-      throw `class id ${clsId} is not found when create object #${id}!`
+      throw `class #${clsId} is not found when creating object #${id}!`
     }
     if (!this.objectSource) {
       this.objectSource = new Mesh('cache/game/source', this.scene)
@@ -235,7 +235,7 @@ export class Game {
     return object
   }
 
-  private _assets = { } as { tiles: TileDefine[], classes: ClassDefine[] }
+  private _assets = { tiles: [] as TileDefine[], classes: [] as ClassDefine[] }
   get assets() {
     return this._assets
   }
@@ -343,12 +343,16 @@ export class Game {
     const materials = { } as { [key: string]: { material: Material, src: HTMLImageElement, texSize: number } },
       imageIds = Object.keys(plugins.images), total = imageIds.length
     for (let index = 0; index < total; index ++) {
-      const id = imageIds[index],
-        src = await loadDataURLWithXHR(plugins.images[id], progress => onProgress(index, total, progress)),
-        img = createElement('img', { id, src }) as HTMLImageElement,
-        texSize = 2 ** Math.ceil(Math.log2(Math.max(img.width, img.height)))
+      const id = imageIds[index]
+
+      let img: HTMLImageElement
+      const src = await loadDataURLWithXHR(plugins.images[id], progress => onProgress(index, total, progress))
+      await new Promise<HTMLImageElement>((onload, onerror) => {
+        img = createElement('img', { id, src, onload, onerror }) as HTMLImageElement
+      })
 
       let base64Src = src
+      const texSize = 2 ** Math.ceil(Math.log2(Math.max(img.width, img.height)))
       if (img.width !== texSize || img.height !== texSize) {
         const canvas = document.createElement('canvas') as HTMLCanvasElement
         canvas.width = canvas.height = texSize
