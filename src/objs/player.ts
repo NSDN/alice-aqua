@@ -81,7 +81,7 @@ export default class Player extends Mesh {
     if (val !== this._isPlayerActive) {
       const friction = val ? this.opts.dynamicFriction : this.opts.staticFriction
       this.physicsImpostor.setParam('friction', friction)
-      this.playerHead.physicsImpostor.dispose()
+      this.playerHead.physicsImpostor && this.playerHead.physicsImpostor.dispose()
       this.playerHead.physicsImpostor = new PhysicsImpostor(this.playerHead, PhysicsImpostor.SphereImpostor)
       this.physicsImpostor.forceUpdate()
       this.shadow.scaling.copyFromFloats(val ? 1 : 0.5, 1, val ? 1 : 0.5)
@@ -117,7 +117,7 @@ export default class Player extends Mesh {
     this.material = ColorWireframeNoLightingMaterial.getCached(scene, Color3.White())
     this.physicsImpostor = new PhysicsImpostor(this, PhysicsImpostor.SphereImpostor, {
       mass: opts.mass,
-      friction: 0,
+      friction: opts.staticFriction,
       restitution: opts.restitution,
     })
     this.physicsImpostor.registerBeforePhysicsStep(_ => this.updatePlayerPhysics())
@@ -142,7 +142,6 @@ export default class Player extends Mesh {
     VERTEX_PLANE.applyToMesh(sprite)
     sprite.billboardMode = Mesh.BILLBOARDMODE_Y
     sprite.position.copyFromFloats(0, opts.height / 2 - opts.width / 2, 0)
-
     sprite.scaling.copyFromFloats(opts.height / 32 * 24, opts.height, 1)
     sprite.material = material
     sprite.parent = this
@@ -156,9 +155,6 @@ export default class Player extends Mesh {
     head.isVisible = false
     head.material = this.material
     head.parent = this
-    head.physicsImpostor = new PhysicsImpostor(head, PhysicsImpostor.SphereImpostor)
-
-    this.physicsImpostor.forceUpdate()
 
     const shadowCacheId = 'cache/player/shadow'
     let shadowCache = scene.getMeshByName(shadowCacheId) as Mesh
@@ -215,6 +211,9 @@ export default class Player extends Mesh {
     allPlayers.forEach(mesh => (mesh as Player).isPlayerActive = false)
     Tags.AddTagsTo(this, Player.PLAYER_TAG)
     this.isPlayerActive = true
+
+    // FIXME
+    setImmediate(() => this.physicsImpostor.setLinearVelocity(Vector3.Zero()))
   }
 
   private updatePlayerPhysics() {
@@ -228,7 +227,7 @@ export default class Player extends Mesh {
         this.forwardDirection.copyFrom(camera.target.subtract(camera.position))
         camera.followTarget.copyFrom(this.position)
       }
-      // you can not update the physics in the loop
+      // FIXME: you can not update the physics in the loop
       setImmediate(() => {
         const vc = this.forwardDirection,
           keys = Player.input.state,

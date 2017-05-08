@@ -176,25 +176,32 @@ export default class Sensor extends ObjectBase implements IObjectTriggerable, IP
         const targetName = targetInputs.map(({ isNe, name }) => isNe + name).join(',')
         save({ targetName })
       }
-    return [
-      <div>
-        <label>reset: </label>
-        <input type="number" style={{ width: 100 }}
-          value={ this.autoResetTimeout.toString() }
-          onChange={ evt => save({ autoResetTimeout: parseFloat((evt.target as HTMLInputElement).value) }) } />
-      </div>,
-      <div>
-        <label>shape: </label>
-        <select
-          value={ this.sensorShape }
-          onChange={ evt => save({ sensorShape: (evt.target as HTMLInputElement).value as any }) }>
-        {
-          Sensor.sensorTypes.map(type => <option>{ type }</option>)
-        }
-        </select>
-      </div>,
-      <div>
-        <label>size: </label>
+    return [<table> {
+      [
+      <tr>
+        <td>reset: </td>
+        <td>
+          <input type="number" style={{ width: 100 }}
+            value={ this.autoResetTimeout.toString() }
+            onChange={ evt => save({ autoResetTimeout: parseFloat((evt.target as HTMLInputElement).value) }) } />
+          ms
+        </td>
+      </tr>,
+      <tr>
+        <td>shape: </td>
+        <td>
+          <select
+            value={ this.sensorShape }
+            onChange={ evt => save({ sensorShape: (evt.target as HTMLInputElement).value as any }) }>
+          {
+            Sensor.sensorTypes.map(type => <option>{ type }</option>)
+          }
+          </select>
+        </td>
+      </tr>,
+      <tr>
+        <td>size: </td>
+        <td>
         {
           [0, 1, 2].map(i => {
             return <input type="number" min={ 0.1 } step={ 0.1 } style={{ width: 50 }}
@@ -207,33 +214,40 @@ export default class Sensor extends ObjectBase implements IObjectTriggerable, IP
               } />
           })
         }
-      </div>,
+        </td>
+      </tr>,
     ].concat(targetInputs.map(target => {
-      return <div key={ target.name }>
-        <select value={ target.isNe ? 'on' : 'off' }
-          onChange={
-            evt => {
-              target.isNe = (evt.target as HTMLSelectElement).value === 'off' ? '!' : ''
-              saveTargets()
+      return <tr key={ target.name }>
+        <td>
+          <select value={ target.isNe ? 'on' : 'off' }
+            onChange={
+              evt => {
+                target.isNe = (evt.target as HTMLSelectElement).value === 'off' ? '!' : ''
+                saveTargets()
+              }
+            }>
+            <option>on</option>
+            <option>off</option>
+          </select>
+        </td>
+        <td>
+          <select value={ target.name }
+            onChange={
+              evt => {
+                target.name = (evt.target as HTMLSelectElement).value
+                saveTargets()
+              }
+            }>
+            <option value="">--</option>
+            {
+              availTargets.map(name => <option>{ name }</option>)
             }
-          }>
-          <option>on</option>
-          <option>off</option>
-        </select>
-        <select value={ target.name }
-          onChange={
-            evt => {
-              target.name = (evt.target as HTMLSelectElement).value
-              saveTargets()
-            }
-          }>
-          <option value="">--</option>
-          {
-            availTargets.map(name => <option>{ name }</option>)
-          }
-        </select>
-      </div>
+          </select>
+        </td>
+      </tr>
     }))
+    }
+    </table>]
   }
 
   public onTrigger(isOn: boolean, mesh: AbstractMesh) {

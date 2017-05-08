@@ -247,6 +247,14 @@ export class EventEmitter<EventNames> {
     }
   }
 
+  once<E extends keyof EventNames>(evt: E, callback: (data: EventNames[E]) => void) {
+    const unbind = this.on(evt, data => {
+      callback(data)
+      unbind()
+    })
+    return unbind
+  }
+
   emit<E extends keyof EventNames>(evt: E, data: EventNames[E]) {
     (this.callbacks[evt] || [ ]).slice().forEach(cb => cb(data))
   }

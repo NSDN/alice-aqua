@@ -380,3 +380,12 @@ export class GamepadInput<KM> extends KeyEmitter<KM> {
     gamepadEvents.on('up', button => this.keyEvents.emit(button, false))
   }
 }
+
+export class CommonMaterial extends StandardMaterial {
+  constructor(name: string, scene: Scene) {
+    super(name, scene)
+    this.specularPower = 0.5
+    this.specularColor.copyFromFloats(0.1, 0.1, 0.1)
+    this.emissiveColor.copyFromFloats(0.8, 0.8, 0.8)
+  }
+}

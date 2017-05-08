@@ -18,6 +18,7 @@ import {
 import {
   getChunkGroundVertexData,
   StaticBoxImpostor,
+  CommonMaterial,
 } from '../utils/babylon'
 
 import {
@@ -122,12 +123,9 @@ export default class Terrain extends EventEmitter<{
     const sideMaterialId = 'cache/chunk/edge/' + this.chunkUnits
     this.sideMesh.material = scene.getMaterialByName(sideMaterialId) as StandardMaterial
     if (!this.sideMesh.material) {
-      const material = this.sideMesh.material = new StandardMaterial(sideMaterialId, scene)
+      const material = this.sideMesh.material = new CommonMaterial(sideMaterialId, scene)
       material.diffuseTexture =
         new DynamicTexture('cache/chunk/edge/mat', this.edgeTextureCacheSize * this.unitTexSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
-      material.specularPower = 0.5
-      material.specularColor.copyFromFloats(0.1, 0.1, 0.1)
-      material.emissiveColor.copyFromFloats(0.8, 0.8, 0.8)
     }
 
     const edgeTextureCacheContainer = this.sideMesh.material as any as { edgeTextureCaches: any }
@@ -177,9 +175,7 @@ export default class Terrain extends EventEmitter<{
     top.receiveShadows = true
     Terrain.terrainFromChunkMesh[top.name] = this
 
-    const material = top.material = new StandardMaterial(this.name + '/mat/' + k, scene)
-    material.specularColor.copyFromFloats(0, 0, 0)
-    material.emissiveColor.copyFromFloats(0.8, 0.8, 0.8)
+    const material = top.material = new CommonMaterial(this.name + '/mat/' + k, scene)
     const texture = material.diffuseTexture =
       new DynamicTexture(this.name + '/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
 

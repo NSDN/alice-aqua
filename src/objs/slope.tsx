@@ -8,13 +8,13 @@ import {
   Tags,
   VertexData,
   Scene,
-  StandardMaterial,
   PhysicsImpostor,
 } from '../babylon'
 
 import {
   Vector3Map,
   StaticBoxImpostor,
+  CommonMaterial,
 } from '../utils/babylon'
 
 import {
@@ -86,8 +86,12 @@ export default class Slope extends Sprite implements IPlayStartStopListener {
         p1 = Vector3Map(target.position, Math.floor),
         min = Vector3.Minimize(p0, p1).add(new Vector3(1, 0, 1)),
         max = Vector3.Maximize(p0, p1)
-      ; [0, 2, 1, 1, 2, 3].forEach(i => gvd.indices.push(i + gvd.positions.length))
-      ; [0, 2, 1, 1, 2, 3, 4, 5, 6, 6, 5, 7].forEach(i => svd.indices.push(i + svd.positions.length))
+      for (const i of [0, 2, 1, 1, 2, 3]) {
+        gvd.indices.push(i + gvd.positions.length / 3)
+      }
+      for (const i of [0, 2, 1, 1, 2, 3, 4, 5, 6, 6, 5, 7]) {
+        svd.indices.push(i + svd.positions.length / 3)
+      }
       if (slope._direction === 'x') {
         min.z -= 0.99
         min.y = min.x === p0.x + 1 ? p0.y : p1.y
@@ -195,22 +199,16 @@ export default class Slope extends Sprite implements IPlayStartStopListener {
     let groundMeshes = scene.getMeshByName('slope-ground') as Mesh
     if (!groundMeshes) {
       const mesh = groundMeshes = new Mesh('slope-ground', scene),
-        material = mesh.material = new StandardMaterial(mesh.name + '-mat', scene)
+        material = mesh.material = new CommonMaterial(mesh.name + '-mat', scene)
       material.diffuseTexture = new BABYLON.Texture('assets/slope-ground.png', scene)
-      material.specularPower = 0.5
-      material.specularColor.copyFromFloats(0.1, 0.1, 0.1)
-      material.emissiveColor.copyFromFloats(0.8, 0.8, 0.8)
     }
     Object.assign(new VertexData(), gvd).applyToMesh(groundMeshes)
 
     let sideMeshes = scene.getMeshByName('slope-side') as Mesh
     if (!sideMeshes) {
       const mesh = sideMeshes = new Mesh('slope-side', scene),
-        material = mesh.material = new StandardMaterial(mesh.name + '-mat', scene)
+        material = mesh.material = new CommonMaterial(mesh.name + '-mat', scene)
       material.diffuseTexture = new BABYLON.Texture('assets/slope-side.png', scene)
-      material.specularPower = 0.5
-      material.specularColor.copyFromFloats(0.1, 0.1, 0.1)
-      material.emissiveColor.copyFromFloats(0.8, 0.8, 0.8)
     }
     Object.assign(new VertexData(), svd).applyToMesh(sideMeshes)
   }, 50)

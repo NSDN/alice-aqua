@@ -165,8 +165,7 @@ class ConfigManager {
       console.error(err)
     }
 
-    const config = new ConfigManager()
-    config.updater = {
+    const config = new ConfigManager({
       ssao(val) {
         game.enableSSAO = val === 'on'
       },
@@ -179,7 +178,7 @@ class ConfigManager {
       volume(_val) {
         console.warn('setting up volume is not implemented yet')
       },
-    }
+    })
 
     Object.keys(data).forEach((key: keyof typeof ConfigManager.defaultValues) => {
       const val = data[key],
@@ -198,8 +197,7 @@ class ConfigManager {
     return config
   }
   private data = { } as typeof ConfigManager.defaultValues
-  private updater = { } as { [P in keyof typeof ConfigManager.defaultValues]: (val: string) => void }
-  private constructor() {
+  private constructor(private updater: { [P in keyof typeof ConfigManager.defaultValues]: (val: string) => void }) {
   }
   get(key: keyof typeof ConfigManager.defaultValues) {
     return this.data[key]
@@ -297,6 +295,41 @@ function updateConfigFromActiveMenu(config: ConfigManager) {
   key && config.set(key as any, val)
 }
 
+async function showDialogText(name: string, dialogJSON: string, isCanceled: () => boolean) {
+  const dialogs = JSON.parse(dialogJSON) as { [name: string]: { text: string, options: any } },
+    { text, options } = dialogs[name] || { text: '...', options: { } }
+
+  const elem = document.querySelector('.game-dialog-content')
+  elem.innerHTML = ''
+
+  const elemLines = appendElement('pre', { }, elem)
+  for (let i = 0; i < text.length; i ++) {
+    if (isCanceled()) {
+      elemLines.innerHTML = text
+      await sleep(50)
+      elem.parentElement.scrollTop = elem.scrollHeight
+      break
+    }
+    else {
+      elemLines.innerHTML += text[i]
+      await sleep(50)
+      if (text[i - 1] === '\n') {
+        elem.parentElement.scrollTop = elem.scrollHeight
+        await sleep(50)
+      }
+    }
+  }
+
+  const elemOptions = appendElement('div', { className: 'menu-list', attributes: { 'menu-escape': '../..' } }, elem)
+  for (const title of Object.keys(options)) {
+    const next = options[title],
+      path = next && dialogs[next] ? ['text', next, dialogJSON].map(encodeURIComponent).join(':') : '..'
+    appendElement('span', { innerHTML: title, className: 'menu-item', attributes: { 'menu-goto': '../' + path } }, elemOptions)
+  }
+  elem.parentElement.scrollTop = elem.scrollHeight
+  MenuManager.activate(elemOptions)
+}
+
 ; (async function() {
   await checkFontsLoaded()
 
@@ -356,45 +389,9 @@ function updateConfigFromActiveMenu(config: ConfigManager) {
       await next()
     },
     async text(next, name: string = '', dialogJSON: string = '{ }') {
-      const dialogs = JSON.parse(dialogJSON) as { [name: string]: { text: string, options: any } },
-        { text, options } = dialogs[name] || { text: '...', options: { } }
-
       let isCanceled = false
-      const unbindOnEscape = input.down.on('escape', () => {
-        isCanceled = true
-        unbindOnEscape()
-      })
-
-      const elem = document.querySelector('.game-dialog-content')
-      elem.innerHTML = ''
-
-      const elemLines = appendElement('pre', { }, elem)
-      for (let i = 0; i < text.length; i ++) {
-        if (keys['finish-dialog'] || isCanceled) {
-          elemLines.innerHTML = text
-          await sleep(50)
-          elem.parentElement.scrollTop = elem.scrollHeight
-          break
-        }
-        else {
-          elemLines.innerHTML += text[i]
-          await sleep(50)
-          if (text[i - 1] === '\n') {
-            elem.parentElement.scrollTop = elem.scrollHeight
-            await sleep(50)
-          }
-        }
-      }
-
-      const elemOptions = appendElement('div', { className: 'menu-list', attributes: { 'menu-escape': '../..' } }, elem)
-      for (const title of Object.keys(options)) {
-        const next = options[title],
-          path = next && dialogs[next] ? ['text', next, dialogJSON].map(encodeURIComponent).join(':') : '..'
-        appendElement('span', { innerHTML: title, className: 'menu-item', attributes: { 'menu-goto': '../' + path } }, elemOptions)
-      }
-      elem.parentElement.scrollTop = elem.scrollHeight
-      MenuManager.activate(elemOptions)
-
+      input.down.once('escape', () => isCanceled = true)
+      showDialogText(name, dialogJSON, () => keys['finish-dialog'] || isCanceled)
       await next()
     },
     async dialog(next, dialogJSON: string = '') {

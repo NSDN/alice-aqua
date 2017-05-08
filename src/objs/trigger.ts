@@ -1,21 +1,19 @@
 import {
   Mesh,
   AbstractMesh,
+  Texture,
 } from '../babylon'
 
 import {
   VERTEX_BOX,
-  ColorNoLightingMaterial,
+  CommonMaterial,
 } from '../utils/babylon'
 
 import {
   ObjectOptions,
 } from '../game/objbase'
 
-import Sensor, {
-  TRIGGER_OFF_COLOR,
-  TRIGGER_ON_COLOR
-} from './sensor'
+import Sensor, { } from './sensor'
 
 export default class Trigger extends Sensor {
   protected readonly triggerOnBox: AbstractMesh
@@ -23,25 +21,29 @@ export default class Trigger extends Sensor {
 
   constructor(name: string, opts: ObjectOptions) {
     super(name, opts)
+    const scene = this.getScene()
 
     let cacheId = ''
 
-    let boxOn = this.getScene().getMeshByName(cacheId = 'cache/trigger/box/on') as Mesh
+    let boxOn = scene.getMeshByName(cacheId = 'cache/trigger/box/on') as Mesh
     if (!boxOn) {
-      const box = boxOn = new Mesh(cacheId, this.getScene())
+      const box = boxOn = new Mesh(cacheId, scene)
       VERTEX_BOX.applyToMesh(box)
       box.isVisible = false
       box.scaling.copyFromFloats(1, 0.1, 1)
-      box.material = ColorNoLightingMaterial.getCached(this.getScene(), TRIGGER_ON_COLOR)
+      const material = box.material = new CommonMaterial(cacheId + '-mat', scene)
+      material.diffuseTexture = new Texture('assets/trigger-box.png', scene)
+      material.emissiveColor = BABYLON.Color3.Red()
     }
 
-    let boxOff = this.getScene().getMeshByName(cacheId = 'cache/trigger/box/off') as Mesh
+    let boxOff = scene.getMeshByName(cacheId = 'cache/trigger/box/off') as Mesh
     if (!boxOff) {
-      const box = boxOff = new Mesh(cacheId, this.getScene())
+      const box = boxOff = new Mesh(cacheId, scene)
       VERTEX_BOX.applyToMesh(boxOff)
       box.isVisible = false
       box.scaling.copyFromFloats(1, 0.2, 1)
-      box.material = ColorNoLightingMaterial.getCached(this.getScene(), TRIGGER_OFF_COLOR)
+      const material = box.material = new CommonMaterial(cacheId + '-mat', scene)
+      material.diffuseTexture = new Texture('assets/trigger-box.png', scene)
     }
 
     this.triggerOnBox = boxOn.createInstance(this.name + '/box')
