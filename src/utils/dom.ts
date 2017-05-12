@@ -192,8 +192,13 @@ export const LoadingScreen = {
 
     loadingTimeout = loadingTimeout || setTimeout(checkLoaded, 300)
   },
+  error(message: string) {
+    document.querySelector('.loading-screen .loading-text').innerHTML = message
+    document.querySelector('.loading-screen').classList.add('error')
+  },
   update(message: string) {
     document.querySelector('.loading-screen .loading-text').innerHTML = message
+    document.querySelector('.loading-screen').classList.remove('error')
   },
   hide() {
     clearTimeout(loadingTimeout)

@@ -9,18 +9,22 @@ import {
 
 async function loadScripts(entry: string) {
   try {
+    await appendScript('babylonjs/cannon.js')
+
     if (location.host === 'localhost:8080') {
       await appendScript(`//${location.host}/webpack-dev-server.js`)
+      await appendScript('babylonjs/babylon.max.js')
+      await appendScript('babylonjs/canvas2D/babylon.canvas2d.js')
     }
-
-    await appendScript('babylonjs/cannon.js')
-    await appendScript('babylonjs/babylon.max.js')
-    await appendScript('babylonjs/canvas2D/babylon.canvas2d.js')
+    else {
+      await appendScript('babylonjs/babylon.js')
+      await appendScript('babylonjs/canvas2D/babylon.canvas2d.min.js')
+    }
 
     await appendScript(entry)
   }
   catch (err) {
-    LoadingScreen.update(`ERR: load script "${err.target.src}" failed`)
+    LoadingScreen.error(`ERR: load script "${err.target.src}" failed`)
   }
 }
 

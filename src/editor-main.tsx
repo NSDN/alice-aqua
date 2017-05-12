@@ -138,7 +138,7 @@ function playMapInNewWindow(map: EditorMap) {
     game.objectSource.renderingGroupId = 1
   }
   catch (err) {
-    LoadingScreen.update(`create game failed: ${err && err.message || err}`)
+    LoadingScreen.error(`create game failed: ${err && err.message || err}`)
     throw err
   }
 
@@ -147,7 +147,7 @@ function playMapInNewWindow(map: EditorMap) {
     map = await EditorMap.load(game)
   }
   catch (err) {
-    LoadingScreen.update(`load map failed: ${err && err.message || err}`)
+    LoadingScreen.error(`load map failed: ${err && err.message || err}`)
     throw err
   }
 

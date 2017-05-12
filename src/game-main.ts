@@ -338,7 +338,7 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
     game = await Game.load(updateLoadingScreenProgress)
   }
   catch (err) {
-    LoadingScreen.update(`create game failed: ${err && err.message || err}`)
+    LoadingScreen.error(`create game failed: ${err && err.message || err}`)
     throw err
   }
 
@@ -347,7 +347,7 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
     config = await ConfigManager.load(game)
   }
   catch (err) {
-    LoadingScreen.update(`load config failed: ${err && err.message || err}`)
+    LoadingScreen.error(`load config failed: ${err && err.message || err}`)
     throw err
   }
 
