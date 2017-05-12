@@ -218,7 +218,7 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
   private queue = queue()
 
   constructor(private handles: H) {
-    const styles = [ ] as string[]
+    const styles = ['']
     Object.keys(handles).forEach(name => {
       const cls = camelCaseToHyphen(name)
       styles.push(`.screen-${cls} { visibility: hidden }`)
@@ -320,13 +320,15 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
     }
   }
 
-  const elemOptions = appendElement('div', { className: 'menu-list', attributes: { 'menu-escape': '../..' } }, elem)
+  const diagOptions = { } as { [title: string]: string }
   for (const title of Object.keys(options)) {
     const next = options[title],
       path = next && dialogs[next] ? ['text', next, dialogJSON].map(encodeURIComponent).join(':') : '..'
-    appendElement('span', { innerHTML: title, className: 'menu-item', attributes: { 'menu-goto': '../' + path } }, elemOptions)
+    diagOptions[title] = '../' + path
   }
   elem.parentElement.scrollTop = elem.scrollHeight
+
+  const elemOptions = MenuManager.createList(elem, diagOptions, '../..')
   MenuManager.activate(elemOptions)
 }
 

@@ -161,50 +161,114 @@ export const LocationSearch = {
   },
 }
 
-let loadingTimeout = 0
-function checkLoaded() {
-  const dots = [].slice.call(document.querySelectorAll('.screen .loading-dot')) as Element[],
-    index = dots.findIndex(elem => elem.classList.contains('active'))
-  dots.forEach(dot => dot.classList.remove('active'))
-  dots[(index + 1) % dots.length].classList.add('active')
-
-  loadingTimeout = 0
-  if (document.querySelector('.screen.loading')) {
-    loadingTimeout = setTimeout(checkLoaded, 300)
+const LOADING_SCREEN_STYLE = `
+.loading-screen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+.loading-screen {
+  background: #eee;
+  color: #333;
+  font-size: 150%;
+  visibility: hidden;
+  opacity: 0;
+  transition: visibility 0s 0.2s, opacity 0.2s linear;
+  z-index: 99;
+  text-align: center;
+}
+.loading-screen.loading {
+  visibility: visible;
+  opacity: 1;
+}
+.loading-screen .loading-dot:before {
+  content: '-';
+}
+.loading-screen .loading-dot {
+  color: #666;
+  font-size: 200%;
+  transition: all 0.3s;
+}
+.loading-screen .loading-dot.active {
+  color: #aaa;
+  font-size: 100%;
+}
+`
+type LoadingScreenState = {
+  isLoading: boolean,
+  loadText: string,
+  loadError: string,
+}
+let loadingScreenContainer = window as any as {
+  _loadingScreenTimeout: number
+  _loadingScreenInst: {
+    setStatePartial(states: Partial<LoadingScreenState>): void
+    state: LoadingScreenState
   }
 }
-
-const $ = createElement
 export const LoadingScreen = {
-  show() {
-    if (!document.querySelector('.loading-screen')) {
-      document.body.appendChild($('div', { className: 'loading-screen screen loading' }, [
-        $('div', { className: 'loading-text' }),
-        $('div', { }, [
-          $('span', { className: 'loading-dot' }),
-          $('span', { className: 'loading-dot' }),
-          $('span', { className: 'loading-dot' }),
-          $('span', { className: 'loading-dot' }),
-          $('span', { className: 'loading-dot' }),
-        ])
-      ]))
+  async init() {
+    if (!loadingScreenContainer._loadingScreenInst) {
+      await appendElement('style', { innerHTML: LOADING_SCREEN_STYLE }, document.querySelector('head'))
+      loadingScreenContainer._loadingScreenInst = await renderReactComponent<null, LoadingScreenState>((states) =>
+        <div class={ `loading-screen ${states.isLoading ? 'loading' : ''}` }>
+        {
+          states.loadError ?
+          <div class="loading-error">
+            { states.loadError }
+            <div>
+              : (
+            </div>
+          </div> :
+          <div class="loading-text">
+            { states.loadText }
+            <div>
+              <span class="loading-dot"></span>
+              <span class="loading-dot"></span>
+              <span class="loading-dot"></span>
+              <span class="loading-dot"></span>
+              <span class="loading-dot"></span>
+            </div>
+          </div>
+        }
+        </div>, document.body)
     }
-
-    loadingTimeout = loadingTimeout || setTimeout(checkLoaded, 300)
   },
-  error(message: string) {
-    document.querySelector('.loading-screen .loading-text').innerHTML = message
-    document.querySelector('.loading-screen').classList.add('error')
+  inst() {
+    const c = loadingScreenContainer
+    c._loadingScreenTimeout = c._loadingScreenTimeout || setTimeout(LoadingScreen.check, 300)
+    return c._loadingScreenInst
+  },
+  check() {
+    const c = loadingScreenContainer
+    if (c._loadingScreenInst.state.isLoading) {
+      const dots = Array.from(document.querySelectorAll('.loading-dot')),
+        index = dots.findIndex(dot => dot.classList.contains('active'))
+      if (dots.length) {
+        dots.forEach(dot => dot.classList.remove('active'))
+        dots[(index + 1) % dots.length].classList.add('active')
+      }
+      c._loadingScreenTimeout && clearTimeout(c._loadingScreenTimeout)
+      c._loadingScreenTimeout = setTimeout(LoadingScreen.check, 300)
+    }
+    else {
+      c._loadingScreenTimeout = 0
+    }
   },
   update(message: string) {
-    document.querySelector('.loading-screen .loading-text').innerHTML = message
-    document.querySelector('.loading-screen').classList.remove('error')
+    LoadingScreen.inst().setStatePartial({ loadError: '', loadText: message, isLoading: true })
+  },
+  error(message: string) {
+    LoadingScreen.inst().setStatePartial({ loadText: '', loadError: message, isLoading: true })
   },
   hide() {
-    clearTimeout(loadingTimeout)
-    loadingTimeout = 0
-
-    document.querySelector('.loading-screen').classList.remove('loading')
+    LoadingScreen.inst().setStatePartial({ isLoading: false })
   },
 }
 
@@ -245,6 +309,13 @@ export const MenuManager = {
       activeItem && activeItem.classList.remove('active')
       nextItem && nextItem.classList.add('active')
     }
+  },
+  createList(parent: Element, menuOptions: { [title: string]: string }, escapePath: string) {
+    const listItem = appendElement('div', { className: 'menu-list', attributes: { 'menu-escape': escapePath } }, parent)
+    for (const title of Object.keys(menuOptions)) {
+      appendElement('span', { innerHTML: title, className: 'menu-item', attributes: { 'menu-goto': menuOptions[title] } }, listItem)
+    }
+    return listItem
   },
 }
 

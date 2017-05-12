@@ -3,12 +3,10 @@ import {
   appendScript,
 } from './utils/dom'
 
-import {
-  queryStringGet,
-} from './utils'
-
-async function loadScripts(entry: string) {
+async function bootstrap(entry: string) {
+  await LoadingScreen.init()
   try {
+    LoadingScreen.update(`Loading page`)
     await appendScript('babylonjs/cannon.js')
 
     if (location.host === 'localhost:8080') {
@@ -21,21 +19,15 @@ async function loadScripts(entry: string) {
       await appendScript('babylonjs/canvas2D/babylon.canvas2d.min.js')
     }
 
+    LoadingScreen.update(`Starting ${entry}`)
     await appendScript(entry)
   }
   catch (err) {
-    LoadingScreen.error(`ERR: load script "${err.target.src}" failed`)
+    LoadingScreen.error(`load script "${err.target.src}" failed`)
   }
 }
 
-LoadingScreen.show()
-
-for (const script of document.querySelectorAll('script[src]')) {
-  const src = script.getAttribute('src') || '',
-    entry = queryStringGet(src.replace(/.*\?/, ''), 'bootstrap-entry')
-  if (entry) {
-    LoadingScreen.update(`Starting ${entry}`)
-    loadScripts(entry)
-    break
-  }
+const script = document.querySelector('script[bootstrap-src]')
+if (script) {
+  bootstrap(script.getAttribute('bootstrap-src'))
 }
