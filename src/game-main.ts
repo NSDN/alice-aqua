@@ -147,62 +147,42 @@ class StageManager {
   }
 }
 
-class ConfigManager {
-  private static defaultValues = {
-    lang: 'en',
-    lensRendering: 'on',
-    ssao: 'off',
-    volume: '3',
-  }
+class Config<S> {
+  static async load<S extends { [key: string]: (val?: string) => string }>(updater: S) {
+    const config = new Config<S>()
+    config.updater = updater
 
-  static async load(game: Game) {
-    // TODO: load from somewhere
-    let data = { ...ConfigManager.defaultValues }
+    let data = { } as { [P in keyof S]: string }
     try {
-      Object.assign(data, JSON.parse(localStorage.getItem('game-config')))
+      data = JSON.parse(localStorage.getItem('game-config'))
     }
     catch (err) {
       console.error(err)
     }
 
-    const config = new ConfigManager({
-      ssao(val) {
-        game.enableSSAO = val === 'on'
-      },
-      lensRendering(val) {
-        game.enableLensRendering = val === 'on'
-      },
-      lang(val) {
-        updateGameLanguage(val)
-      },
-      volume(_val) {
-        console.warn('setting up volume is not implemented yet')
-      },
-    })
-
-    Object.keys(data).forEach((key: keyof typeof ConfigManager.defaultValues) => {
-      const val = data[key],
-        configItem = document.querySelector(`[config-key="${key}"]`)
+    Object.keys(updater).forEach((key: keyof S) => {
+      const configItem = document.querySelector(`[config-key="${key}"]`)
       if (configItem) {
         const allValues = configItem.querySelectorAll('[config-val]')
         for (const elem of allValues) {
           elem.classList.remove('active')
         }
-        const configValue = configItem.querySelector(`[config-val="${val}"]`) || allValues[0]
+        const val = config.updater[key](data[key]),
+          configValue = configItem.querySelector(`[config-val="${val}"]`) || allValues[0]
         configValue.classList.add('active')
       }
-      config.set(key, val)
     })
 
     return config
   }
-  private data = { } as typeof ConfigManager.defaultValues
-  private constructor(private updater: { [P in keyof typeof ConfigManager.defaultValues]: (val: string) => void }) {
+  private data = { } as { [P in keyof S]: string }
+  private updater: { [P in keyof S]: (val?: string) => string }
+  private constructor() {
   }
-  get(key: keyof typeof ConfigManager.defaultValues) {
+  get(key: keyof S) {
     return this.data[key]
   }
-  set(key: keyof typeof ConfigManager.defaultValues, val: string) {
+  set(key: keyof S, val: string) {
     if (this.data[key] !== val) {
       this.data[key] = val
       this.updater[key](val)
@@ -287,7 +267,7 @@ function selectNextConfigItem(delta: number) {
   MenuManager.selectNext(delta, 'menu-config-list', 'menu-config-item')
 }
 
-function updateConfigFromActiveMenu(config: ConfigManager) {
+function updateConfigFromActiveMenu<S>(config: Config<S>) {
   const activeList = MenuManager.activeList(),
     key = activeList && activeList.getAttribute('config-key'),
     activeItem = MenuManager.activeItem(),
@@ -344,9 +324,28 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
     throw err
   }
 
-  let config: ConfigManager
+  const configs = {
+    ssao(val = 'off') {
+      game.enableSSAO = val === 'on'
+      return val
+    },
+    lensRendering(val = 'on') {
+      game.enableLensRendering = val === 'on'
+      return val
+    },
+    lang(val = 'en') {
+      updateGameLanguage(val)
+      return val
+    },
+    volume(val = '3') {
+      console.warn('setting up volume is not implemented yet')
+      return val
+    },
+  }
+
+  let config: Config<typeof configs>
   try {
-    config = await ConfigManager.load(game)
+    config = await Config.load(configs)
   }
   catch (err) {
     LoadingScreen.error(`load config failed: ${err && err.message || err}`)
