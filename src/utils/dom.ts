@@ -56,6 +56,12 @@ export function appendElement(tag: string, attrs = { } as ElementAttributes, par
   return elem
 }
 
+export async function appendScript(src: string) {
+  let script: HTMLScriptElement
+  await new Promise((onload, onerror) => script = appendElement('script', { src, onload, onerror }) as HTMLScriptElement)
+  return script
+}
+
 export function renderReactComponent<P, S>(render: (state: S, props?: P) => JSX.Element, container: Element) {
   class Renderer extends Component<P, S> {
     setStatePartial(state: Partial<S>) {

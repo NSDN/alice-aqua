@@ -1,25 +1,37 @@
 import {
   LoadingScreen,
-  appendElement,
+  appendScript,
 } from './utils/dom'
 
-const loadScript = (src: string) => new Promise((onload, onerror) => appendElement('script', { src, onload, onerror }))
-; (window as any)['startWithEntry'] = async function (entry: string) {
-  LoadingScreen.show()
-  LoadingScreen.update('Loading Page')
+import {
+  queryStringGet,
+} from './utils'
 
+async function loadScripts(entry: string) {
   try {
     if (location.host === 'localhost:8080') {
-      await loadScript(`//${location.host}/webpack-dev-server.js`)
+      await appendScript(`//${location.host}/webpack-dev-server.js`)
     }
 
-    await loadScript('babylonjs/cannon.js')
-    await loadScript('babylonjs/babylon.max.js')
-    await loadScript('babylonjs/canvas2D/babylon.canvas2d.js')
+    await appendScript('babylonjs/cannon.js')
+    await appendScript('babylonjs/babylon.max.js')
+    await appendScript('babylonjs/canvas2D/babylon.canvas2d.js')
 
-    await loadScript(entry)
+    await appendScript(entry)
   }
   catch (err) {
     LoadingScreen.update(`ERR: load script "${err.target.src}" failed`)
+  }
+}
+
+LoadingScreen.show()
+
+for (const script of document.querySelectorAll('script[src]')) {
+  const src = script.getAttribute('src') || '',
+    entry = queryStringGet(src.replace(/.*\?/, ''), 'bootstrap-entry')
+  if (entry) {
+    LoadingScreen.update(`Starting ${entry}`)
+    loadScripts(entry)
+    break
   }
 }
