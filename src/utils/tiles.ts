@@ -53,7 +53,7 @@ export function getAutoTileImage(source: HTMLImageElement,
     tileSize: number, neighbors: number, tileType: 'h4x6' | 'h5x3') {
   const srcCache = source as any as { autoTileCache: TileCache },
     cache = srcCache.autoTileCache = (srcCache.autoTileCache || { }),
-    key = [offsetX, offsetY, tileSize].join('/')
+    key = offsetX + '/' + offsetY + '/' + tileSize
   if (!cache[key]) {
     const canvas = document.createElement('canvas')
     canvas.width = tileSize

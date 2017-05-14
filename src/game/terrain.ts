@@ -69,7 +69,7 @@ export interface TileDefine {
 }
 
 export const eventEmitter = new EventEmitter<{
-  'tile-updated': { terrain: Terrain }
+  'batch-updated': { terrain: Terrain }
   'height-updated': { terrain: Terrain, chunk: Chunk }
   'chunk-loaded': { terrain: Terrain, chunk: Chunk }
   'position-updated': { terrain: Terrain, delta: Vector3 }
@@ -79,7 +79,9 @@ const push = [ ].push,
   getGroundVertexDataWithUVMemo = memo(getChunkGroundVertexData)
 
 export default class Terrain extends EventEmitter<{
-  'tile-updated': void
+  'loaded': void
+  'side-updated': void
+  'batch-updated': void
   'height-updated': Chunk
   'chunk-loaded': Chunk
   'position-updated': Vector3
@@ -131,9 +133,19 @@ export default class Terrain extends EventEmitter<{
     const edgeTextureCacheContainer = this.sideMesh.material as any as { edgeTextureCaches: any }
     this.edgeTextureCaches = edgeTextureCacheContainer.edgeTextureCaches || (edgeTextureCacheContainer.edgeTextureCaches = { })
 
-    Object.keys(restoreData.chunks || { }).forEach(k => {
+    for (const k of Object.keys(restoreData.chunks || { })) {
       const { tiles, heights } = restoreData.chunks[k]
       this.createChunkData(k, extractWithRLE(tiles), extractWithRLE(heights))
+    }
+
+    // FIXME
+    setImmediate(() => {
+      if (Object.keys(this.chunkHeightToUpdate).length) {
+        this.once('side-updated', () => this.emit('loaded', null))
+      }
+      else {
+        this.emit('loaded', null)
+      }
     })
   }
 
@@ -184,7 +196,7 @@ export default class Terrain extends EventEmitter<{
 
     for (let u = 0; u < chunkUnits; u ++) {
       for (let v = 0; v < chunkUnits; v ++) {
-        this.chunkTextureToUpdate[ [m0 + u, n0 + v].join('/') ] = true
+        this.chunkTextureToUpdate[ [m0 + u, n0 + v].join('/') ] = [m0 + u, n0 + v]
       }
     }
     this.chunkHeightToUpdate[k] = true
@@ -200,7 +212,7 @@ export default class Terrain extends EventEmitter<{
     const g = this.chunkUnits,
       i = Math.floor(m / g),
       j = Math.floor(n / g),
-      k = [i, j].join('/'),
+      k = i + '/' + j,
       u = m - i * g,
       v = n - j * g,
       c = u * g + v,
@@ -232,10 +244,6 @@ export default class Terrain extends EventEmitter<{
         dc.drawImage(src, offsetX, offsetY, size, size, dx, dy, unitTexSize, unitTexSize)
       }
     }
-    else {
-      dc.fillStyle = 'rgb(180, 180, 180)'
-      dc.fillRect(dx, dy, unitTexSize, unitTexSize)
-    }
   }
 
   private updateTexture(m: number, n: number) {
@@ -247,6 +255,8 @@ export default class Terrain extends EventEmitter<{
 
     dc.imageSmoothingEnabled = dc.webkitImageSmoothingEnabled = false
     this.drawTileTo(dc, m, n, dx, dy)
+
+    return texture
   }
 
   private getSideVertices(k: string) {
@@ -360,59 +370,60 @@ export default class Terrain extends EventEmitter<{
   private throttleUpdateSide = throttle(this.batchUpdateSide.bind(this), 50)
   private chunkSideToUpdate = { } as { [index: string]: boolean }
   private batchUpdateSide() {
-    Object.keys(this.chunkSideToUpdate).forEach(k => {
+    for (const k of Object.keys(this.chunkSideToUpdate)) {
       this.data[k].vertices = this.getSideVertices(k)
-    })
-    this.chunkSideToUpdate = { }
+      delete this.chunkSideToUpdate[k]
+    }
 
     const vd = Object.assign(new VertexData(), { positions: [], normals: [], indices: [], uvs: [] })
-    Object.keys(this.data).forEach(k => {
+    for (const k of Object.keys(this.data)) {
       const { vertices } = this.data[k]
       push.apply(vd.indices, vertices.indices.map(i => i + vd.positions.length / 3))
       push.apply(vd.positions, vertices.positions)
       push.apply(vd.normals, vertices.normals)
       push.apply(vd.uvs, vertices.uvs)
-    })
+    }
     vd.applyToMesh(this.sideMesh)
     // FIXME: babylonjs
     if (!vd.indices.length) this.sideMesh.releaseSubMeshes()
+
+    this.emit('side-updated', null)
   }
 
   private throttleUpdate = throttle(this.batchUpdateChunk.bind(this), 50)
-  private chunkTextureToUpdate = { } as { [index: string]: boolean }
+  private chunkTextureToUpdate = { } as { [index: string]: [number, number] }
   private chunkHeightToUpdate = { } as { [index: string]: boolean }
   private batchUpdateChunk() {
-    const texturesToRefresh = { } as { [key: string]: DynamicTexture }
+    const texturesToRefresh = new Set<DynamicTexture>()
 
-    Object.keys(this.chunkTextureToUpdate).forEach(index => {
-      const [m, n] = index.split('/').map(parseFloat)
-      this.updateTexture(m, n)
-      const { k, texture } = this.getChunkData(m, n)
-      texturesToRefresh[k] = texture
-    })
-    this.chunkTextureToUpdate = { }
+    for (const index of Object.keys(this.chunkTextureToUpdate)) {
+      const [m, n] = this.chunkTextureToUpdate[index],
+        texture = this.updateTexture(m, n)
+      texturesToRefresh.add(texture)
+      delete this.chunkTextureToUpdate[index]
+    }
 
-    Object.keys(this.chunkHeightToUpdate).forEach(k => {
-      this.updateHeight(k)
-    })
-    this.chunkHeightToUpdate = { }
-
-    Object.keys(texturesToRefresh).forEach(index => {
-      const texture = texturesToRefresh[index]
+    for (const texture of texturesToRefresh) {
       texture.update()
-      this.emit('tile-updated', null)
-      eventEmitter.emit('tile-updated', { terrain: this })
-    })
+    }
+
+    for (const k of Object.keys(this.chunkHeightToUpdate)) {
+      this.updateHeight(k)
+      delete this.chunkHeightToUpdate[k]
+    }
+
+    this.emit('batch-updated', null)
+    eventEmitter.emit('batch-updated', { terrain: this })
   }
   private addTextureToUpdate(m: number, n: number, v: number, u: number) {
-    this.chunkTextureToUpdate[ [m, n].join('/') ] = true
+    this.chunkTextureToUpdate[ [m, n].join('/') ] = [m, n]
     const tileV = this.tilesDefine[v], tileU = this.tilesDefine[u]
     if ((tileV && tileV.autoTileType) || (tileU && tileU.autoTileType)) {
       AUTO_TILE_NEIGHBORS.forEach(([i, j]) => {
         const pixel = this.getChunkDataIfExists(m + i, n + j),
           tile = this.tilesDefine[pixel.t]
         if (tile && tile.autoTileType) {
-          this.chunkTextureToUpdate[ [m + i, n + j].join('/') ] = true
+          this.chunkTextureToUpdate[ [m + i, n + j].join('/') ] = [m + i, n + j]
         }
       })
     }

@@ -27,10 +27,10 @@ import {
   ObjectBoundary,
   ArrowBoundary,
   createDataURLFromIconFontAndSub,
-  EditorMap,
 } from './editor'
 
 import Cursor from './editor/cursor'
+import EditorMap from './editor/map'
 
 import {
   SetPixelAction,
@@ -58,7 +58,6 @@ import {
   queryStringSet,
   check,
   memo,
-  sleep,
   randomBytes,
   fpsCounter,
 } from './utils'
@@ -96,7 +95,7 @@ const iconClassFromCursorClass: { [key: string]: string } = {
 const appendCursorStyle = memo((cursorClass: string) => {
   const [mainClass, subClass] = iconClassFromCursorClass[cursorClass].split('/'),
     dataUrl = createDataURLFromIconFontAndSub(mainClass, subClass)
-  return appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` })
+  return appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` }, 'head')
 })
 
 const KEY_MAP = {
@@ -205,8 +204,10 @@ function playMapInNewWindow(map: EditorMap) {
       </div>
       <div class={{ 'panel-game': true, hidden: states.panel !== 'game' }}>
         <button onClick={ _ => playMapInNewWindow(map) }>Play</button> {' '}
+        <br />
         <button onClick={ _ => promptDownloadText('map.json', map.toJSON())}>Save</button> {' '}
         <button onClick={ _ => EditorMap.upload() }>Upload</button> {' '}
+        <br />
         <button onClick={ _ => EditorMap.reset() }>Reset</button>
       </div>
     </div>
@@ -321,8 +322,8 @@ function playMapInNewWindow(map: EditorMap) {
 
   // drag from class toolbar
   attachDragable(evt => {
-    const im = evt.target as HTMLImageElement
-    return !keys.showCursor && im.tagName.toLowerCase() === 'img' && im.classList.contains('cls-icon')
+    const elem = evt.target as HTMLImageElement
+    return !keys.showCursor && elem.tagName.toLowerCase() === 'img' && elem.classList.contains('cls-icon')
   }, evt => {
     const clsId = parseInt((evt.target as HTMLImageElement).parentElement.getAttribute('class-id'))
     toolbar.setStatePartial({ clsId })
@@ -370,7 +371,7 @@ function playMapInNewWindow(map: EditorMap) {
     }
   })
 
-  terrainEvents.on('tile-updated', () => {
+  terrainEvents.on('batch-updated', () => {
     map.saveDebounced()
   })
 
@@ -626,11 +627,6 @@ function playMapInNewWindow(map: EditorMap) {
       if (z > p.z + s.z / 2) grid.position.z += g
     }
   })
-
-  await sleep(800)
-
-  camera.lowerBetaSoftLimit = camera.lowerBetaLimit
-  camera.upperRadiusSoftLimit = camera.upperRadiusLimit
 
   LoadingScreen.hide()
 })()

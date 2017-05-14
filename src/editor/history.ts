@@ -1,8 +1,6 @@
 import Terrain from '../game/terrain'
 
-import {
-  EditorMap,
-} from './'
+import EditorMap from './map'
 
 import {
   Vector3,

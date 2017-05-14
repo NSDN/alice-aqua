@@ -50,38 +50,43 @@ const KEY_MAP = {
 }
 
 class Stage {
-  readonly terrains: Terrain[]
-  readonly objects: ObjectBase[]
-  constructor(readonly url: string, readonly position: Vector3, map: MapSaveData, game: Game) {
-    const entryPosition = this.position.clone(),
+  private constructor(readonly url: string, readonly position: Vector3) {
+  }
+
+  readonly terrains = [ ] as Terrain[]
+  readonly objects = [ ] as ObjectBase[]
+  static async create(url: string, position: Vector3, map: MapSaveData, game: Game) {
+    const stage = new Stage(url, position),
+      entryPosition = position.clone(),
       entryId = Object.keys(map.objects).find(id => map.objects[id].args.editorSingletonId === 'stage/entry')
     if (entryId) {
       const { x, y, z, args } = map.objects[entryId]
       entryPosition.subtractInPlace(new Vector3(Math.floor(x), Math.floor(y + (args.offsetY || 0)), Math.floor(z)))
     }
 
-    this.terrains = [ ]
-    Object.keys(map.terrains).forEach(id => {
+    for (const id of Object.keys(map.terrains)) {
       const { x, y, z } = map.terrains[id],
         position = new Vector3(x, y, z).addInPlace(entryPosition),
         terrain = new Terrain('terrain/' + id, game.scene, game.assets.tiles, map.terrains[id], position)
-      this.terrains.push(terrain)
-    })
+      await new Promise(resolve => terrain.once('loaded', resolve as any))
+      stage.terrains.push(terrain)
+    }
 
-    this.objects = [ ]
-    Object.keys(map.objects).forEach(id => {
+    for (const id of Object.keys(map.objects)) {
       const { clsId, x, y, z, args } = map.objects[id],
         position = new Vector3(x, y, z).addInPlace(entryPosition)
       try {
-        this.objects.push(game.createObject(id, clsId, position, args))
+        stage.objects.push(game.createObject(id, clsId, position, args))
       }
       catch (err) {
         console.warn(`restore object failed: ${err && err.message || err}`)
       }
-    })
+    }
 
-    const playListeners = this.objects as any[] as IPlayStartStopListener[]
+    const playListeners = stage.objects as any[] as IPlayStartStopListener[]
     playListeners.forEach(object => object.onPlayStart && object.onPlayStart())
+
+    return stage
   }
 
   dispose() {
@@ -127,7 +132,7 @@ class StageManager {
     if (!this.stages.find(stage => stage.url === url && stage.position.equals(position))) {
       const map = JSON.parse(await loadWithXHR<string>(url)) as MapSaveData
       if (!this.isDisposed) {
-        this.stages.push(new Stage(url, position, map, this.game))
+        this.stages.push(await Stage.create(url, position, map, this.game))
         this.stages.length > 2 && this.stages.shift().dispose()
         localStorage.setItem('stage-history', JSON.stringify(this.stages.map(({ url, position: { x, y, z } }) => ({ url, x, y, z }))))
       }
@@ -154,7 +159,7 @@ class Config<S> {
 
     let data = { } as { [P in keyof S]: string }
     try {
-      data = JSON.parse(localStorage.getItem('game-config'))
+      Object.assign(data, JSON.parse(localStorage.getItem('game-config')))
     }
     catch (err) {
       console.error(err)
@@ -184,8 +189,7 @@ class Config<S> {
   }
   set(key: keyof S, val: string) {
     if (this.data[key] !== val) {
-      this.data[key] = val
-      this.updater[key](val)
+      this.data[key] = this.updater[key](val)
     }
   }
   save() {
@@ -360,7 +364,6 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
 
   const gameState = new GameState({
     async main(next) {
-      camera.followTarget.copyFromFloats(0, 0, 0)
       document.querySelector('.show-if-has-profile')
         .classList[StageManager.hasProfile() ? 'remove' : 'add']('hidden')
       await next()
@@ -371,6 +374,7 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
       await next()
       unbindLoadStage()
       stageManager.dispose()
+      camera.followTarget.copyFromFloats(0, 0, 0)
     },
     async pause(next) {
       game.isPaused = true
@@ -446,8 +450,6 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
       camera.updateDistance(input.rightTrigger - input.leftTrigger)
     }
   })
-
-  await sleep(1000)
 
   camera.lowerBetaSoftLimit = Math.PI * 0.35
   camera.upperBetaSoftLimit = Math.PI * 0.45
