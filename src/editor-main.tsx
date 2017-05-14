@@ -205,7 +205,7 @@ function playMapInNewWindow(map: EditorMap) {
       <div class={{ 'panel-game': true, hidden: states.panel !== 'game' }}>
         <button onClick={ _ => playMapInNewWindow(map) }>Play</button> {' '}
         <br />
-        <button onClick={ _ => promptDownloadText('map.json', map.toJSON())}>Save</button> {' '}
+        <button onClick={ _ => promptDownloadText('map.json', map.toJSON())}>Download</button> {' '}
         <button onClick={ _ => EditorMap.upload() }>Upload</button> {' '}
         <br />
         <button onClick={ _ => EditorMap.reset() }>Reset</button>

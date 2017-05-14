@@ -37,10 +37,11 @@ export interface Chunk {
   blocks: { [id: string]: PhysicsImpostor }
   texture: DynamicTexture
   vertices: {
-    positions: number[],
-    indices: number[],
-    uvs: number[],
-    normals: number[],
+    positions: number[]
+    indices: number[]
+    uvs: number[]
+    uvs2: number[]
+    normals: number[]
   }
   m0: number
   n0: number
@@ -126,8 +127,14 @@ export default class Terrain extends EventEmitter<{
     this.sideMesh.material = scene.getMaterialByName(sideMaterialId) as StandardMaterial
     if (!this.sideMesh.material) {
       const material = this.sideMesh.material = new CommonMaterial(sideMaterialId, scene)
-      material.diffuseTexture =
+
+      const diffuseTexture = material.diffuseTexture =
         new DynamicTexture('cache/chunk/edge/mat', this.edgeTextureCacheSize * this.unitTexSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
+      diffuseTexture.coordinatesIndex = 0
+
+      const ambientTexture = material.ambientTexture = new Texture('assets/terrain-side-ambient.png', scene)
+      ambientTexture.coordinatesIndex = 1
+      ambientTexture.uScale = ambientTexture.vScale = Math.PI / 10
     }
 
     const edgeTextureCacheContainer = this.sideMesh.material as any as { edgeTextureCaches: any }
@@ -192,7 +199,7 @@ export default class Terrain extends EventEmitter<{
       new DynamicTexture(this.name + '/tex/' + k, textureSize, scene, true, Texture.NEAREST_SAMPLINGMODE)
 
     const blocks = { }
-    const vertices = { positions: [] as number[], indices: [] as number[], normals: [] as number[], uvs: [] as number[] }
+    const vertices = { positions: [] as number[], indices: [] as number[], normals: [] as number[], uvs: [] as number[], uvs2: [] as number[] }
 
     for (let u = 0; u < chunkUnits; u ++) {
       for (let v = 0; v < chunkUnits; v ++) {
@@ -269,7 +276,8 @@ export default class Terrain extends EventEmitter<{
     const positions = [ ] as number[],
       normals = [ ] as number[],
       indices = [ ] as number[],
-      uvs = [ ] as number[]
+      uvs = [ ] as number[],
+      uvs2 = [ ] as number[]
     chunkBlocks.forEach(([u0, u1, v0, v1, _h0, h1]) => {
       // top
       for (let u = u0, v = v1 - 1; u < u1; u ++) {
@@ -279,6 +287,7 @@ export default class Terrain extends EventEmitter<{
           push.apply(positions, [u, h + 1, v + 1, u + 1, h + 1, v + 1, u + 1, h, v + 1, u, h, v + 1].map(v => v * unitSize))
           push.apply(normals,   [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1])
           push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+          push.apply(uvs2, [u, h + 1, u + 1, h + 1, u + 1, h, u, h])
         }
       }
       // left
@@ -289,6 +298,7 @@ export default class Terrain extends EventEmitter<{
           push.apply(positions, [u, h + 1, v, u, h + 1, v + 1, u, h, v + 1, u, h, v].map(v => v * unitSize))
           push.apply(normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
           push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+          push.apply(uvs2, [v, h + 1, v + 1, h + 1, v + 1, h, v, h])
         }
       }
       // bottom
@@ -299,9 +309,10 @@ export default class Terrain extends EventEmitter<{
           push.apply(positions, [u, h + 1, v, u + 1, h + 1, v, u + 1, h, v, u, h, v].map(v => v * unitSize))
           push.apply(normals,   [0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1])
           push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+          push.apply(uvs2, [u, h + 1, u + 1, h + 1, u + 1, h, u, h])
         }
       }
-      // left
+      // right
       for (let u = u1 - 1, v = v0; v < v1; v ++) {
         const i = pixel(u, v), o = pixel(u + 1, v)
         if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
@@ -309,6 +320,7 @@ export default class Terrain extends EventEmitter<{
           push.apply(positions, [u + 1, h + 1, v, u + 1, h + 1, v + 1, u + 1, h, v + 1, u + 1, h, v].map(v => v * unitSize))
           push.apply(normals,   [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0])
           push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+          push.apply(uvs2, [v, h + 1, v + 1, h + 1, v + 1, h, v, h])
         }
       }
     })
@@ -320,7 +332,7 @@ export default class Terrain extends EventEmitter<{
       positions[i + 2] += z
     }
 
-    return { positions, normals, indices, uvs }
+    return { positions, normals, indices, uvs, uvs2 }
   }
 
   private updateHeight(k: string) {
@@ -375,13 +387,14 @@ export default class Terrain extends EventEmitter<{
       delete this.chunkSideToUpdate[k]
     }
 
-    const vd = Object.assign(new VertexData(), { positions: [], normals: [], indices: [], uvs: [] })
+    const vd = Object.assign(new VertexData(), { positions: [], normals: [], indices: [], uvs: [], uvs2: [] })
     for (const k of Object.keys(this.data)) {
       const { vertices } = this.data[k]
       push.apply(vd.indices, vertices.indices.map(i => i + vd.positions.length / 3))
       push.apply(vd.positions, vertices.positions)
       push.apply(vd.normals, vertices.normals)
       push.apply(vd.uvs, vertices.uvs)
+      push.apply(vd.uvs2, vertices.uvs2)
     }
     vd.applyToMesh(this.sideMesh)
     // FIXME: babylonjs
