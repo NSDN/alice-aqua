@@ -538,7 +538,7 @@ export default class Terrain extends EventEmitter<{
     }
     Object.keys(this.data).forEach(k => {
       const { tiles, heights } = this.data[k]
-      data.chunks[k] = {
+      if (heights.some(h => h > 0)) data.chunks[k] = {
         tiles: compressWithRLE(tiles),
         heights: compressWithRLE(heights)
       }
