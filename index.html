@@ -47,6 +47,12 @@
       text-align: center;
       font-size: 200%;
     }
+    .menu-config-sub {
+      margin: 10px 5%;
+      padding-left: 5px;
+      font-size: 150%;
+      border-bottom: 2px solid #555;
+    }
     .menu-config-item .menu-config-label {
       display: inline-block;
       width: 40%;
@@ -181,13 +187,25 @@
   <div class="screen-config screen">
     <div class="content">
       <div class="menu-config-title"
-        i18n-en="Game Options" i18n-zh="游戏选项"></div>
+        i18n-en="Options" i18n-zh="选项"></div>
       <div class="menu-config-list menu-config active">
+        <p class="menu-config-sub"
+          i18n-en="Game" i18n-zh="游戏"></p>
         <div config-key="lang" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
             i18n-en="Language" i18n-zh="语言"></span>
           <span config-val="en" class="menu-item active">English</span>
           <span config-val="zh" class="menu-item">中文</span>
+        </div>
+        <p class="menu-config-sub"
+          i18n-en="Graphics" i18n-zh="图形"></p>
+        <div config-key="shadows" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
+          <span class="menu-config-label"
+            i18n-en="Shadows" i18n-zh="动态阴影"></span>
+          <span config-val="on" class="menu-item active"
+            i18n-en="ON" i18n-zh="开启"></span>
+          <span config-val="off" class="menu-item"
+            i18n-en="OFF" i18n-zh="关闭"></span>
         </div>
         <div config-key="ssao" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
@@ -205,14 +223,24 @@
           <span config-val="off" class="menu-item"
             i18n-en="OFF" i18n-zh="关闭"></span>
         </div>
+        <p class="menu-config-sub"
+          i18n-en="Sound" i18n-zh="声音"></p>
+        <div config-key="bgm" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
+          <span class="menu-config-label"
+            i18n-en="BGM" i18n-zh="背景音乐"></span>
+          <span config-val="on" class="menu-item active"
+            i18n-en="ON" i18n-zh="开启"></span>
+          <span config-val="off" class="menu-item"
+            i18n-en="OFF" i18n-zh="关闭"></span>
+        </div>
         <div config-key="volume" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
             i18n-en="Volume" i18n-zh="音量"></span>
+          <span config-val="0" class="menu-item">0</span>
           <span config-val="1" class="menu-item">1</span>
           <span config-val="2" class="menu-item">2</span>
           <span config-val="3" class="menu-item">3</span>
           <span config-val="4" class="menu-item">4</span>
-          <span config-val="5" class="menu-item">5</span>
         </div>
       </div>
     </div>

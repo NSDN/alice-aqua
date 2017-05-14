@@ -154,7 +154,6 @@ export class Game {
   readonly engine: Engine
 
   readonly light: DirectionalLight
-  readonly shadow: ShadowGenerator
 
   private constructor(private opts?: Partial<typeof DEFAULT_CONFIG>) {
     opts = this.opts = Object.assign({ }, DEFAULT_CONFIG, opts)
@@ -180,8 +179,6 @@ export class Game {
     window.addEventListener('resize', () => engine.resize())
 
     this.light = new DirectionalLight('dir', new Vector3(-0.5, -1, -1).normalize(), scene)
-    this.shadow = new ShadowGenerator(opts.shadowMapSize, this.light)
-    this.shadow.useExponentialShadowMap = true
 
     let updateShadowRenderIndex = opts.shadowMapUpdateInterval
     scene.registerAfterRender(() => {
@@ -191,9 +188,9 @@ export class Game {
       this.light.position.copyFrom(this.camera.followTarget)
       this.light.position.y += opts.shadowMapLightOffset
 
-      if (updateShadowRenderIndex ++ > opts.shadowMapUpdateInterval) {
+      if (this._shadow && updateShadowRenderIndex ++ > opts.shadowMapUpdateInterval) {
         updateShadowRenderIndex = 0
-        const renderList = this.shadow.getShadowMap().renderList
+        const renderList = this._shadow.getShadowMap().renderList
         renderList.length = 0
         ObjectBase.getShadowEnabled(scene)
           .filter(mesh => mesh.isVisible && mesh.getAbsolutePosition().subtract(this.camera.followTarget).length() < opts.shadowMapUpdateRadius)
@@ -264,6 +261,20 @@ export class Game {
   private _assets = { tiles: [] as TileDefine[], classes: [] as ClassDefine[] }
   get assets() {
     return this._assets
+  }
+
+  private _shadow: ShadowGenerator
+  get enableShadows() {
+    return !!this._shadow
+  }
+  set enableShadows(val: boolean) {
+    if (val && !this._shadow) {
+      this._shadow = new ShadowGenerator(this.opts.shadowMapSize, this.light)
+    }
+    else if (!val && this._shadow) {
+      this._shadow.dispose()
+      this._shadow = null
+    }
   }
 
   private _ssao: SSAORenderingPipeline

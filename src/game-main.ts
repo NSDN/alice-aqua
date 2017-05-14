@@ -334,6 +334,10 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
       game.enableSSAO = val === 'on'
       return val
     },
+    shadows(val = 'on') {
+      game.enableShadows = val === 'on'
+      return val
+    },
     lensRendering(val = 'on') {
       game.enableLensRendering = val === 'on'
       return val
@@ -342,8 +346,12 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
       updateGameLanguage(val)
       return val
     },
-    volume(val = '3') {
-      console.warn('setting up volume is not implemented yet')
+    bgm(val = 'on') {
+      // TODO
+      return val
+    },
+    volume(val = '2') {
+      // TODO
       return val
     },
   }
