@@ -27,19 +27,6 @@
       display: none;
     }
 
-    .screen {
-      position: absolute;
-      left: 0;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      visibility: hidden;
-    }
-
     .menu-list {
       padding: 10px;
     }
@@ -79,6 +66,16 @@
 
     .screen {
       z-index: 1;
+      position: absolute;
+      left: 0;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      visibility: hidden;
     }
     .screen .title {
       font-size: 250%;
@@ -102,6 +99,7 @@
     }
     .screen-pause {
       color: #eee;
+      background: rgba(50, 50, 50, 0.5);
       transition: visibility 0s 0.2s, opacity 0.2s linear;
       opacity: 0;
     }
