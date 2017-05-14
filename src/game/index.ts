@@ -1,7 +1,7 @@
 import { ObjectBase, ObjectOptions } from './objbase'
 import * as DefaultPlugin from '../objs'
 
-import { TerrainData, TileDefine } from './terrain'
+import Terrain, { TerrainData, TileDefine } from './terrain'
 
 import {
   Engine,
@@ -34,9 +34,6 @@ import {
 import {
   FollowCamera,
 } from '../utils/babylon'
-
-import {
-} from './objbase'
 
 export interface ClassDefine {
   clsId: number
@@ -142,7 +139,7 @@ async function loadAllPlugins() {
 
 const DEFAULT_CONFIG = {
   clearColor: Color3.FromHexString('#607f9a').scale(0.7).toHexString(),
-  shadowMapSize: 1024,
+  shadowMapSize: 2048,
   shadowMapUpdateInterval: 30,
   shadowMapUpdateRadius: 15,
   shadowMapLightOffset: 20,
@@ -193,8 +190,14 @@ export class Game {
         const renderList = this._shadow.getShadowMap().renderList
         renderList.length = 0
         ObjectBase.getShadowEnabled(scene)
-          .filter(mesh => mesh.isVisible && mesh.getAbsolutePosition().subtract(this.camera.followTarget).length() < opts.shadowMapUpdateRadius)
-          .forEach(mesh => renderList.push(mesh))
+          .filter(mesh => mesh.isVisible)
+          .map(mesh => ({
+            mesh,
+            terrain: Terrain.getTerrainFromMesh(mesh),
+            radius: mesh.getAbsolutePosition().subtract(this.camera.followTarget).length(),
+          }))
+          .filter(({ radius, terrain }) => radius < (terrain ? terrain.chunkSize : 0) + opts.shadowMapUpdateRadius)
+          .forEach(({ mesh }) => renderList.push(mesh))
       }
     })
   }

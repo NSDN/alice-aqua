@@ -330,20 +330,20 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
   }
 
   const configs = {
+    lang(val = 'en') {
+      updateGameLanguage(val)
+      return val
+    },
+    shadows(val = 'off') {
+      game.enableShadows = val === 'on'
+      return val
+    },
     ssao(val = 'off') {
       game.enableSSAO = val === 'on'
       return val
     },
-    shadows(val = 'on') {
-      game.enableShadows = val === 'on'
-      return val
-    },
-    lensRendering(val = 'on') {
+    lensRendering(val = 'off') {
       game.enableLensRendering = val === 'on'
-      return val
-    },
-    lang(val = 'en') {
-      updateGameLanguage(val)
       return val
     },
     bgm(val = 'on') {

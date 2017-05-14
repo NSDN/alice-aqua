@@ -30,6 +30,10 @@ import {
   EventEmitter,
 } from '../utils'
 
+import {
+  ObjectBase,
+} from './objbase'
+
 export interface Chunk {
   tiles: number[]
   heights: number[]
@@ -121,6 +125,7 @@ export default class Terrain extends EventEmitter<{
     this.sideMesh = new Mesh(this.name + '/side', scene)
     this.sideMesh.position.copyFrom(this.position)
     this.sideMesh.receiveShadows = true
+    ObjectBase.enableShadowFor(this.sideMesh)
     Terrain.terrainFromChunkMesh[this.sideMesh.name] = this
 
     const sideMaterialId = 'cache/chunk/edge/' + this.chunkUnits
@@ -192,6 +197,7 @@ export default class Terrain extends EventEmitter<{
       { x, y, z } = this.position
     top.position.copyFromFloats(x0 + x, y, y0 + z)
     top.receiveShadows = true
+    ObjectBase.enableShadowFor(top)
     Terrain.terrainFromChunkMesh[top.name] = this
 
     const material = top.material = new CommonMaterial(this.name + '/mat/' + k, scene)
