@@ -4,6 +4,8 @@ import {
   Material,
   AbstractMesh,
   Vector3,
+  Tags,
+  Scene,
 } from '../babylon'
 
 import {
@@ -46,8 +48,18 @@ interface ObjectEvents {
   }
 }
 
+const OBJECT_SHADOW_TAG = 'object-has-shadow'
+
 export class ObjectBase extends InstancedMesh {
   static readonly eventEmitter = new EventEmitter<ObjectEvents>()
+
+  static enableShadowFor(obj: any) {
+    Tags.AddTagsTo(obj, OBJECT_SHADOW_TAG)
+  }
+
+  static getShadowEnabled(scene: Scene) {
+    return scene.getMeshesByTags(OBJECT_SHADOW_TAG)
+  }
 
   constructor(name: string, readonly opts: ObjectOptions) {
     super(name, opts.source)

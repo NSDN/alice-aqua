@@ -33,6 +33,7 @@ const tiles: [number, keyof typeof imgres, number, number, number, string, numbe
 const classes: [number, keyof typeof imgres, number, number, number, number, typeof ObjectBase, any, any][] = [
   [ 1, 'imAssetSprite0',    0,    0, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 2, 'imAssetSprite0',    0,   64, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
+  [37, 'imAssetSprite0',   32,    0, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 5, 'imAssetSprite0',    0,  128, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 10 }, { }],
   [ 6, 'imAssetSprite0',   64,  128, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }, { }],
   [ 3, 'imPlayerRemilia',   0,  128, 28, 28, PlayerGenerator,  { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { }],

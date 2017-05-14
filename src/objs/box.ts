@@ -78,10 +78,13 @@ export class BoxGenerator extends Sprite implements IPlayStartStopListener {
       cache.isVisible = false
     }
 
-    const box = this.getScene().getMeshByName(this.boxName)
+    let box = this.getScene().getMeshByName(this.boxName)
     box && box.dispose()
     this.boxName = 'box/' + randomBytes()
-    Tags.AddTagsTo(new Box(this.boxName, cache, this), Box.BOX_TAG)
+
+    box = new Box(this.boxName, cache, this)
+    Tags.AddTagsTo(box, Box.BOX_TAG)
+    Sprite.enableShadowFor(box)
 
     this.spriteBody.isVisible = false
   }

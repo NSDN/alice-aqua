@@ -7,7 +7,6 @@ import {
   Engine,
   Scene,
   Vector3,
-  ScreenSpaceCanvas2D,
   Color3,
   Material,
   Texture,
@@ -16,6 +15,7 @@ import {
   SSAORenderingPipeline,
   LensRenderingPipeline,
   DirectionalLight,
+  ShadowGenerator,
 } from '../babylon'
 
 import {
@@ -34,6 +34,9 @@ import {
 import {
   FollowCamera,
 } from '../utils/babylon'
+
+import {
+} from './objbase'
 
 export interface ClassDefine {
   clsId: number
@@ -137,15 +140,24 @@ async function loadAllPlugins() {
   return { images, tiles, classes }
 }
 
+const DEFAULT_CONFIG = {
+  clearColor: Color3.FromHexString('#607f9a').scale(0.7).toHexString(),
+  shadowMapSize: 1024,
+  shadowMapUpdateInterval: 30,
+  shadowMapUpdateRadius: 15,
+}
+
 export class Game {
   readonly scene: Scene
   readonly camera: FollowCamera
   readonly engine: Engine
 
-  readonly canvas: ScreenSpaceCanvas2D
   readonly light: DirectionalLight
+  readonly shadow: ShadowGenerator
 
-  private constructor() {
+  private constructor(private opts?: Partial<typeof DEFAULT_CONFIG>) {
+    opts = this.opts = Object.assign({ }, DEFAULT_CONFIG, opts)
+
     const attrs = { style: { width: '100%', height: '100%' }, tabIndex: -1, className: 'canvas-main' },
       elem = appendElement('canvas', attrs) as HTMLCanvasElement,
       engine = this.engine = new Engine(elem, true, { stencil: true }),
@@ -153,7 +165,7 @@ export class Game {
 
     scene.enablePhysics(new Vector3(0, -3, 0))
     scene.workerCollisions = true
-    scene.clearColor = Color3.FromHexString('#607f9a').scale(0.7).toColor4()
+    scene.clearColor = Color3.FromHexString(opts.clearColor).toColor4()
 
     const camera = this.camera = scene.activeCamera = new FollowCamera('camera', 0, 0, 50, Vector3.Zero(), scene)
     camera.lowerRadiusLimit = 15
@@ -166,13 +178,25 @@ export class Game {
     engine.runRenderLoop(() => scene.render())
     window.addEventListener('resize', () => engine.resize())
 
-    this.canvas = new ScreenSpaceCanvas2D(scene)
-    this.light = new DirectionalLight('dir', new Vector3(0.1, -0.2, 0.2), scene)
+    this.light = new DirectionalLight('dir', new Vector3(-0.5, -1, -1).normalize(), scene)
+    this.shadow = new ShadowGenerator(opts.shadowMapSize, this.light)
 
+    let updateShadowRenderIndex = opts.shadowMapUpdateInterval
     scene.registerAfterRender(() => {
       this.updateTimeout()
       this.updateAnimation()
       this.lensFocusDistance = softClamp(this._lensFocusDistance, this.camera.radius - 1, this.camera.radius + 1)
+      this.light.position.copyFrom(this.camera.followTarget)
+      this.light.position.y += 20
+
+      if (updateShadowRenderIndex ++ > opts.shadowMapUpdateInterval) {
+        updateShadowRenderIndex = 0
+        const renderList = this.shadow.getShadowMap().renderList
+        renderList.length = 0
+        ObjectBase.getShadowEnabled(scene)
+          .filter(mesh => mesh.isVisible && mesh.getAbsolutePosition().subtract(this.camera.followTarget).length() < opts.shadowMapUpdateRadius)
+          .forEach(mesh => renderList.push(mesh))
+      }
     })
   }
 
@@ -371,6 +395,7 @@ export class Game {
       material.disableLighting = true
       material.emissiveColor = Color3.White()
       material.diffuseTexture = texture
+      material.backFaceCulling = false
 
       materials[id] = { material, texSize, src: img }
     }
@@ -384,7 +409,7 @@ export class Game {
       const { src, material, texSize } = materials[srcId],
         clsName = cls.name,
         icon = { material, texSize, offsetX, offsetY, width, height },
-        opts = { icon, clock: game, source: null as Mesh, canvas: game.canvas }
+        opts = { icon, clock: game, source: null as Mesh, ...game }
       game._classes[clsId] = { cls, args, opts }
       return { clsId, clsName, src, offsetX, offsetY, width, height, args, ...uiArgs }
     })

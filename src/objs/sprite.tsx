@@ -49,6 +49,7 @@ export default class Sprite extends ObjectBase {
     const sprite = this.spriteBody = cache.createInstance(name + '/sprite')
     sprite.billboardMode = Mesh.BILLBOARDMODE_Y
     sprite.parent = this
+    ObjectBase.enableShadowFor(sprite)
   }
 
   renderConfig(save: (args: Partial<Sprite>) => void) {

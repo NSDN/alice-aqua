@@ -16,6 +16,8 @@ import {
 
 import {
   IPlayStartStopListener,
+  ObjectOptions,
+  ObjectBase,
 } from '../game/objbase'
 
 import {
@@ -85,6 +87,7 @@ export default class Player extends Mesh {
       this.playerHead.physicsImpostor = new PhysicsImpostor(this.playerHead, PhysicsImpostor.SphereImpostor)
       this.physicsImpostor.forceUpdate()
       this.shadow.scaling.copyFromFloats(val ? 1 : 0.5, 1, val ? 1 : 0.5)
+
       const withActivePlayer = this.getScene() as any as { currentActivePlayer: Player }
       if (val) {
         withActivePlayer.currentActivePlayer = this
@@ -106,7 +109,7 @@ export default class Player extends Mesh {
     return pick
   }
 
-  constructor(name: string, scene: Scene, readonly opts: Partial<typeof DEFAULT_CONFIG>) {
+  constructor(name: string, scene: Scene, readonly opts: Partial<typeof DEFAULT_CONFIG> & ObjectOptions) {
     super(name, scene)
 
     opts = this.opts = Object.assign({ }, DEFAULT_CONFIG, opts)
@@ -146,6 +149,7 @@ export default class Player extends Mesh {
     sprite.material = material
     sprite.parent = this
     sprite.registerBeforeRender(_ => this.updatePlayerFrame())
+    ObjectBase.enableShadowFor(sprite)
 
     const head = this.playerHead = new Mesh(name + '/head', scene)
     VERTEX_SPHERE.applyToMesh(head)
