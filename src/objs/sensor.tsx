@@ -88,7 +88,7 @@ class TriggerLocker extends Mesh {
   }
 }
 
-export default class Sensor extends ObjectBase implements IObjectTriggerable, IPlayStartStopListener {
+export default class Sensor extends ObjectBase implements IPlayStartStopListener {
   private showLockerSprite(timeout: number) {
     const spriteId = 'trigger/lock/sprite',
       sprite = (this.getScene().getMeshByName(spriteId) as TriggerLocker) ||
@@ -118,7 +118,7 @@ export default class Sensor extends ObjectBase implements IObjectTriggerable, IP
       vertex.applyToMesh(cache)
       cache.isVisible = false
       cache.material = ColorWireframeNoLightingMaterial.getCached(this.getScene(), Color3.Red())
-      cache.scaling.copyFromFloats(0.5, 0.5, 0.5)
+      cache.scaling.copyFromFloats(0.2, 0.2, 0.2)
     }
 
     const sensor = cache.createInstance(this.name + '/sensor')
@@ -244,26 +244,12 @@ export default class Sensor extends ObjectBase implements IObjectTriggerable, IP
     </table>]
   }
 
-  public onTrigger(isOn: boolean, mesh: AbstractMesh) {
-    if (mesh !== this) {
-      this.opts.clock.timeout(() => this.fireTrigger(isOn), 500)
-    }
-  }
-
   private isTriggerLocked = false
-  private fireTrigger(isOn: boolean) {
+  private requestTrigger(isOn: boolean) {
     if (this.isTriggerLocked) {
       return
     }
-    this.onTrigger(isOn, this)
-    ; (this._targetName || '').split(',').forEach(target => {
-      const isNe = target[0] === '!',
-        name = isNe ? target.substr(1) : target,
-        mesh = this.getScene().getMeshByName(name) as any as IObjectTriggerable
-      if (mesh && mesh.onTrigger) {
-        mesh.onTrigger(isNe ? !isOn : isOn, this)
-      }
-    })
+    this.fireTrigger(isOn)
     if (isOn && this.autoResetTimeout > 0) {
       this.isTriggerLocked = true
       this.showLockerSprite(this.autoResetTimeout)
@@ -273,12 +259,21 @@ export default class Sensor extends ObjectBase implements IObjectTriggerable, IP
       }, this.autoResetTimeout)
     }
   }
+  protected fireTrigger(isOn: boolean) {
+    const targets = this._targetName || ''
+    targets.split(',').forEach(target => {
+      const isNe = target[0] === '!',
+        targetName = isNe ? target.substr(1) : target,
+        targetIsOn = isNe ? !isOn : isOn
+      Sensor.eventEmitter.emit('fire-trigger', { targetName, targetIsOn })
+    })
+  }
 
   private checkTrigger(mesh: AbstractMesh, isOn: boolean) {
     const triggered = this.getScene().getMeshesByTags(this.triggerOnTag)
     isOn ? Tags.AddTagsTo(mesh, this.triggerOnTag) : Tags.RemoveTagsFrom(mesh, this.triggerOnTag)
     if ((triggered.length === 0 && isOn) || (triggered.length === 1 && triggered[0] === mesh && !isOn)) {
-      this.fireTrigger(isOn)
+      this.requestTrigger(isOn)
     }
   }
   private clearTriggered() {
@@ -287,7 +282,7 @@ export default class Sensor extends ObjectBase implements IObjectTriggerable, IP
     this.getScene().getMeshesByTags(this.triggerOnTag).forEach(mesh => {
       Tags.RemoveTagsFrom(mesh, this.triggerOnTag)
     })
-    this.fireTrigger(false)
+    this.requestTrigger(false)
   }
   private registerTrigger() {
     this.triggerSensor.actionManager && this.triggerSensor.actionManager.dispose()

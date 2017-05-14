@@ -145,6 +145,7 @@ const DEFAULT_CONFIG = {
   shadowMapSize: 1024,
   shadowMapUpdateInterval: 30,
   shadowMapUpdateRadius: 15,
+  shadowMapLightOffset: 20,
 }
 
 export class Game {
@@ -180,6 +181,7 @@ export class Game {
 
     this.light = new DirectionalLight('dir', new Vector3(-0.5, -1, -1).normalize(), scene)
     this.shadow = new ShadowGenerator(opts.shadowMapSize, this.light)
+    this.shadow.useExponentialShadowMap = true
 
     let updateShadowRenderIndex = opts.shadowMapUpdateInterval
     scene.registerAfterRender(() => {
@@ -187,7 +189,7 @@ export class Game {
       this.updateAnimation()
       this.lensFocusDistance = softClamp(this._lensFocusDistance, this.camera.radius - 1, this.camera.radius + 1)
       this.light.position.copyFrom(this.camera.followTarget)
-      this.light.position.y += 20
+      this.light.position.y += opts.shadowMapLightOffset
 
       if (updateShadowRenderIndex ++ > opts.shadowMapUpdateInterval) {
         updateShadowRenderIndex = 0

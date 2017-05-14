@@ -293,7 +293,7 @@ export default class Player extends Mesh {
       Array(6).fill(6).some((n, i) => {
         const a = i / n * Math.PI * 2, r = this.opts.width * 0.2,
           pick = this.pickFromBottom(Math.sin(a) * r, Math.cos(a) * r)
-        if (pick.hit && pick.pickedMesh && pick.distance < 0.2 && v.y < 0.1) {
+        if (pick.hit && pick.pickedMesh && pick.distance < 0.2 && v.y < 0.5) {
           this.applyJumpImpulse(new Vector3(0, this.opts.jumpForce, 0))
           return true
         }

@@ -201,6 +201,7 @@ export default class Slope extends Sprite implements IPlayStartStopListener {
       const mesh = groundMeshes = new Mesh('slope-ground', scene),
         material = mesh.material = new CommonMaterial(mesh.name + '-mat', scene)
       material.diffuseTexture = new BABYLON.Texture('assets/slope-ground.png', scene)
+      groundMeshes.receiveShadows = true
     }
     Object.assign(new VertexData(), gvd).applyToMesh(groundMeshes)
 

@@ -2,7 +2,6 @@ import {
   InstancedMesh,
   Mesh,
   Material,
-  AbstractMesh,
   Vector3,
   Tags,
   Scene,
@@ -33,7 +32,7 @@ export interface ObjectOptions {
 }
 
 export interface IObjectTriggerable {
-  onTrigger(isOn: boolean, by?: AbstractMesh): void
+  onTrigger(isOn: boolean): void
 }
 
 export interface IPlayStartStopListener {
@@ -43,8 +42,12 @@ export interface IPlayStartStopListener {
 
 interface ObjectEvents {
   'load-stage': {
-    url: string,
+    url: string
     position: Vector3
+  }
+  'fire-trigger': {
+    targetName: string
+    targetIsOn: boolean
   }
 }
 

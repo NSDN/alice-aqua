@@ -53,11 +53,9 @@ export default class Trigger extends Sensor {
     this.triggerOnBox.parent = this.triggerOffBox.parent = this
   }
 
-  public onTrigger(isOn: boolean, mesh: AbstractMesh) {
-    if (mesh === this) {
-      this.triggerOnBox.isVisible = isOn
-      this.triggerOffBox.isVisible = !isOn
-    }
-    super.onTrigger(isOn, mesh)
+  protected fireTrigger(isOn: boolean) {
+    this.triggerOnBox.isVisible = isOn
+    this.triggerOffBox.isVisible = !isOn
+    super.fireTrigger(isOn)
   }
 }

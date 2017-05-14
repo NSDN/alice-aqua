@@ -10,6 +10,7 @@ import {
 import {
   ObjectBase,
   IPlayStartStopListener,
+  IObjectTriggerable,
 } from './game/objbase'
 
 import {
@@ -358,7 +359,8 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
 
   const { scene, camera } = game,
     input = new GamepadInput(KEY_MAP),
-    keys = input.state
+    keys = input.state,
+    objectEvents = ObjectBase.eventEmitter
 
   new SkyBox('sky', scene)
 
@@ -370,9 +372,14 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
     },
     async play(next) {
       const stageManager = await StageManager.restore(game),
-        unbindLoadStage = ObjectBase.eventEmitter.on('load-stage', data => stageManager.loadFromURL(data.url, data.position))
+        unbindLoadStage = objectEvents.on('load-stage', data => stageManager.loadFromURL(data.url, data.position)),
+        unbindFireTrigger = objectEvents.on('fire-trigger', data => {
+          const object = scene.getMeshByName(data.targetName) as any as IObjectTriggerable
+          object && object.onTrigger && object.onTrigger(data.targetIsOn)
+        })
       await next()
       unbindLoadStage()
+      unbindFireTrigger()
       stageManager.dispose()
       camera.followTarget.copyFromFloats(0, 0, 0)
     },

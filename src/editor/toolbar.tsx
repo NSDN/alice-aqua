@@ -155,8 +155,10 @@ export function PanelClasses({ clsId, classes }: {
   return <div>
     <div class="ui-classes">
       {
-        classes.map(cls => <span class-id={ cls.clsId } class={{ 'list-item': true, active: clsId === cls.clsId }}>
+        classes.map(cls => <span class-id={ cls.clsId }
+          class={{ 'list-item': true, active: clsId === cls.clsId }}>
           <img class="cls-icon no-select" src={ clsThumbUrl(cls) }
+            title={ cls.title || `#${cls.clsId}` }
             onClick={ _ => eventEmitter.emit('class-selected', cls.clsId) } />
         </span>)
       }

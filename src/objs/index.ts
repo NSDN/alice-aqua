@@ -5,10 +5,10 @@ import Player, { PlayerGenerator } from './player'
 import Box, { BoxGenerator } from './box'
 import Slope from './slope'
 import Trigger from './trigger'
+import Jump from './jump'
 /*
 import Gate from './gate'
 import BulltinBoard from './bulletin'
-import Jump from './jump'
 import Block from './block'
 import { StageEntry, StageLoader } from './stage'
 */
@@ -40,6 +40,7 @@ const classes: [number, keyof typeof imgres, number, number, number, number, typ
   [ 4, 'imPlayerFlandre',   0,  128, 28, 28, PlayerGenerator,  { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { }],
   [21, 'imAssetSprite0',    0,  192, 32, 32, Slope,        { }, { title: '两个 slope 相连形成斜坡' }],
   [22, 'imAssetSprite0',   32,  192, 32, 32, Trigger,      { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }, { title: '触发器' }],
+  [23, 'imAssetSprite0',   64,  192, 32, 32, Jump,         { listenTags: [Player.PLAYER_TAG] }, { title: '跳！' }],
   /*
   [ 2, 'imAssetTile1',    0, 1504, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 3, 'imAssetTile1',  192, 1344, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
@@ -68,8 +69,6 @@ const classes: [number, keyof typeof imgres, number, number, number, number, typ
   [27, 'imAssetTile1',  160, 1696, 32, 32, Sprite,       { }, { }],
   [28, 'imAssetTile1', 1024,    0, 32, 32, Gate,         { }, { title: '可触发的门' }],
   [36, 'imAssetTile1', 1088,    0, 32, 32, Block,        { }, { title: '可触发移动的方块' }],
-  [34, 'imAssetTile1', 1120,    0, 32, 32, Jump,         { listenTags: [Player.PLAYER_TAG] }, { title: '跳！' }],
-  [30, 'imAssetTile1', 1152,    0, 32, 32, Trigger,      { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }, { title: '触发器' }],
   [35, 'imAssetTile1', 1248,    0, 32, 32, StageLoader,  { editorSingletonId: 'stage/loader' }, { title: '在此载入新关卡' }],
   [37, 'imAssetTile1', 1280,    0, 32, 32, StageEntry,   { editorSingletonId: 'stage/entry'  }, { title: '关卡载入时使用的原点' }],
   */
