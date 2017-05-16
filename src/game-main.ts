@@ -271,9 +271,14 @@ function updateGameLanguage(lang: string) {
 function selectNextConfigItem(delta: number) {
   MenuManager.selectNext(delta, 'menu-config-list', 'menu-config-item')
   const elem = MenuManager.activeItem('menu-config-list', 'menu-config-item') as HTMLDivElement,
-    container = document.querySelector('.screen-config .content') as HTMLDivElement
-  if (elem && container) {
-    container.scrollTop = elem.offsetTop - container.offsetTop
+    elemRect = elem && elem.getBoundingClientRect(),
+    container = document.querySelector('.screen-config .content') as HTMLDivElement,
+    contRect = container && container.getBoundingClientRect()
+  if (elemRect.top < contRect.top) {
+    container.scrollTop -= contRect.top - elemRect.top
+  }
+  else if (elemRect.bottom > contRect.bottom) {
+    container.scrollTop -= contRect.bottom - elemRect.bottom
   }
 }
 
