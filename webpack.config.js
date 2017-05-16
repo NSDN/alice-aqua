@@ -4,14 +4,10 @@ const webpack = require('webpack'),
 module.exports = {
   devtool: isDevServer && 'source-map',
   devServer: { inline: false },
-  entry: isDevServer ? {
+  entry: {
+    screen: isDevServer ? './src/loading-screen' : ['babel-polyfill', './src/loading-screen'],
     game: './src/game-main',
     editor: './src/editor-main',
-    screen: './src/loading-screen'
-  } : {
-    game: ['babel-polyfill', './src/game-main'],
-    editor: ['babel-polyfill', './src/editor-main'],
-    screen: './src/loading-screen'
   },
   output: {
     filename: 'build/[name].bundle.js'
