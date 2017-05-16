@@ -8,6 +8,7 @@ import {
   Vector3,
   PhysicsImpostor,
   VertexData,
+  Tags,
 } from '../babylon'
 
 import {
@@ -29,10 +30,6 @@ import {
   getBlocksFromHeightMap,
   EventEmitter,
 } from '../utils'
-
-import {
-  ObjectBase,
-} from './objbase'
 
 export interface Chunk {
   tiles: number[]
@@ -80,6 +77,9 @@ export const eventEmitter = new EventEmitter<{
   'position-updated': { terrain: Terrain, delta: Vector3 }
 }>()
 
+const TERRAIN_TOP_TAG = 'terrain-top-tag',
+  TERRAIN_SIDE_TAG = 'terrain-side-tag'
+
 const push = [ ].push,
   getGroundVertexDataWithUVMemo = memo(getChunkGroundVertexData)
 
@@ -94,6 +94,12 @@ export default class Terrain extends EventEmitter<{
   private static terrainFromChunkMesh = { } as { [meshId: string]: Terrain }
   static getTerrainFromMesh(mesh: AbstractMesh) {
     return Terrain.terrainFromChunkMesh[mesh.name]
+  }
+  static getTopMeshes(scene: Scene) {
+    return scene.getMeshesByTags(TERRAIN_TOP_TAG)
+  }
+  static getSideMeshes(scene: Scene) {
+    return scene.getMeshesByTags(TERRAIN_SIDE_TAG)
   }
 
   private readonly sideMesh: Mesh
@@ -125,7 +131,7 @@ export default class Terrain extends EventEmitter<{
     this.sideMesh = new Mesh(this.name + '/side', scene)
     this.sideMesh.position.copyFrom(this.position)
     this.sideMesh.receiveShadows = true
-    ObjectBase.enableShadowFor(this.sideMesh)
+    Tags.AddTagsTo(this.sideMesh, TERRAIN_SIDE_TAG)
     Terrain.terrainFromChunkMesh[this.sideMesh.name] = this
 
     const sideMaterialId = 'cache/chunk/edge/' + this.chunkUnits
@@ -197,7 +203,7 @@ export default class Terrain extends EventEmitter<{
       { x, y, z } = this.position
     top.position.copyFromFloats(x0 + x, y, y0 + z)
     top.receiveShadows = true
-    ObjectBase.enableShadowFor(top)
+    Tags.AddTagsTo(top, TERRAIN_TOP_TAG)
     Terrain.terrainFromChunkMesh[top.name] = this
 
     const material = top.material = new CommonMaterial(this.name + '/mat/' + k, scene)

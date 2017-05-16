@@ -189,15 +189,17 @@ export class Game {
         updateShadowRenderIndex = 0
         const renderList = this._shadow.getShadowMap().renderList
         renderList.length = 0
+        const target = this.camera.followTarget,
+          dist = (mesh: Mesh, target: Vector3) => mesh.getAbsolutePosition().subtract(target).length()
         ObjectBase.getShadowEnabled(scene)
+          .filter(mesh => mesh.isVisible && dist(mesh, target) < opts.shadowMapUpdateRadius)
+          .forEach(mesh => renderList.push(mesh))
+        Terrain.getTopMeshes(scene)
+          .filter(mesh => mesh.isVisible && dist(mesh, target) < opts.shadowMapUpdateRadius + Terrain.getTerrainFromMesh(mesh).chunkSize)
+          .forEach(mesh => renderList.push(mesh))
+        Terrain.getSideMeshes(scene)
           .filter(mesh => mesh.isVisible)
-          .map(mesh => ({
-            mesh,
-            terrain: Terrain.getTerrainFromMesh(mesh),
-            radius: mesh.getAbsolutePosition().subtract(this.camera.followTarget).length(),
-          }))
-          .filter(({ radius, terrain }) => radius < (terrain ? terrain.chunkSize : 0) + opts.shadowMapUpdateRadius)
-          .forEach(({ mesh }) => renderList.push(mesh))
+          .forEach(mesh => renderList.push(mesh))
       }
     })
   }
