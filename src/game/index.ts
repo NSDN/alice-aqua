@@ -189,16 +189,22 @@ export class Game {
         updateShadowRenderIndex = 0
         const renderList = this._shadow.getShadowMap().renderList
         renderList.length = 0
+
         const target = this.camera.followTarget,
-          dist = (mesh: Mesh, target: Vector3) => mesh.getAbsolutePosition().subtract(target).length()
+          dist = (mesh: Mesh, target: Vector3) => mesh.getAbsolutePosition().subtract(target).multiplyByFloats(1, 0, 1).length()
         ObjectBase.getShadowEnabled(scene)
           .filter(mesh => mesh.isVisible && dist(mesh, target) < opts.shadowMapUpdateRadius)
           .forEach(mesh => renderList.push(mesh))
+
+        const ray = new BABYLON.Ray(target, new Vector3(0, -1, 0)),
+          pick = scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh)),
+          terrain = pick.hit && Terrain.getTerrainFromMesh(pick.pickedMesh)
         Terrain.getTopMeshes(scene)
-          .filter(mesh => mesh.isVisible && dist(mesh, target) < opts.shadowMapUpdateRadius + Terrain.getTerrainFromMesh(mesh).chunkSize)
+          .filter(mesh => Terrain.getTerrainFromMesh(mesh) === terrain)
+          .filter(mesh => dist(mesh, target) < opts.shadowMapUpdateRadius + terrain.chunkSize)
           .forEach(mesh => renderList.push(mesh))
         Terrain.getSideMeshes(scene)
-          .filter(mesh => mesh.isVisible)
+          .filter(mesh => Terrain.getTerrainFromMesh(mesh) === terrain)
           .forEach(mesh => renderList.push(mesh))
       }
     })
