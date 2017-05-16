@@ -5,8 +5,9 @@ webpack > $TMP_DIR/webpack-output &&\
 BUILD_HASH=`cat $TMP_DIR/webpack-output | grep Hash: | awk '{ print $2 }'` &&\
 DST_DIR=qcs.ofr.me:~/www/alice-aqua-$BUILD_HASH &&\
 SRC_DIRS=(
-  "babylonjs/*.js"
-  "babylonjs/**/*.js"
+  "babylonjs/babylon.js"
+  "babylonjs/cannon.js"
+  "babylonjs/**/*.min.js"
   "node_modules/font-awesome/css/*.css"
   "node_modules/font-awesome/fonts/*.*"
 ) &&\
@@ -25,7 +26,7 @@ do
   for file in $src
   do
     dst=$TMP_DIR/`dirname $file`
-    mkdir -p $dst && cp -r $src $dst
+    mkdir -p $dst && cp -r $file $dst
   done
 done &&\
 
