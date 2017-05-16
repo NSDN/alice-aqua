@@ -153,44 +153,45 @@ class StageManager {
   }
 }
 
-class Config<S> {
-  static async load<S extends { [key: string]: (val?: string) => string }>(updater: S) {
-    const config = new Config<S>()
-    config.updater = updater
-
-    let data = { } as { [P in keyof S]: string }
+class Config {
+  private readonly data = { } as { [key: string]: string }
+  private constructor(private readonly updater: { [key: string]: (val?: string) => string }) {
+  }
+  static create<S extends { [key: string]: (val?: string) => string }>(updater: S) {
+    const config = new Config(updater)
+    for (const key of Object.keys(updater)) {
+      Object.defineProperty(config, key, {
+        get() {
+          return config.data[key] as string
+        },
+        set(val) {
+          if (config.data[key] !== val) {
+            config.data[key] = updater[key](val)
+          }
+        }
+      })
+    }
+    return config as Config & { [key in keyof S]: string }
+  }
+  load() {
     try {
-      Object.assign(data, JSON.parse(localStorage.getItem('game-config')))
+      Object.assign(this.data, JSON.parse(localStorage.getItem('game-config')))
     }
     catch (err) {
       console.error(err)
     }
 
-    Object.keys(updater).forEach((key: keyof S) => {
+    for (const key of Object.keys(this.updater)) {
       const configItem = document.querySelector(`[config-key="${key}"]`)
       if (configItem) {
         const allValues = configItem.querySelectorAll('[config-val]')
         for (const elem of allValues) {
           elem.classList.remove('active')
         }
-        const val = config.updater[key](data[key]),
+        const val = this.updater[key](this.data[key]),
           configValue = configItem.querySelector(`[config-val="${val}"]`) || allValues[0]
         configValue.classList.add('active')
       }
-    })
-
-    return config
-  }
-  private data = { } as { [P in keyof S]: string }
-  private updater: { [P in keyof S]: (val?: string) => string }
-  private constructor() {
-  }
-  get(key: keyof S) {
-    return this.data[key]
-  }
-  set(key: keyof S, val: string) {
-    if (this.data[key] !== val) {
-      this.data[key] = this.updater[key](val)
     }
   }
   save() {
@@ -204,11 +205,11 @@ class GameState<H extends { [name: string]: (next: () => Promise<any>, ...args: 
 
   constructor(private handles: H) {
     const styles = ['']
-    Object.keys(handles).forEach(name => {
+    for (const name of Object.keys(handles)) {
       const cls = camelCaseToHyphen(name)
       styles.push(`.screen-${cls} { visibility: hidden }`)
       styles.push(`.game-${cls} .screen-${cls} { visibility: visible }`)
-    })
+    }
     appendElement('style', { innerHTML: styles.join('\n') }, 'head')
   }
 
@@ -278,28 +279,31 @@ function selectNextConfigItem(delta: number) {
     container.scrollTop -= contRect.top - elemRect.top
   }
   else if (elemRect.bottom > contRect.bottom) {
-    container.scrollTop -= contRect.bottom - elemRect.bottom
+    container.scrollTop += elemRect.bottom - contRect.bottom
   }
 }
 
-function updateConfigFromActiveMenu<S>(config: Config<S>) {
+function updateConfigFromActiveMenu(config: any) {
   const activeList = MenuManager.activeList(),
     key = activeList && activeList.getAttribute('config-key'),
     activeItem = MenuManager.activeItem(),
     val = activeItem && activeItem.getAttribute('config-val')
-  key && config.set(key as any, val)
+  key && (config[key] = val)
 }
 
-async function showDialogText(name: string, dialogJSON: string, isCanceled: () => boolean) {
+async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string, dialogJSON: string) {
   const dialogs = JSON.parse(dialogJSON) as { [name: string]: { text: string, options: any } },
     { text, options } = dialogs[name] || { text: '...', options: { } }
+
+  let isCanceled = false
+  input.once('escape', () => isCanceled = true)
 
   const elem = document.querySelector('.game-dialog-content')
   elem.innerHTML = ''
 
   const elemLines = appendElement('pre', { }, elem)
   for (let i = 0; i < text.length; i ++) {
-    if (isCanceled()) {
+    if (input.state['finish-dialog'] || isCanceled) {
       elemLines.innerHTML = text
       await sleep(50)
       elem.parentElement.scrollTop = elem.scrollHeight
@@ -339,25 +343,59 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
     throw err
   }
 
-  const configs = {
+  const updateConfig = {
     lang(val = 'en') {
       updateGameLanguage(val)
       return val
     },
+    displayQuality(val = 'low') {
+      if (val === 'low') {
+        game.enableShadows = false
+        game.enableSSAO = false
+        game.enableLensRendering = false
+      }
+      else if (val === 'medium') {
+        game.enableShadows = true
+        game.enableSSAO = false
+        game.enableLensRendering = true
+      }
+      else if (val === 'high') {
+        game.enableShadows = true
+        game.enableSSAO = true
+        game.enableLensRendering = true
+      }
+      else if (val === 'custom') {
+        game.enableShadows = config.shadows === 'on'
+        game.enableSSAO = config.ssao === 'on'
+        game.enableLensRendering = config.lensRendering === 'on'
+      }
+      for (const elem of document.querySelectorAll('.show-config-display-custom')) {
+        elem.classList[val === 'custom' ? 'remove' : 'add']('hidden')
+      }
+      return val
+    },
     shadows(val = 'off') {
-      game.enableShadows = val === 'on'
+      if (config.displayQuality === 'custom') {
+        game.enableShadows = val === 'on'
+      }
       return val
     },
     ssao(val = 'off') {
-      game.enableSSAO = val === 'on'
+      if (config.displayQuality === 'custom') {
+        game.enableSSAO = val === 'on'
+      }
       return val
     },
     lensRendering(val = 'off') {
-      game.enableLensRendering = val === 'on'
+      if (config.displayQuality === 'custom') {
+        game.enableLensRendering = val === 'on'
+      }
       return val
     },
     bgm(val = 'on') {
-      // TODO
+      for (const elem of document.querySelectorAll('.show-config-bgm-on')) {
+        elem.classList[val === 'on' ? 'remove' : 'add']('hidden')
+      }
       return val
     },
     volume(val = '2') {
@@ -366,9 +404,9 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
     },
   }
 
-  let config: Config<typeof configs>
+  let config = Config.create(updateConfig)
   try {
-    config = await Config.load(configs)
+    config.load()
   }
   catch (err) {
     LoadingScreen.error(`load config failed: ${err && err.message || err}`)
@@ -419,9 +457,7 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
       await next()
     },
     async text(next, name: string = '', dialogJSON: string = '{ }') {
-      let isCanceled = false
-      input.down.once('escape', () => isCanceled = true)
-      showDialogText(name, dialogJSON, () => keys['finish-dialog'] || isCanceled)
+      showDialogText(input, name, dialogJSON)
       await next()
     },
     async dialog(next, dialogJSON: string = '') {
@@ -453,17 +489,19 @@ async function showDialogText(name: string, dialogJSON: string, isCanceled: () =
     }
   })
 
-  input.down.on('nav-vertical', () => {
+  input.down.on('nav-vertical', evt => {
     const activeList = MenuManager.activeList()
     if (activeList && !activeList.classList.contains('menu-horizontal')) {
       MenuManager.selectNext(keys.up ? -1 : 1)
+      evt && evt.preventDefault()
     }
   })
 
-  input.down.on('nav-horizontal', () => {
+  input.down.on('nav-horizontal', evt => {
     const activeList = MenuManager.activeList()
     if (activeList && !activeList.classList.contains('menu-vertical')) {
       MenuManager.selectNext(keys.left ? -1 : 1)
+      evt && evt.preventDefault()
     }
   })
 

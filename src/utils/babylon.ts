@@ -376,8 +376,8 @@ export class GamepadInput<KM> extends KeyEmitter<KM> {
     super(map)
     this.gamepad = activeGamepad
     gamepadEvents.on('connect', gamepad => this.gamepad = gamepad)
-    gamepadEvents.on('down', button => this.keyEvents.emit(button, true))
-    gamepadEvents.on('up', button => this.keyEvents.emit(button, false))
+    gamepadEvents.on('down', button => this.keyEvents.emit(button, { isDown: true, event: null }))
+    gamepadEvents.on('up', button => this.keyEvents.emit(button, { isDown: false, event: null }))
   }
 }
 

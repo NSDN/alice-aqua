@@ -359,8 +359,8 @@ const SPECIAL_KEYS: { [keyCode: number]: string } = {
 }
 
 export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
-  readonly down = new EventEmitter<{ [P in keyof KM]: void }>()
-  readonly up = new EventEmitter<{ [P in keyof KM]: void }>()
+  readonly down = new EventEmitter<{ [P in keyof KM]: KeyboardEvent }>()
+  readonly up = new EventEmitter<{ [P in keyof KM]: KeyboardEvent }>()
   readonly state = { } as { [P in keyof KM]: boolean }
   readonly any = new EventEmitter<{
     change: { name: keyof KM, down: boolean }
@@ -368,7 +368,7 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
     down:   keyof KM
   }>()
 
-  protected keyEvents = new EventEmitter<{ [key: string]: boolean }>()
+  protected keyEvents = new EventEmitter<{ [key: string]: { isDown: boolean, event: KeyboardEvent } }>()
   constructor(keyMap: KM) {
     super()
 
@@ -378,13 +378,13 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
       comboKeys.forEach((combKey, order) => {
         const keys = combKey.split('+').map(s => s.replace(/^\s+/, '').replace(/\s+$/, '')),
           keyDown = keys.map(_ => false)
-        keys.forEach((key, index) => this.keyEvents.on(key, isDown => {
+        keys.forEach((key, index) => this.keyEvents.on(key, ({ isDown, event }) => {
           keyDown[index] = isDown
           comboKeyDown[order] = keyDown.every(Boolean)
           const down = comboKeyDown.some(Boolean)
           if (this.state[name] !== down) {
             this.emit(name, this.state[name] = down)
-            this[down ? 'down' : 'up'].emit(name, null)
+            this[down ? 'down' : 'up'].emit(name, event)
             this.any.emit(down ? 'down' : 'up', name)
             this.any.emit('change', { name, down })
           }
@@ -394,12 +394,12 @@ export class KeyEmitter<KM> extends EventEmitter<{ [P in keyof KM]: boolean }> {
 
     window.addEventListener('keydown', evt => {
       const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which.toString()
-      this.keyEvents.emit(key, true)
+      this.keyEvents.emit(key, { isDown: true, event: evt })
     })
 
     window.addEventListener('keyup', evt => {
       const key = SPECIAL_KEYS[evt.which] || String.fromCharCode(evt.which) || evt.which.toString()
-      this.keyEvents.emit(key, false)
+      this.keyEvents.emit(key, { isDown: false, event: evt })
     })
   }
 }
