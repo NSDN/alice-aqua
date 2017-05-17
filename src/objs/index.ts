@@ -28,6 +28,8 @@ const tiles: [number, keyof typeof imgres, number, number, number, string, numbe
   [ 3, 'imAssetTile0',   16,   32, 32, 'edge',  4],
   [ 4, 'imAssetTile0',   16,   48, 32, 'side',  4],
   [ 5, 'imAssetTile0',   64,    0, 32, 'h4x6',  3],
+  [ 7, 'imAssetTile0',  128,    0, 32, 'h4x6',  8],
+  [ 8, 'imAssetTile0',  144,   32, 32, 'edge',  4],
 ]
 
 const classes: [number, keyof typeof imgres, number, number, number, number, typeof ObjectBase, any, any][] = [

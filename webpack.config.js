@@ -28,9 +28,11 @@ module.exports = {
       }
     ],
   },
-  plugins: isDevServer ? [
+  plugins: [
+    new webpack.optimize.CommonsChunkPlugin({ name: 'common' })
+  ].concat(isDevServer ? [
     new webpack.LoaderOptionsPlugin({ debug: true })
   ] : [
     new webpack.optimize.UglifyJsPlugin()
-  ]
+  ])
 }

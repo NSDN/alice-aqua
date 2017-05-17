@@ -139,10 +139,15 @@ async function loadAllPlugins() {
 
 const DEFAULT_CONFIG = {
   clearColor: Color3.FromHexString('#607f9a').scale(0.7).toHexString(),
+  physicsGravity: 3,
+  cameraLowerRadius: 15,
+  cameraUpperRadius: 100,
+  cameraLowerBeta: Math.PI * 0.15,
+  cameraUpperBeta: Math.PI * 0.48,
   shadowMapSize: 2048,
   shadowMapUpdateInterval: 30,
   shadowMapUpdateRadius: 15,
-  shadowMapLightOffset: 20,
+  shadowMapLightOffset: 30,
 }
 
 export class Game {
@@ -160,15 +165,15 @@ export class Game {
       engine = this.engine = new Engine(elem, true, { stencil: true }),
       scene = this.scene = new Scene(engine)
 
-    scene.enablePhysics(new Vector3(0, -3, 0))
+    scene.enablePhysics(new Vector3(0, -opts.physicsGravity, 0))
     scene.workerCollisions = true
     scene.clearColor = Color3.FromHexString(opts.clearColor).toColor4()
 
     const camera = this.camera = scene.activeCamera = new FollowCamera('camera', 0, 0, 50, Vector3.Zero(), scene)
-    camera.lowerRadiusLimit = 15
-    camera.upperRadiusLimit = 100
-    camera.lowerBetaLimit = Math.PI * 0.15
-    camera.upperBetaLimit = Math.PI * 0.48
+    camera.lowerRadiusLimit = opts.cameraLowerRadius
+    camera.upperRadiusLimit = opts.cameraUpperRadius
+    camera.lowerBetaLimit = opts.cameraLowerBeta
+    camera.upperBetaLimit = opts.cameraUpperBeta
     camera.attachControl(elem, true)
     camera.keysUp = camera.keysDown = camera.keysLeft = camera.keysRight = [ ]
 
@@ -185,19 +190,9 @@ export class Game {
       this.lensFocusDistance = softClamp(this._lensFocusDistance, this.camera.radius - 1, this.camera.radius + 1)
       this.light.position.copyFrom(this.camera.followTarget)
       this.light.position.y += opts.shadowMapLightOffset
-
       if (this._shadow && updateShadowRenderIndex ++ > opts.shadowMapUpdateInterval) {
         updateShadowRenderIndex = 0
-
-        const renderList = this._shadow.getShadowMap().renderList
-        renderList.length = 0
-
-        const target = this.camera.followTarget,
-          hSize = new Vector3(opts.shadowMapUpdateRadius, 100, opts.shadowMapUpdateRadius),
-          region = new BABYLON.BoundingInfo(target.subtract(hSize), target.add(hSize))
-        ObjectBase.getShadowEnabled(scene).concat(Terrain.getSideMeshes(scene)).concat(Terrain.getTopMeshes(scene))
-          .filter(mesh => mesh.isVisible && mesh.getBoundingInfo().intersects(region, false))
-          .forEach(mesh => renderList.push(mesh))
+        this.updateShadows()
       }
     })
   }
@@ -224,7 +219,7 @@ export class Game {
   }
 
   private _timers = [ ] as { fn: Function, until: number }[]
-  updateTimeout() {
+  private updateTimeout() {
     const tick = this.tickNow
     if (this._timers.length && tick > this._timers[0].until) {
       this._timers = this._timers.filter(({ fn, until }) => until > tick || (fn(), false))
@@ -280,6 +275,25 @@ export class Game {
       this._shadow = null
     }
   }
+  private updateShadows() {
+    const renderList = this._shadow.getShadowMap().renderList
+    renderList.length = 0
+
+    const target = this.camera.followTarget,
+      hSize = new Vector3(this.opts.shadowMapUpdateRadius, 100, this.opts.shadowMapUpdateRadius),
+      region = new BABYLON.BoundingInfo(target.subtract(hSize), target.add(hSize)),
+      activeTerrainNames = { } as { [key: string]: boolean }
+    ObjectBase.getShadowEnabled(this.scene)
+      .filter(mesh => mesh.isVisible && region.intersectsPoint(mesh.getAbsolutePosition()))
+      .forEach(mesh => renderList.push(mesh))
+    Terrain.getTopMeshes(this.scene)
+      .filter(mesh => mesh.isVisible && region.intersects(mesh.getBoundingInfo(), false))
+      .filter(mesh => activeTerrainNames[Terrain.getTerrainFromMesh(mesh).name] = true)
+      .forEach(mesh => renderList.push(mesh))
+    Terrain.getSideMeshes(this.scene)
+      .filter(mesh => mesh.isVisible && activeTerrainNames[Terrain.getTerrainFromMesh(mesh).name])
+      .forEach(mesh => renderList.push(mesh))
+  }
 
   private _ssao: SSAORenderingPipeline
   get enableSSAO() {
@@ -325,7 +339,7 @@ export class Game {
         chromatic_aberration: 1.0,
         distortion: 1.0,
         dof_focus_distance: this._lensFocusDistance = this.camera.radius,
-        dof_aperture: 3.0,
+        dof_aperture: 2.0,
         grain_amount: 1.0,
         dof_pentagon: true,
         dof_gain: 1.0,
@@ -362,7 +376,7 @@ export class Game {
       step: number
     }
   }
-  updateAnimation() {
+  private updateAnimation() {
     Object.keys(this.animations).forEach(id => {
       const { object, key, target, step } = this.animations[id],
         current = propGet(object, key)

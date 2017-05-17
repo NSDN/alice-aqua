@@ -176,7 +176,7 @@ export default class Terrain extends EventEmitter<{
       return this.edgeTextureCaches[tileId]
     }
     else {
-      const { sideTileId } = this.tilesDefine[tileId],
+      const { sideTileId } = this.tilesDefine[tileId] || { sideTileId: 2 },
         { src, offsetX, offsetY, size } = this.tilesDefine[sideTileId],
         index = Object.keys(this.edgeTextureCaches).length,
         i = Math.floor(index / this.edgeTextureCacheSize), j = index % this.edgeTextureCacheSize,
@@ -295,45 +295,45 @@ export default class Terrain extends EventEmitter<{
     chunkBlocks.forEach(([u0, u1, v0, v1, _h0, h1]) => {
       // top
       for (let u = u0, v = v1 - 1; u < u1; u ++) {
-        const i = pixel(u, v), o = pixel(u, v + 1)
+        const i = pixel(u, v), o = pixel(u, v + 1), t = this.tilesDefine[i.t]
         if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
           push.apply(indices,   [0, 1, 2, 0, 2, 3].map(v => v + positions.length / 3))
           push.apply(positions, [u, h + 1, v + 1, u + 1, h + 1, v + 1, u + 1, h, v + 1, u, h, v + 1].map(v => v * unitSize))
           push.apply(normals,   [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1])
-          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : t && t.sideTileId))
           push.apply(uvs2, [u, h + 1, u + 1, h + 1, u + 1, h, u, h])
         }
       }
       // left
       for (let u = u0, v = v0; v < v1; v ++) {
-        const i = pixel(u, v), o = pixel(u - 1, v)
+        const i = pixel(u, v), o = pixel(u - 1, v), t = this.tilesDefine[i.t]
         if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
           push.apply(indices,   [0, 1, 2, 0, 2, 3].map(v => v + positions.length / 3))
           push.apply(positions, [u, h + 1, v, u, h + 1, v + 1, u, h, v + 1, u, h, v].map(v => v * unitSize))
           push.apply(normals,   [-1, 0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0])
-          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : t && t.sideTileId))
           push.apply(uvs2, [v, h + 1, v + 1, h + 1, v + 1, h, v, h])
         }
       }
       // bottom
       for (let u = u0, v = v0; u < u1; u ++) {
-        const i = pixel(u, v), o = pixel(u, v - 1)
+        const i = pixel(u, v), o = pixel(u, v - 1), t = this.tilesDefine[i.t]
         if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
           push.apply(indices,   [0, 2, 1, 0, 3, 2].map(v => v + positions.length / 3))
           push.apply(positions, [u, h + 1, v, u + 1, h + 1, v, u + 1, h, v, u, h, v].map(v => v * unitSize))
           push.apply(normals,   [0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1])
-          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : t && t.sideTileId))
           push.apply(uvs2, [u, h + 1, u + 1, h + 1, u + 1, h, u, h])
         }
       }
       // right
       for (let u = u1 - 1, v = v0; v < v1; v ++) {
-        const i = pixel(u, v), o = pixel(u + 1, v)
+        const i = pixel(u, v), o = pixel(u + 1, v), t = this.tilesDefine[i.t]
         if (i.h === h1) for (let h = o.h; h < i.h; h ++) {
           push.apply(indices,   [0, 2, 1, 0, 3, 2].map(v => v + positions.length / 3))
           push.apply(positions, [u + 1, h + 1, v, u + 1, h + 1, v + 1, u + 1, h, v + 1, u + 1, h, v].map(v => v * unitSize))
           push.apply(normals,   [1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0])
-          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : this.tilesDefine[i.t].sideTileId))
+          push.apply(uvs,       this.getEdgeTileTextureUV(h === i.h - 1 ? i.t : t && t.sideTileId))
           push.apply(uvs2, [v, h + 1, v + 1, h + 1, v + 1, h, v, h])
         }
       }
@@ -479,9 +479,7 @@ export default class Terrain extends EventEmitter<{
   }
   set visibility(val) {
     this._visibility = this.sideMesh.visibility = val
-    Object.keys(this.data).forEach(k => {
-      this.data[k].top.visibility = val
-    })
+    Object.keys(this.data).forEach(k => this.data[k].top.visibility = val)
   }
 
   private _isVisible = true
@@ -490,9 +488,7 @@ export default class Terrain extends EventEmitter<{
   }
   set isVisible(val) {
     this._isVisible = this.sideMesh.isVisible = val
-    Object.keys(this.data).forEach(k => {
-      this.data[k].top.isVisible = val
-    })
+    Object.keys(this.data).forEach(k => this.data[k].top.isVisible = val)
   }
 
   setPosition(position: Vector3) {
@@ -500,9 +496,7 @@ export default class Terrain extends EventEmitter<{
     Object.keys(this.data).forEach(k => {
       const { top, blocks } = this.data[k]
       top.position.addInPlace(delta)
-      Object.keys(blocks).forEach(id => {
-        blocks[id].setDeltaPosition(delta)
-      })
+      Object.keys(blocks).forEach(id => blocks[id].setDeltaPosition(delta))
     })
     this.position.copyFrom(position)
     this.sideMesh.position.copyFrom(position)
@@ -563,27 +557,25 @@ export default class Terrain extends EventEmitter<{
       size: this.chunkSize,
       chunks: { }
     }
-    Object.keys(this.data).forEach(k => {
+    for (const k of Object.keys(this.data)) {
       const { tiles, heights } = this.data[k]
       if (heights.some(h => h > 0)) data.chunks[k] = {
         tiles: compressWithRLE(tiles),
         heights: compressWithRLE(heights)
       }
-    })
+    }
     return data
   }
 
   dispose() {
-    Object.keys(this.data).forEach(k => {
+    for (const k of Object.keys(this.data)) {
       const { top, texture, blocks } = this.data[k]
-
-      delete Terrain.terrainFromChunkMesh[top.name]
       top.dispose()
-
       texture.dispose()
       Object.keys(blocks).forEach(id => blocks[id].dispose())
+      delete Terrain.terrainFromChunkMesh[top.name]
       delete this.data[k]
-    })
+    }
 
     new VertexData().applyToMesh(this.sideMesh)
     // FIXME: babylonjs
