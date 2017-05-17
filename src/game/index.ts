@@ -176,6 +176,7 @@ export class Game {
     window.addEventListener('resize', () => engine.resize())
 
     this.light = new DirectionalLight('dir', new Vector3(-0.5, -1, -1).normalize(), scene)
+    this.light.intensity = 0.5
 
     let updateShadowRenderIndex = opts.shadowMapUpdateInterval
     scene.registerAfterRender(() => {
@@ -187,24 +188,15 @@ export class Game {
 
       if (this._shadow && updateShadowRenderIndex ++ > opts.shadowMapUpdateInterval) {
         updateShadowRenderIndex = 0
+
         const renderList = this._shadow.getShadowMap().renderList
         renderList.length = 0
 
         const target = this.camera.followTarget,
-          dist = (mesh: Mesh, target: Vector3) => mesh.getAbsolutePosition().subtract(target).multiplyByFloats(1, 0, 1).length()
-        ObjectBase.getShadowEnabled(scene)
-          .filter(mesh => mesh.isVisible && dist(mesh, target) < opts.shadowMapUpdateRadius)
-          .forEach(mesh => renderList.push(mesh))
-
-        const ray = new BABYLON.Ray(target, new Vector3(0, -1, 0)),
-          pick = scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh)),
-          terrain = pick.hit && Terrain.getTerrainFromMesh(pick.pickedMesh)
-        Terrain.getTopMeshes(scene)
-          .filter(mesh => Terrain.getTerrainFromMesh(mesh) === terrain)
-          .filter(mesh => dist(mesh, target) < opts.shadowMapUpdateRadius + terrain.chunkSize)
-          .forEach(mesh => renderList.push(mesh))
-        Terrain.getSideMeshes(scene)
-          .filter(mesh => Terrain.getTerrainFromMesh(mesh) === terrain)
+          hSize = new Vector3(opts.shadowMapUpdateRadius, 100, opts.shadowMapUpdateRadius),
+          region = new BABYLON.BoundingInfo(target.subtract(hSize), target.add(hSize))
+        ObjectBase.getShadowEnabled(scene).concat(Terrain.getSideMeshes(scene)).concat(Terrain.getTopMeshes(scene))
+          .filter(mesh => mesh.isVisible && mesh.getBoundingInfo().intersects(region, false))
           .forEach(mesh => renderList.push(mesh))
       }
     })
@@ -281,6 +273,7 @@ export class Game {
   set enableShadows(val: boolean) {
     if (val && !this._shadow) {
       this._shadow = new ShadowGenerator(this.opts.shadowMapSize, this.light)
+      this._shadow.getShadowMap().refreshRate = BABYLON.RenderTargetTexture.REFRESHRATE_RENDER_ONEVERYTWOFRAMES
     }
     else if (!val && this._shadow) {
       this._shadow.dispose()
@@ -361,19 +354,25 @@ export class Game {
     }
   }
 
-  private animations = { } as { [id: string]: { object: any, key: string, target: number, step: number } }
+  private animations = { } as {
+    [id: string]: {
+      object: any,
+      key: string,
+      target: number,
+      step: number
+    }
+  }
   updateAnimation() {
     Object.keys(this.animations).forEach(id => {
       const { object, key, target, step } = this.animations[id],
         current = propGet(object, key)
       if (Math.abs(current - target) > step) {
-        propSet(object, key, current < target ?
-          Math.min(target, current + step) :
-          Math.max(target, current - step))
+        const next = current < target ? Math.min(target, current + step) : Math.max(target, current - step)
+        propSet(object, key, next)
       }
       else {
-        propSet(object, key, target)
         delete this.animations[id]
+        propSet(object, key, target)
       }
     })
   }

@@ -58,16 +58,16 @@
       width: 40%;
       text-align: right;
       font-size: 120%;
-      opacity: 0.2;
     }
-    .menu-config-item.active .menu-config-label {
-      opacity: 1;
-    }
-    .menu-config-item .menu-item:before {
-      opacity: 0.2;
-    }
+    .menu-config-item .menu-item.active,
+    .menu-config-item.active .menu-config-label,
     .menu-config-item.active .menu-item:before {
       opacity: 1;
+    }
+    .menu-config-item .menu-item,
+    .menu-config-item .menu-config-label,
+    .menu-config-item .menu-item:before {
+      opacity: 0.2;
     }
 
     .screen {
@@ -162,11 +162,11 @@
     <div class="content">
       <div class="menu-main menu-list">
         <div class="menu-item show-if-has-profile" menu-goto="../play"
-          i18n-en="Continue" i18n-zh="继续"></div>
+          i18n-en="Continue" i18n-zh="繼續"></div>
         <div class="menu-item" menu-goto="../clear/../play"
           i18n-en="New Adventure" i18n-zh="新游戏"></div>
         <div class="menu-item" menu-goto="config"
-          i18n-en="Options" i18n-zh="选项"></div>
+          i18n-en="Options" i18n-zh="選項"></div>
       </div>
     </div>
   </div>
@@ -175,11 +175,11 @@
     <div class="content">
       <div class="menu-pause menu-list" menu-escape="..">
         <div class="menu-item" menu-goto=".."
-          i18n-en="Continue" i18n-zh="继续"></div>
+          i18n-en="Continue" i18n-zh="繼續"></div>
         <div class="menu-item" menu-goto="../../play"
           i18n-en="Restart" i18n-zh="重来"></div>
         <div class="menu-item" menu-goto="config"
-          i18n-en="Options" i18n-zh="选项"></div>
+          i18n-en="Options" i18n-zh="選項"></div>
         <div class="menu-item" menu-goto="../../main"
           i18n-en="Main Screen" i18n-zh="主菜单"></div>
       </div>
@@ -188,18 +188,18 @@
   <div class="screen-config screen">
     <div class="content">
       <div class="menu-config-title"
-        i18n-en="Options" i18n-zh="选项"></div>
+        i18n-en="Options" i18n-zh="選項"></div>
       <div class="menu-config-list menu-config active">
         <p class="menu-config-sub"
-          i18n-en="Game" i18n-zh="游戏"></p>
+          i18n-en="Game" i18n-zh="遊戲"></p>
         <div config-key="lang" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
-            i18n-en="Language" i18n-zh="语言"></span>
+            i18n-en="Language" i18n-zh="語言"></span>
           <span config-val="en" class="menu-item active">English</span>
           <span config-val="zh" class="menu-item">中文</span>
         </div>
         <p class="menu-config-sub"
-          i18n-en="Graphics" i18n-zh="图形"></p>
+          i18n-en="Graphics" i18n-zh="圖形"></p>
         <div config-key="displayQuality" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
             i18n-en="Display Quality" i18n-zh="畫質"></span>
@@ -210,11 +210,11 @@
           <span config-val="high" class="menu-item"
             i18n-en="High" i18n-zh="高"></span>
           <span config-val="custom" class="menu-item"
-            i18n-en="Custom" i18n-zh="自定义"></span>
+            i18n-en="Custom" i18n-zh="自訂"></span>
         </div>
         <div config-key="shadows" class="show-config-display-custom menu-config-item menu-list menu-horizontal" menu-escape="..">
           <span class="menu-config-label"
-            i18n-en="Shadows" i18n-zh="动态阴影"></span>
+            i18n-en="Shadows" i18n-zh="動態陰影"></span>
           <span config-val="on" class="menu-item active"
             i18n-en="ON" i18n-zh="開啟"></span>
           <span config-val="off" class="menu-item"

@@ -153,7 +153,9 @@ export default class Terrain extends EventEmitter<{
 
     for (const k of Object.keys(restoreData.chunks || { })) {
       const { tiles, heights } = restoreData.chunks[k]
-      this.createChunkData(k, extractWithRLE(tiles), extractWithRLE(heights))
+      if (heights.some(h => h > 0)) {
+        this.createChunkData(k, extractWithRLE(tiles), extractWithRLE(heights))
+      }
     }
 
     // FIXME
