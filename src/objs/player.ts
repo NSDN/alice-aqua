@@ -176,7 +176,7 @@ export default class Player extends Mesh {
       Object.assign(new BABYLON.VertexData(), { positions, indices }).applyToMesh(shadowCache)
 
       shadowCache.isVisible = false
-      shadowCache.visibility = 0.2
+      shadowCache.visibility = 0.3
       shadowCache.material = ColorNoLightingMaterial.getCached(scene, new Color3(0.2, 0.2, 0.2))
     }
     this.shadow = shadowCache.createInstance(this.name + '/shadow')
@@ -230,23 +230,21 @@ export default class Player extends Mesh {
         this.forwardDirection.copyFrom(camera.target.subtract(camera.position))
         camera.followTarget.copyFrom(this.position)
       }
-      // FIXME: you can not update the physics in the loop
-      setImmediate(() => {
-        const vc = this.forwardDirection,
-          keys = Player.input.state,
-          leftStick = Player.input.leftStick,
-          [dx, dz] = leftStick && new Vector3(leftStick.x, leftStick.y, 0).length() > 0.15 ?
-            [leftStick.x, -leftStick.y] :
-            [(keys.moveLeft ? -1 : 0) + (keys.moveRight ? 1 : 0), (keys.moveForward ? 1 : 0) + (keys.moveBack ? -1 : 0)]
-        if (this._isPlayerActive && (this.isPlayerWalking = dx || dz)) {
-          const mf = this.opts.moveForce * (this.isPlayerOnGround ? 1 : 0.08),
-            ay = Math.atan2(dx, dz) + Math.atan2(vc.x, vc.z),
-            fx = mf * Math.sin(ay), fz = mf * Math.cos(ay)
-          this.applyImpulse(new Vector3(fx, 0, fz), this.position)
-          // rotate to face to the right direction
-          const qc = Quaternion.RotationAxis(new Vector3(0, 1, 0), ay)
-          this.rotationQuaternion = Quaternion.Slerp(this.rotationQuaternion, qc, 0.1)
-        }
+      const vc = this.forwardDirection,
+        keys = Player.input.state,
+        leftStick = Player.input.leftStick,
+        [dx, dz] = leftStick && new Vector3(leftStick.x, leftStick.y, 0).length() > 0.15 ?
+          [leftStick.x, -leftStick.y] :
+          [(keys.moveLeft ? -1 : 0) + (keys.moveRight ? 1 : 0), (keys.moveForward ? 1 : 0) + (keys.moveBack ? -1 : 0)]
+      // FIXME: setImmediate required
+      if (this._isPlayerActive && (this.isPlayerWalking = dx || dz)) setImmediate(() => {
+        const mf = this.opts.moveForce * (this.isPlayerOnGround ? 1 : 0.08),
+          ay = Math.atan2(dx, dz) + Math.atan2(vc.x, vc.z),
+          fx = mf * Math.sin(ay), fz = mf * Math.cos(ay)
+        this.applyImpulse(new Vector3(fx, 0, fz), this.position)
+        // rotate to face to the right direction
+        const qc = Quaternion.RotationAxis(new Vector3(0, 1, 0), ay)
+        this.rotationQuaternion = Quaternion.Slerp(this.rotationQuaternion, qc, 0.1)
       })
     }
   }

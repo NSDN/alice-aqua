@@ -23,7 +23,7 @@ export default class Sprite extends ObjectBase {
   }
 
   set spriteHeight(height: number) {
-    this.spriteBody.position.copyFromFloats(0, height / 2, 0)
+    this.spriteBody.position.y = height / 2
     const width = height / this.opts.icon.height * this.opts.icon.width
     this.spriteBody.scaling.copyFromFloats(width, height, width)
   }

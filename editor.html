@@ -40,42 +40,33 @@
     .float-right {
       float: right;
     }
-
-    .shown-object-selected {
-      display: none;
-      position: absolute;
-      transition: opacity 0.1s linear;
-    }
-    .has-object-selected .shown-object-selected {
-      display: block;
-    }
-    .on-object-dragging .shown-object-selected {
-      visibility: hidden;
-      opacity: 0;
-      transition: visibility 0s 0.1s, opacity 0.1s linear;
+    .clear {
+      width: 100%;
+      clear: both;
     }
 
-    .object-editor .action-icon {
-      cursor: pointer;
-    }
-    .object-editor {
-      right: 20px;
-      top: 160px;
-      width: 20%;
-      padding: 5px;
-      background-color: rgba(255, 255, 255, 0.3);
-    }
-
-    .ui-top {
+    .ui-toolbar > * {
       position: absolute;
       left: 0;
-      top: 0;
-      width: 100%;
-      padding: 0 5px;
+      width: 20%;
+      min-width: 250px;
       box-sizing: border-box;
-      height: 2em;
       color: #eee;
-      background-color: rgba(255, 255, 255, 0.3);
+      background-color: rgba(55, 55, 55, 0.6);
+    }
+    .ui-info {
+      bottom: 0;
+      padding: 2px 10px;
+      height: 2em;
+    }
+    .ui-top {
+      top: 0;
+      width: 20%;
+      padding: 0 5px;
+      height: 2em;
+    }
+    .ui-tabs {
+      white-space: nowrap;
     }
     .ui-tabs .ui-tab {
       display: inline-block;
@@ -87,6 +78,9 @@
       opacity: 1;
       border-top-color: #eee;
     }
+    .ui-top .undo-redo {
+      padding: 5px 10px;
+    }
     .ui-top .undo-redo a {
       opacity: 0.5;
     }
@@ -94,21 +88,15 @@
       opacity: 1;
     }
     .ui-panels {
-      position: absolute;
-      left: 0;
       top: 2em;
-      width: 100%;
-      height: 120px;
+      bottom: 2em;
       padding: 5px 10px;
-      box-sizing: border-box;
       overflow: auto;
-      color: #eee;
-      background-color: rgba(255, 255, 255, 0.3);
     }
 
     .list-item {
       padding: 2px;
-      float: left
+      float: left;
     }
     .list-item.active {
       background: #ddd;
@@ -117,9 +105,10 @@
       display: block;
     }
 
-    .ui-brushes-height {
-      position: absolute;
-      width: 80px;
+    .ui-brushes-height,
+    .ui-brushes {
+      padding: 5px;
+      clear: both;
     }
     .ui-brushes .list-item i,
     .ui-brushes-height .list-item i {
@@ -132,20 +121,22 @@
       background: #666;
       color: #ddd;
     }
-    .ui-brushes {
-      margin-left: 80px;
-    }
     .ui-brushes .list-item i {
       color: #666;
       background: #ddd;
     }
 
+    .ui-classes .group-name {
+      clear: both;
+      padding-top: 10px;
+      padding-bottom: 5px;
+    }
+
     .ui-layers {
       width: 200px;
-      float: left;
     }
     .ui-layers .ui-layer {
-      margin: 2px 0;
+      margin: 5px 0;
       cursor: pointer;
     }
     .ui-layers .ui-layer:before {
@@ -154,9 +145,6 @@
     }
     .ui-layers .ui-layer.active:before {
       color: inherit;
-    }
-    .ui-layer-content {
-      margin-left: 200px;
     }
     .ui-layer-content .config-position input {
       width: 40px;
@@ -167,6 +155,11 @@
     }
     .ui-layer-config {
       margin: 5px;
+    }
+    .ui-layer-actions span {
+      cursor: pointer;
+      padding: 2px 5px;
+      font: bold;
     }
 
     .doc-help {

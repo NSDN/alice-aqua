@@ -88,8 +88,8 @@ const iconClassFromCursorClass: { [key: string]: string } = {
   'cursor-down-shift': 'fa fa-pencil-square-o/fa fa-arrow-down',
   'cursor-flat-shift': 'fa fa-pencil-square-o/fa fa-arrows-h',
   'cursor-none-shift': 'fa fa-pencil-square-o',
-  'cursor-objects-ctrl' : 'fa fa-tree',
-  'cursor-objects-shift': 'fa fa-object-group',
+  'cursor-classes-ctrl' : 'fa fa-tree',
+  'cursor-classes-shift': 'fa fa-object-group',
 }
 
 const appendCursorStyle = memo((cursorClass: string) => {
@@ -124,7 +124,7 @@ function playMapInNewWindow(map: EditorMap) {
   const history = [{ url: 'data:text/json;charset=utf-8,' + encodeURIComponent(map.toJSON()) }],
     queryDict = { stageHistoryArray: JSON.stringify(history), stageStartPath: 'play' },
     queryString = queryStringSet(location.search.replace(/^\?/, ''), queryDict)
-  location.href = location.href.replace(/\/editor.html.*/, '') + '?' + queryString
+  window.open(location.href.replace(/\/editor.html.*/, '') + '?' + queryString)
 }
 
 ; (async function() {
@@ -162,7 +162,8 @@ function playMapInNewWindow(map: EditorMap) {
 
     editorHistory = new EditorHistory()
 
-  const toolbar = await renderReactComponent((states: {
+  const toolbar = await renderReactComponent(({ object, panel, tileId, clsId, tileHeight, layerId }: {
+    object: ObjectBase
     panel: string
     tileId: number
     clsId: number
@@ -170,39 +171,49 @@ function playMapInNewWindow(map: EditorMap) {
     layerId: string
   }) => <div class="ui-toolbar">
     <div class="ui-top">
-      <PanelTabs panels={ ['brushes', 'objects', 'layers', 'game'] } { ...states } />
-      <span class="undo-redo"> / {' '}
+      <PanelTabs panels={ ['brushes', 'classes', object && 'object', 'layers', 'map'] } panel={ panel } />
+      { /*
+      <div class="undo-redo">
         <a href="javascript:void(0)" class={{ active: editorHistory.canUndo }}
           onClick={ _ => editorHistory.undo() }
           title="undo (ctrl+Z)"><i class="fa fa-undo"></i></a> {' '}
         <a href="javascript:void(0)" class={{ active: editorHistory.canRedo }}
           onClick={ _ => editorHistory.redo() }
           title="redo (ctrl+Y)"><i class="fa fa-repeat"></i></a>
-      </span>
-      <span> / {' '}
-        <span id="cursorHoverInfo"></span>
-      </span>
-      <div class="float-right">
-        <span id="fpsCounterText"></span> / {' '}
-        <a href="javascript:void(0)" title="debug" onClick={ _ => toggleDebugLayer(scene)}>
-          <i class="fa fa-info"></i>
-        </a> / {' '}
-        <a href="javascript:void(0)" title="help" onClick={ _ => toggleHelpDisplay()}>
-          <i class="fa fa-question"></i>
-        </a>
       </div>
+        */ }
     </div>
     <div class="ui-panels">
-      <div class={{ 'panel-brushes': true, hidden: states.panel !== 'brushes' }}>
-        <PanelBrushes tiles={ assets.tiles } { ...states } />
+      <div class={{ 'panel-brushes': true, hidden: panel !== 'brushes' }}>
+        <PanelBrushes tiles={ assets.tiles } tileHeight={ tileHeight } tileId={ tileId } />
       </div>
-      <div class={{ 'panel-objects': true, hidden: states.panel !== 'objects' }}>
-        <PanelClasses classes={ assets.classes } { ...states } />
+      <div class={{ 'panel-classes': true, hidden: panel !== 'classes' }}>
+        <PanelClasses classes={ assets.classes } clsId={ clsId } />
       </div>
-      <div class={{ 'panel-layers': true, hidden: states.panel !== 'layers' }}>
-        <PanelLayers tiles={ assets.tiles } layers={ map.terrains } { ...states } />
+      <div class={{ 'panel-object': true, hidden: panel !== 'object' }}>
+        {
+          object && <div>
+            <b>{ object.name }</b>
+            <div class="float-right">
+              <i class="action-icon fa fa-crosshairs" title="look at this"
+                onClick={ _ => camera.followTarget.copyFrom(object.position)}></i> {' '}
+              <i class="action-icon fa fa-trash" title="remove"
+                onClick={ _ => editorHistory.commit(new RemoveObjectAction(map, object))}></i> {' '}
+            </div>
+            <div>({ object.position.x }, { object.position.y }, { object.position.z })</div>
+          </div>
+        }
+        {
+          object && object.renderConfig(data => {
+            editorHistory.commit(new UpdateObjectAction(map, object, data))
+            toolbar.setStatePartial({ object })
+          })
+        }
       </div>
-      <div class={{ 'panel-game': true, hidden: states.panel !== 'game' }}>
+      <div class={{ 'panel-layers': true, hidden: panel !== 'layers' }}>
+        <PanelLayers tiles={ assets.tiles } layers={ map.terrains } layerId={ layerId } />
+      </div>
+      <div class={{ 'panel-map': true, hidden: panel !== 'map' }}>
         <button onClick={ _ => playMapInNewWindow(map) }>Play</button> {' '}
         <br />
         <button onClick={ _ => promptDownloadText('map.json', map.toJSON())}>Download</button> {' '}
@@ -210,6 +221,16 @@ function playMapInNewWindow(map: EditorMap) {
         <br />
         <button onClick={ _ => EditorMap.reset() }>Reset</button>
       </div>
+    </div>
+    <div class="ui-info">
+      <a href="javascript:void(0)" title="debug" onClick={ _ => toggleDebugLayer(scene)}>
+        <i class="fa fa-info"></i>
+      </a> / {' '}
+      <a href="javascript:void(0)" title="help" onClick={ _ => toggleHelpDisplay()}>
+        <i class="fa fa-question"></i>
+      </a> / {' '}
+      <span id="fpsCounterText"></span> / {' '}
+      <span id="cursorHoverInfo"></span>
     </div>
   </div>, document.body)
 
@@ -277,9 +298,8 @@ function playMapInNewWindow(map: EditorMap) {
   })
 
   // use shift key to select objects
-  let selectedObject: ObjectBase
   attachDragable(_ => {
-    return toolbar.state.panel === 'objects' && !keys.ctrlKey && keys.shiftKey
+    return toolbar.state.panel === 'classes' && !keys.ctrlKey && keys.shiftKey
   }, _ => {
     // mouse down
   }, _ => {
@@ -288,8 +308,9 @@ function playMapInNewWindow(map: EditorMap) {
     const box = new BoundingBox(cursor.minimum, cursor.maximum),
       objects = Object.keys(map.objects).map(id => scene.getMeshByName(id) as ObjectBase),
       intersected = objects.filter(mesh => box.intersectsPoint(mesh.position)),
-      index = intersected.indexOf(selectedObject)
-    selectedObject = intersected[(index + 1) % objects.length]
+      index = intersected.indexOf(toolbar.state.object),
+      object = intersected[(index + 1) % objects.length]
+    toolbar.setStatePartial({ object })
   })
 
   function createObjectFromActiveClass() {
@@ -305,17 +326,18 @@ function playMapInNewWindow(map: EditorMap) {
         .forEach(id => editorHistory.push(new RemoveObjectAction(map, scene.getMeshByName(id))))
     }
     editorHistory.push(new CreateObjectAction(map, id, clsId, pos))
+    return scene.getMeshByName(id) as ObjectBase
   }
 
   // use ctrl key to create objects
   attachDragable(evt => {
-    return evt.target === canvas && toolbar.state.panel === 'objects' && keys.ctrlKey && !keys.shiftKey
+    return evt.target === canvas && toolbar.state.panel === 'classes' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
-    createObjectFromActiveClass()
+    toolbar.setStatePartial({ object: createObjectFromActiveClass() })
   }, _ => {
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
     pos.y = map.activeTerrain.getPixel(pos.x, pos.z).h
-    editorHistory.push(new MoveObjectAction(map.activeTerrain, selectedObject.name, pos))
+    editorHistory.push(new MoveObjectAction(map.activeTerrain, toolbar.state.object.name, pos))
   }, _ => {
     editorHistory.commit()
   })
@@ -333,11 +355,11 @@ function playMapInNewWindow(map: EditorMap) {
       cursor.updateFromPickTarget(evt)
       if (!cursor.isVisible) {
         cursor.isVisible = true
-        createObjectFromActiveClass()
+        toolbar.setStatePartial({ panel: 'object', object: createObjectFromActiveClass() })
       }
       const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
       pos.y = map.activeTerrain.getPixel(pos.x, pos.z).h
-      editorHistory.push(new MoveObjectAction(map.activeTerrain, selectedObject.name, pos))
+      editorHistory.push(new MoveObjectAction(map.activeTerrain, toolbar.state.object.name, pos))
     }
   }, _ => {
     cursor.isVisible = false
@@ -345,7 +367,7 @@ function playMapInNewWindow(map: EditorMap) {
   })
 
   attachDragable(evt => {
-    return !keys.showCursor && evt.target === canvas && toolbar.state.panel === 'objects'
+    return !keys.showCursor && evt.target === canvas && toolbar.state.panel === 'classes'
   }, _ => {
     document.body.classList.add('on-object-dragging')
   }, _ => {
@@ -355,19 +377,20 @@ function playMapInNewWindow(map: EditorMap) {
   })
 
   map.on('object-created', object => {
-    selectedObject = object
+    toolbar.setStatePartial({ object })
   })
 
   map.on('object-removed', object => {
-    if (selectedObject === object) {
-      selectedObject = null
+    if (toolbar.state.object === object) {
+      toolbar.setStatePartial({ panel: 'classes', object: null })
     }
   })
 
   map.on('terrain-activated', terrain => {
     cursor.baseHeight = grid.position.y = terrain.position.y
-    if (selectedObject && map.objects[selectedObject.name].terrainId !== terrain.name) {
-      selectedObject = null
+    const object = toolbar.state.object
+    if (object && map.objects[object.name].terrainId !== terrain.name) {
+      toolbar.setStatePartial({ panel: 'layers', object: null })
     }
   })
 
@@ -475,36 +498,13 @@ function playMapInNewWindow(map: EditorMap) {
     }
   })
 
-  const objectToolbar = await renderReactComponent(({ object }: {
-    object: ObjectBase,
-  }) => {
-    return object && <div class="object-editor shown-object-selected">
-      <div>
-        <b>{ object.name }</b>
-        <div class="float-right">
-          <i class="action-icon fa fa-crosshairs" title="look at this"
-            onClick={ _ => camera.followTarget.copyFrom(selectedObject.position)}></i> {' '}
-          <i class="action-icon fa fa-trash" title="remove"
-            onClick={ _ => editorHistory.commit(new RemoveObjectAction(map, selectedObject))}></i> {' '}
-          <i class="action-icon fa fa-close" title="cancel"
-            onClick={ _ => selectedObject = null }></i>
-        </div>
-      </div>
-      <div>({ object.position.x }, { object.position.y }, { object.position.z })</div>
-      {
-        object.renderConfig(data => {
-          editorHistory.commit(new UpdateObjectAction(map, object, data))
-          objectToolbar.setStatePartial({ object })
-        })
-      }
-    </div>
-  }, document.body)
-
   attachDragable(evt => {
     const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
       picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
     if (picked.hit) {
-      checkSelectedObjectChange(selectedObject = picked.pickedMesh as any as ObjectBase)
+      const object = picked.pickedMesh as any as ObjectBase
+      toolbar.setStatePartial({ object })
+      checkSelectedObjectChange(object)
     }
     return picked.hit
   }, evt => {
@@ -513,7 +513,7 @@ function playMapInNewWindow(map: EditorMap) {
   }, evt => {
     cursor.updateFromPickTarget(evt)
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
-    editorHistory.push(new MoveObjectAction(map.activeTerrain, selectedObject.name, pos))
+    editorHistory.push(new MoveObjectAction(map.activeTerrain, toolbar.state.object.name, pos))
     objectHoverCursor.position.copyFrom(pos)
   }, _ => {
     editorHistory.commit()
@@ -553,8 +553,8 @@ function playMapInNewWindow(map: EditorMap) {
       const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
         picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
       if (picked.hit) {
-        selectedObject = picked.pickedMesh as ObjectBase
-        toolbar.setStatePartial({ panel: 'objects' })
+        const object = picked.pickedMesh as ObjectBase
+        toolbar.setStatePartial({ panel: 'object', object })
       }
       else {
         const picked = scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh))
@@ -592,8 +592,6 @@ function playMapInNewWindow(map: EditorMap) {
   keyInput.down.on('redo',  () => editorHistory.redo())
 
   const checkSelectedObjectChange = check<AbstractMesh>((newObject, oldObject) => {
-    document.body.classList[newObject ? 'add' : 'remove']('has-object-selected')
-
     if (oldObject) {
       oldObject.showBoundingBox = false
       oldObject.getChildMeshes().forEach(child => child.showBoundingBox = false)
@@ -607,14 +605,13 @@ function playMapInNewWindow(map: EditorMap) {
         editorHistory.commit(new SelectLayerAction(map, terrain.name))
         toolbar.setStatePartial({ layerId: terrain.name })
       }
-      objectToolbar.setStatePartial({ object: newObject as ObjectBase })
     }
   })
 
   const fpsCounterText = document.getElementById('fpsCounterText'),
     computeFps = fpsCounter()
   scene.registerBeforeRender(() => {
-    checkSelectedObjectChange(toolbar.state.panel === 'objects' && selectedObject)
+    checkSelectedObjectChange(toolbar.state.object)
 
     fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
 

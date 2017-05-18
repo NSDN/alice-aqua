@@ -44,6 +44,7 @@ export interface ClassDefine {
   width: number
   height: number
   title: string
+  group: string
   args: any
 }
 
@@ -279,7 +280,7 @@ export class Game {
     const renderList = this._shadow.getShadowMap().renderList
     renderList.length = 0
 
-    const target = this.camera.followTarget,
+    const target = this.camera.target,
       hSize = new Vector3(this.opts.shadowMapUpdateRadius, 100, this.opts.shadowMapUpdateRadius),
       region = new BABYLON.BoundingInfo(target.subtract(hSize), target.add(hSize)),
       activeTerrainNames = { } as { [key: string]: boolean }
@@ -446,7 +447,7 @@ export class Game {
       const { src, material, texSize } = materials[srcId],
         clsName = cls.name,
         icon = { material, texSize, offsetX, offsetY, width, height },
-        opts = { icon, clock: game, source: null as Mesh, ...game }
+        opts = { icon, clock: game, source: null as Mesh }
       game._classes[clsId] = { cls, args, opts }
       return { clsId, clsName, src, offsetX, offsetY, width, height, args, ...uiArgs }
     })

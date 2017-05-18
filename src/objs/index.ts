@@ -14,35 +14,35 @@ import { StageEntry, StageLoader } from './stage'
 */
 
 const imgres = {
-  imAssetTile0: 'assets/tileset0.png',
-  imAssetSprite0: 'assets/sprites0.png',
-  imPlayerFlandre: 'assets/flandre.png',
-  imPlayerRemilia: 'assets/remilia.png',
+  assetTile0: 'assets/tileset0.png',
+  assetSprite0: 'assets/sprites0.png',
+  playerFlandre: 'assets/flandre.png',
+  playerRemilia: 'assets/remilia.png',
 }
 
 const images = imgres as { [id: string]: string }
 
 const tiles: [number, keyof typeof imgres, number, number, number, string, number][] = [
-  [ 6, 'imAssetTile0',    0,   96, 32,     '',  3],
-  [ 2, 'imAssetTile0',    0,    0, 32, 'h4x6',  3],
-  [ 3, 'imAssetTile0',   16,   32, 32, 'edge',  4],
-  [ 4, 'imAssetTile0',   16,   48, 32, 'side',  4],
-  [ 5, 'imAssetTile0',   64,    0, 32, 'h4x6',  3],
-  [ 7, 'imAssetTile0',  128,    0, 32, 'h4x6',  8],
-  [ 8, 'imAssetTile0',  144,   32, 32, 'edge',  4],
+  [ 6, 'assetTile0',    0,   96, 32,     '',  3],
+  [ 2, 'assetTile0',    0,    0, 32, 'h4x6',  3],
+  [ 3, 'assetTile0',   16,   32, 32, 'edge',  4],
+  [ 4, 'assetTile0',   16,   48, 32, 'side',  4],
+  [ 5, 'assetTile0',   64,    0, 32, 'h4x6',  3],
+  [ 7, 'assetTile0',  128,    0, 32, 'h4x6',  8],
+  [ 8, 'assetTile0',  144,   32, 32, 'edge',  4],
 ]
 
 const classes: [number, keyof typeof imgres, number, number, number, number, typeof ObjectBase, any, any][] = [
-  [ 1, 'imAssetSprite0',    0,    0, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
-  [ 2, 'imAssetSprite0',    0,   64, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
-  [37, 'imAssetSprite0',   32,    0, 32, 64, Sprite,       { spriteHeight: 4 }, { }],
-  [ 5, 'imAssetSprite0',    0,  128, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 10 }, { }],
-  [ 6, 'imAssetSprite0',   64,  128, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }, { }],
-  [ 3, 'imPlayerRemilia',   0,  128, 28, 28, PlayerGenerator,  { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { }],
-  [ 4, 'imPlayerFlandre',   0,  128, 28, 28, PlayerGenerator,  { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { }],
-  [21, 'imAssetSprite0',    0,  192, 32, 32, Slope,        { }, { title: '两个 slope 相连形成斜坡' }],
-  [22, 'imAssetSprite0',   32,  192, 32, 32, Trigger,      { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }, { title: '触发器' }],
-  [23, 'imAssetSprite0',   64,  192, 32, 32, Jump,         { listenTags: [Player.PLAYER_TAG] }, { title: '跳！' }],
+  [ 1, 'assetSprite0',    0,    0, 32, 62, Sprite,       { spriteHeight: 4 }, { group: '植物', title: '树' }],
+  [ 2, 'assetSprite0',    0,   64, 64, 62, Sprite,       { spriteHeight: 4 }, { group: '植物', title: '大树' }],
+  [37, 'assetSprite0',   32,    0, 32, 62, Sprite,       { spriteHeight: 4 }, { group: '植物', title: '高树' }],
+  [ 5, 'assetSprite0',    0,  128, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 10 }, { group: '道具' }],
+  [ 6, 'assetSprite0',   64,  128, 64, 64, BoxGenerator, { spriteHeight: 2, boxMass: 20, velocityThreshold: 0.5 }, { group: '道具' }],
+  [ 3, 'playerRemilia',   0,  128, 28, 28, PlayerGenerator,  { editorSingletonId: 'player/remilia', playerName: 'remilia' }, { group: '玩家' }],
+  [ 4, 'playerFlandre',   0,  128, 28, 28, PlayerGenerator,  { editorSingletonId: 'player/flandre', playerName: 'flandre' }, { group: '玩家' }],
+  [21, 'assetSprite0',    0,  192, 32, 32, Slope,        { }, { group: '实体', title: '两个 slope 相连形成斜坡' }],
+  [22, 'assetSprite0',   32,  192, 32, 32, Trigger,      { listenTags: [Player.PLAYER_TAG, Box.BOX_TAG] }, { group: '实体', title: '触发器' }],
+  [23, 'assetSprite0',   64,  192, 32, 32, Jump,         { listenTags: [Player.PLAYER_TAG] }, { group: '实体', title: '跳！' }],
   /*
   [ 2, 'imAssetTile1',    0, 1504, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
   [ 3, 'imAssetTile1',  192, 1344, 64, 64, Sprite,       { spriteHeight: 4 }, { }],
