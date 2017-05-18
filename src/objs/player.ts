@@ -22,11 +22,11 @@ import {
 
 import {
   VERTEX_PLANE,
-  VERTEX_GROUND,
   VERTEX_SPHERE,
   FollowCamera,
   GamepadInput,
   ColorWireframeNoLightingMaterial,
+  ColorNoLightingMaterial,
 } from '../utils/babylon'
 
 import Sprite from './sprite'
@@ -164,21 +164,20 @@ export default class Player extends Mesh {
     let shadowCache = scene.getMeshByName(shadowCacheId) as Mesh
     if (!shadowCache) {
       shadowCache = new Mesh(shadowCacheId, scene)
+
+      const positions = [0, 0, 0] as number[],
+        indices = [ ] as number[]
+      for (let i = 0, n = 32; i < n; i ++) {
+        const i0 = positions.length / 3
+        indices.push(0, i0 + 1, i0)
+        const r = 0.3, a = i / n * Math.PI * 2, b = (i + 1) / n * Math.PI * 2
+        positions.push(r * Math.sin(a), 0, r * Math.cos(a), r * Math.sin(b), 0, r * Math.cos(b))
+      }
+      Object.assign(new BABYLON.VertexData(), { positions, indices }).applyToMesh(shadowCache)
+
       shadowCache.isVisible = false
-      VERTEX_GROUND.applyToMesh(shadowCache)
-      const shadowMaterial = shadowCache.material = new StandardMaterial('cache/player/shadow/mat', scene)
-      shadowMaterial.alpha = 1
-      shadowMaterial.disableLighting = true
-      shadowMaterial.emissiveColor = Color3.White()
-      const shadowSize = 32,
-        shadowTexture = shadowMaterial.diffuseTexture = new DynamicTexture('cache/player/shadow/tex', shadowSize, scene, false),
-        dc = shadowTexture.getContext(),
-        x = shadowSize / 2, y = shadowSize / 2, r = shadowSize * 0.3
-      dc.fillStyle = '#333333'
-      dc.arc(x, y, r, 0, Math.PI * 2)
-      dc.fill()
-      shadowTexture.update()
-      shadowTexture.hasAlpha = true
+      shadowCache.visibility = 0.2
+      shadowCache.material = ColorNoLightingMaterial.getCached(scene, new Color3(0.2, 0.2, 0.2))
     }
     this.shadow = shadowCache.createInstance(this.name + '/shadow')
 
