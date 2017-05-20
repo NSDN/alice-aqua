@@ -173,13 +173,16 @@ class Config {
     }
     return config as Config & { [key in keyof S]: string }
   }
-  load() {
+  async load() {
     try {
       Object.assign(this.data, JSON.parse(localStorage.getItem('game-config')))
     }
     catch (err) {
       console.error(err)
     }
+
+    // it may take long to call the updaters. keep page responsive
+    await sleep(100)
 
     for (const key of Object.keys(this.updater)) {
       const configItem = document.querySelector(`[config-key="${key}"]`)
@@ -336,6 +339,7 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
 
   let game: Game
   try {
+    LoadingScreen.update('Creating game...')
     game = await Game.load(updateLoadingScreenProgress)
   }
   catch (err) {
@@ -406,7 +410,8 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
 
   let config = Config.create(updateConfig)
   try {
-    config.load()
+    LoadingScreen.update('Loading config...')
+    await config.load()
   }
   catch (err) {
     LoadingScreen.error(`load config failed: ${err && err.message || err}`)

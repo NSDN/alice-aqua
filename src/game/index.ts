@@ -28,7 +28,8 @@ import {
   createElement,
   appendElement,
   loadWithXHR,
-  loadDataURLWithXHR,
+  loadBlobWithXHR,
+  readBlob,
 } from '../utils/dom'
 
 import {
@@ -406,26 +407,27 @@ export class Game {
       imageIds = Object.keys(plugins.images), total = imageIds.length
     for (let index = 0; index < total; index ++) {
       const id = imageIds[index]
+      let blob = await loadBlobWithXHR(plugins.images[id], progress => onProgress(index, total, progress)),
+        src = await readBlob(blob, 'objectURL')
 
       let img: HTMLImageElement
-      const src = await loadDataURLWithXHR(plugins.images[id], progress => onProgress(index, total, progress))
       await new Promise<HTMLImageElement>((onload, onerror) => {
         img = createElement('img', { id, src, onload, onerror }) as HTMLImageElement
       })
 
-      let base64Src = src
       const texSize = 2 ** Math.ceil(Math.log2(Math.max(img.width, img.height)))
       if (img.width !== texSize || img.height !== texSize) {
         const canvas = document.createElement('canvas') as HTMLCanvasElement
         canvas.width = canvas.height = texSize
         canvas.getContext('2d').drawImage(img, 0, 0)
-        base64Src = canvas.toDataURL()
+        blob = await new Promise<Blob>(resolve => canvas.toBlob(resolve))
+        src = await readBlob(blob, 'objectURL')
       }
 
       let texture: Texture
       await new Promise<Texture>((resolve, reject) => {
-        texture = Texture.CreateFromBase64String(base64Src,
-          id, game.scene, false, true, Texture.NEAREST_SAMPLINGMODE, resolve, reject)
+        texture = new Texture(src, game.scene, false, true,
+          Texture.NEAREST_SAMPLINGMODE, resolve, reject)
       })
       texture.hasAlpha = true
 

@@ -331,18 +331,28 @@ export function loadWithXHR<T>(src: string, opts?: any, onProgress?: (progress: 
   })
 }
 
-export function readAsDataURL(blob: Blob) {
+export async function readBlob(blob: Blob, type = 'dataURL' as 'objectURL' | 'arrayBuffer' | 'dataURL') {
   return new Promise<string>((onload, onerror) => {
     const fr = new FileReader()
     fr.onload = function() { onload(this.result) }
     fr.onerror = onerror
-    fr.readAsDataURL(blob)
+    if (type === 'objectURL') {
+      onload(URL.createObjectURL(blob))
+    }
+    else if (type === 'arrayBuffer') {
+      fr.readAsArrayBuffer(blob)
+    }
+    else if (type === 'dataURL') {
+      fr.readAsDataURL(blob)
+    }
+    else {
+      onerror(new Error('invalid type'))
+    }
   })
 }
 
-export async function loadDataURLWithXHR(src: string, onProgress?: (progress: number) => void) {
-  const blob = await loadWithXHR<Blob>(src, { responseType: 'blob' }, onProgress)
-  return await readAsDataURL(blob)
+export async function loadBlobWithXHR(src: string, onProgress?: (progress: number) => void) {
+  return await loadWithXHR<Blob>(src, { responseType: 'blob' }, onProgress)
 }
 
 const SPECIAL_KEYS: { [keyCode: number]: string } = {

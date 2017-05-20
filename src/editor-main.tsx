@@ -366,14 +366,27 @@ function playMapInNewWindow(map: EditorMap) {
     editorHistory.commit()
   })
 
+  // drag on object to move
   attachDragable(evt => {
-    return !keys.showCursor && evt.target === canvas && toolbar.state.panel === 'classes'
+    const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
+      picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
+    if (picked.hit) {
+      const object = picked.pickedMesh as any as ObjectBase
+      toolbar.setStatePartial({ panel: 'object', object })
+      checkSelectedObjectChange(object)
+    }
+    return picked.hit
+  }, evt => {
+    camera.detachControl(canvas)
+    cursor.updateFromPickTarget(evt)
+  }, evt => {
+    cursor.updateFromPickTarget(evt)
+    const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
+    editorHistory.push(new MoveObjectAction(map.activeTerrain, toolbar.state.object.name, pos))
+    objectHoverCursor.position.copyFrom(pos)
   }, _ => {
-    document.body.classList.add('on-object-dragging')
-  }, _ => {
-    // mouse move
-  }, _ => {
-    document.body.classList.remove('on-object-dragging')
+    editorHistory.commit()
+    camera.attachControl(canvas, true)
   })
 
   map.on('object-created', object => {
@@ -496,28 +509,6 @@ function playMapInNewWindow(map: EditorMap) {
       editorHistory.commit()
       toolbar.setStatePartial({ layerId: map.activeTerrain.name })
     }
-  })
-
-  attachDragable(evt => {
-    const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
-      picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
-    if (picked.hit) {
-      const object = picked.pickedMesh as any as ObjectBase
-      toolbar.setStatePartial({ object })
-      checkSelectedObjectChange(object)
-    }
-    return picked.hit
-  }, evt => {
-    camera.detachControl(canvas)
-    cursor.updateFromPickTarget(evt)
-  }, evt => {
-    cursor.updateFromPickTarget(evt)
-    const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
-    editorHistory.push(new MoveObjectAction(map.activeTerrain, toolbar.state.object.name, pos))
-    objectHoverCursor.position.copyFrom(pos)
-  }, _ => {
-    editorHistory.commit()
-    camera.attachControl(canvas, true)
   })
 
   const objectHoverCursor = new ArrowBoundary('arrow', scene)
