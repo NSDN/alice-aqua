@@ -172,16 +172,6 @@ function playMapInNewWindow(map: EditorMap) {
   }) => <div class="ui-toolbar">
     <div class="ui-top">
       <PanelTabs panels={ ['brushes', 'classes', object && 'object', 'layers', 'map'] } panel={ panel } />
-      { /*
-      <div class="undo-redo">
-        <a href="javascript:void(0)" class={{ active: editorHistory.canUndo }}
-          onClick={ _ => editorHistory.undo() }
-          title="undo (ctrl+Z)"><i class="fa fa-undo"></i></a> {' '}
-        <a href="javascript:void(0)" class={{ active: editorHistory.canRedo }}
-          onClick={ _ => editorHistory.redo() }
-          title="redo (ctrl+Y)"><i class="fa fa-repeat"></i></a>
-      </div>
-        */ }
     </div>
     <div class="ui-panels">
       <div class={{ 'panel-brushes': true, hidden: panel !== 'brushes' }}>
@@ -223,6 +213,16 @@ function playMapInNewWindow(map: EditorMap) {
       </div>
     </div>
     <div class="ui-info">
+      <span id="cursorHoverInfo"></span>
+      <br />
+      <a href="javascript:void(0)" style={{ opacity: editorHistory.canUndo ? 1 : 0.2 }}
+        onClick={ _ => editorHistory.undo() } title="undo (ctrl+Z)">
+        <i class="fa fa-undo"></i>
+      </a> {' '}
+      <a href="javascript:void(0)" style={{ opacity: editorHistory.canRedo ? 1 : 0.2 }}
+        onClick={ _ => editorHistory.redo() } title="redo (ctrl+Y)">
+        <i class="fa fa-repeat"></i>
+      </a> / {' '}
       <a href="javascript:void(0)" title="debug" onClick={ _ => toggleDebugLayer(scene)}>
         <i class="fa fa-info"></i>
       </a> / {' '}
@@ -230,7 +230,6 @@ function playMapInNewWindow(map: EditorMap) {
         <i class="fa fa-question"></i>
       </a> / {' '}
       <span id="fpsCounterText"></span> / {' '}
-      <span id="cursorHoverInfo"></span>
     </div>
   </div>, document.body)
 
@@ -333,7 +332,7 @@ function playMapInNewWindow(map: EditorMap) {
   attachDragable(evt => {
     return evt.target === canvas && toolbar.state.panel === 'classes' && keys.ctrlKey && !keys.shiftKey
   }, _ => {
-    toolbar.setStatePartial({ object: createObjectFromActiveClass() })
+    toolbar.setStatePartial({ panel: 'object', object: createObjectFromActiveClass() })
   }, _ => {
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
     pos.y = map.activeTerrain.getPixel(pos.x, pos.z).h
@@ -505,8 +504,7 @@ function playMapInNewWindow(map: EditorMap) {
         .forEach(id => {
           editorHistory.push(new RemoveObjectAction(map, scene.getMeshByName(id)))
         })
-      editorHistory.push(new RemoveLayerAction(map))
-      editorHistory.commit()
+      editorHistory.commit(new RemoveLayerAction(map))
       toolbar.setStatePartial({ layerId: map.activeTerrain.name })
     }
   })
@@ -520,12 +518,12 @@ function playMapInNewWindow(map: EditorMap) {
       const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
         picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
       if (objectHoverCursor.isVisible = picked.hit) {
-        cursorHoverInfo.innerHTML = '#' + picked.pickedMesh.name
+        cursorHoverInfo.textContent = 'id: ' + picked.pickedMesh.name
         objectHoverCursor.position.copyFrom(picked.pickedMesh.position)
       }
       else {
         const { hover, isVisible, isKeyDown, minimum, maximum } = cursor
-        cursorHoverInfo.innerHTML = `${hover.x}, ${hover.z}` +
+        cursorHoverInfo.textContent = `pos: ${hover.x}, ${hover.z}` +
           (isVisible && isKeyDown ? `: ${minimum.x}, ${minimum.z} ~ ${maximum.x}, ${maximum.z}` : '')
       }
     }

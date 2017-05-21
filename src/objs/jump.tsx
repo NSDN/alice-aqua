@@ -120,7 +120,7 @@ export default class Jump extends Trigger {
 
   protected fireTrigger(isOn: boolean) {
     const mesh = this.getScene().getMeshesByTags(this.triggerOnTag)[0]
-    if (isOn && mesh instanceof Player && mesh.name === 'remilia') {
+    if (isOn && mesh instanceof Player) {
       mesh.physicsImpostor.setLinearVelocity(Vector3.Zero())
       const { sideDirection, sideForce, upForce } = this,
         [x, z] = Jump.SIDE_DIRS[sideDirection]

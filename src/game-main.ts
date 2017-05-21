@@ -298,15 +298,12 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
   const dialogs = JSON.parse(dialogJSON) as { [name: string]: { text: string, options: any } },
     { text, options } = dialogs[name] || { text: '...', options: { } }
 
-  let isCanceled = false
-  input.once('escape', () => isCanceled = true)
-
   const elem = document.querySelector('.game-dialog-content')
   elem.innerHTML = ''
 
   const elemLines = appendElement('pre', { }, elem)
   for (let i = 0; i < text.length; i ++) {
-    if (input.state['finish-dialog'] || isCanceled) {
+    if (input.state['finish-dialog']) {
       elemLines.innerHTML = text
       await sleep(50)
       elem.parentElement.scrollTop = elem.scrollHeight
