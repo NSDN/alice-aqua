@@ -27,6 +27,7 @@ import {
   queue,
   step,
   sleep,
+  fpsCounter,
 } from './utils'
 
 import {
@@ -349,6 +350,12 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
       updateGameLanguage(val)
       return val
     },
+    showDebugInfo(val = 'off') {
+      for (const elem of document.querySelectorAll('.show-config-debug-on')) {
+        elem.classList[val === 'on' ? 'remove' : 'add']('hidden')
+      }
+      return val
+    },
     displayQuality(val = 'low') {
       if (val === 'low') {
         game.enableShadows = false
@@ -507,12 +514,17 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
     }
   })
 
+  const fpsCounterText = document.getElementById('fpsCounterText'),
+    computeFps = fpsCounter()
   scene.registerBeforeRender(() => {
     if (input.rightStick) {
       camera.updateRotation(input.rightStick)
     }
     if (input.leftTrigger || input.rightTrigger) {
       camera.updateDistance(input.rightTrigger - input.leftTrigger)
+    }
+    if (config.showDebugInfo === 'on') {
+      fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
     }
   })
 

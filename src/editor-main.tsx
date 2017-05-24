@@ -229,7 +229,7 @@ function playMapInNewWindow(map: EditorMap) {
       <a href="javascript:void(0)" title="help" onClick={ _ => toggleHelpDisplay()}>
         <i class="fa fa-question"></i>
       </a> / {' '}
-      <span id="fpsCounterText"></span> / {' '}
+      <span id="fpsCounterText"></span>
     </div>
   </div>, document.body)
 
@@ -365,16 +365,20 @@ function playMapInNewWindow(map: EditorMap) {
     editorHistory.commit()
   })
 
-  // drag on object to move
-  attachDragable(evt => {
+  function selectObjectFromCursor(evt: MouseEvent) {
     const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
       picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
     if (picked.hit) {
       const object = picked.pickedMesh as any as ObjectBase
       toolbar.setStatePartial({ panel: 'object', object })
       checkSelectedObjectChange(object)
+      return object
     }
-    return picked.hit
+  }
+
+  // drag on object to move
+  attachDragable(evt => {
+    return evt.target === canvas && !!selectObjectFromCursor(evt)
   }, evt => {
     camera.detachControl(canvas)
     cursor.updateFromPickTarget(evt)

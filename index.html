@@ -27,6 +27,16 @@
       display: none;
     }
 
+    #debugInfo {
+      position: absolute;
+      left: 5px;
+      top: 5px;
+      padding: 5px;
+      background: rgba(50, 50, 50, 0.5);
+      color: #eee;
+      user-select: none;
+    }
+
     .menu-list {
       padding: 10px;
     }
@@ -198,6 +208,14 @@
           <span config-val="en" class="menu-item active">English</span>
           <span config-val="zh" class="menu-item">中文</span>
         </div>
+        <div config-key="showDebugInfo" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
+          <span class="menu-config-label"
+            i18n-en="Debug Info" i18n-zh="调试信息"></span>
+          <span config-val="on" class="menu-item active"
+            i18n-en="ON" i18n-zh="開啟"></span>
+          <span config-val="off" class="menu-item"
+            i18n-en="OFF" i18n-zh="關閉"></span>
+        </div>
         <p class="menu-config-sub"
           i18n-en="Graphics" i18n-zh="圖形"></p>
         <div config-key="displayQuality" class="menu-config-item menu-list menu-horizontal" menu-escape="..">
@@ -265,6 +283,9 @@
   </div>
   <div class="hidden menu-play menu-list" menu-escape="pause"></div>
   <div class="fa fa-question" style="position: absolute; color: transparent;"></div>
+  <div id="debugInfo" class="show-config-debug-on">
+    <div id="fpsCounterText"></div>
+  </div>
   <script src="build/common.bundle.js"></script>
   <script src="build/screen.bundle.js" bootstrap-src="build/game.bundle.js"></script>
 </body>

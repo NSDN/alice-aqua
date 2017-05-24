@@ -24,7 +24,7 @@ export default class Box extends InstancedMesh {
   constructor(name: string, source: Mesh, generator: BoxGenerator) {
     super(name, source)
 
-    const origin = generator.position.add(new Vector3(0, 2, 0))
+    const origin = generator.position.add(generator.spriteBody.position).add(new Vector3(0, 2, 0))
     this.position.copyFrom(origin)
 
     const params = { mass: generator.boxMass, friction: 1 }
@@ -60,6 +60,14 @@ export class BoxGenerator extends Sprite implements IPlayStartStopListener {
   public boxMass = 5
   public velocityThreshold = 0
   private boxName = ''
+
+  set spriteHeight(val: number) {
+    super.spriteHeight = val
+    this.spriteBody.position.x = this.spriteBody.position.z = Math.floor(val) % 2 === 0 ? 0.5 : 0
+  }
+  get spriteHeight() {
+    return super.spriteHeight
+  }
 
   onPlayStart() {
     const { material, texSize, offsetX, offsetY, width, height } = this.opts.icon,
