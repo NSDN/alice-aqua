@@ -7,6 +7,7 @@ import {
 
 import {
   getBoundingVertexData,
+  getMousePickOnPlane,
 } from '../utils/babylon'
 
 const CURSOR_NORMALS = [
@@ -30,14 +31,6 @@ export function getMousePickOnMeshOrPlane(scene: Scene, px: number, py: number, 
     max = Math.max(Math.abs(x), Math.abs(y), Math.abs(z)),
     norm = CURSOR_NORMALS[ [x, -x, y, -y, z, -z].indexOf(max) ]
   return { position, norm }
-}
-
-export function getMousePickOnPlane(scene: Scene, px: number, py: number, axis: 'x' | 'y' | 'z', val: number) {
-  const ray = scene.createPickingRay(px, py, null, scene.activeCamera),
-    scale = (val - ray.origin[axis]) / ray.direction[axis],
-    position = ray.origin.add(ray.direction.scale(scale))
-  position.copyFromFloats(Math.floor(position.x + 0.001), Math.floor(position.y + 0.001), Math.floor(position.z + 0.001))
-  return { position }
 }
 
 const VECTOR_ONE = new Vector3(1, 1, 1),

@@ -63,6 +63,10 @@ import {
 } from './utils'
 
 import {
+  getMousePickOnPlane,
+} from './utils/babylon'
+
+import {
   appendElement,
   attachDragable,
   LoadingScreen,
@@ -157,18 +161,45 @@ function playMapInNewWindow(map: EditorMap) {
     keys = keyInput.state,
 
     cursor = new Cursor('cursor', scene, mesh => !!Terrain.getTerrainFromMesh(mesh)),
-    lastSelection = new SelectionBox('select', scene),
     grid = new GridPlane('grids', scene, 32),
+
+    lastSelection = new SelectionBox('select', scene),
+    terrainCursor = new ObjectBoundary('terrain', scene),
 
     editorHistory = new EditorHistory()
 
-  const toolbar = await renderReactComponent(({ object, panel, tileId, clsId, tileHeight, layerId }: {
+  const watchObjectChange = check<AbstractMesh>((newObject, oldObject) => {
+    if (oldObject) {
+      oldObject.showBoundingBox = false
+      oldObject.getChildMeshes().forEach(child => child.showBoundingBox = false)
+    }
+    if (newObject) {
+      newObject.showBoundingBox = true
+      newObject.getChildMeshes().forEach(child => child.showBoundingBox = true)
+      const terrain = map.terrains[ map.objects[newObject.name].terrainId ]
+      if (terrain !== map.activeTerrain) {
+        editorHistory.commit(new SelectLayerAction(map, terrain.name))
+        toolbar.setStatePartial({ terrain })
+      }
+    }
+  })
+
+  const watchTerrainChange = check<Terrain>((newTerrain) => {
+    if (terrainCursor.isVisible = !!newTerrain) {
+      const { minimum, maximum } = newTerrain.sideMesh.getBoundingInfo(),
+        { x, z } = minimum.add(maximum).scale(0.5)
+      terrainCursor.renderingGroupId = 1
+      terrainCursor.position.copyFromFloats(Math.floor(x) + 0.5, newTerrain.position.y, Math.floor(z) + 0.5)
+    }
+  })
+
+  const toolbar = await renderReactComponent(({ object, terrain, panel, tileId, clsId, tileHeight }: {
     object: ObjectBase
+    terrain: Terrain
     panel: string
     tileId: number
     clsId: number
     tileHeight: string
-    layerId: string
   }) => <div class="ui-toolbar">
     <div class="ui-top">
       <PanelTabs panels={ ['brushes', 'classes', object && 'object', 'layers', 'map'] } panel={ panel } />
@@ -181,6 +212,7 @@ function playMapInNewWindow(map: EditorMap) {
         <PanelClasses classes={ assets.classes } clsId={ clsId } />
       </div>
       <div class={{ 'panel-object': true, hidden: panel !== 'object' }}>
+        { watchObjectChange(object) && null }
         {
           object && <div>
             <b>{ object.name }</b>
@@ -201,7 +233,8 @@ function playMapInNewWindow(map: EditorMap) {
         }
       </div>
       <div class={{ 'panel-layers': true, hidden: panel !== 'layers' }}>
-        <PanelLayers tiles={ assets.tiles } layers={ map.terrains } layerId={ layerId } />
+        { watchTerrainChange(terrain) && null }
+        <PanelLayers tiles={ assets.tiles } layers={ map.terrains } layerId={ terrain && terrain.name } />
       </div>
       <div class={{ 'panel-map': true, hidden: panel !== 'map' }}>
         <button onClick={ _ => playMapInNewWindow(map) }>Play</button> {' '}
@@ -242,24 +275,23 @@ function playMapInNewWindow(map: EditorMap) {
     tileId: assets.tiles[0].tileId,
     clsId: assets.classes[0].clsId,
     tileHeight: '+1',
-    layerId: map.activeTerrain.name,
+    terrain: map.activeTerrain,
   })
 
   // use shift to draw rectangles
-  let startTileId: number
   attachDragable(evt => {
-    return evt.target === canvas && toolbar.state.panel === 'brushes' && !keys.ctrlKey && keys.shiftKey
+    if (evt.target === canvas && toolbar.state.panel === 'brushes' && !keys.ctrlKey && keys.shiftKey) {
+      const { x, z } = cursor.hover
+      return toolbar.state.tileId === TILE_AUTO ? map.activeTerrain.getPixel(x, z).t : toolbar.state.tileId
+    }
   }, _ => {
-    const { x, z } = cursor.hover
-    startTileId = toolbar.state.tileId === TILE_AUTO ? map.activeTerrain.getPixel(x, z).t : toolbar.state.tileId
-
     lastSelection.scaling.copyFromFloats(1, 1, 1)
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
   }, _ => {
     const { minimum, maximum } = cursor
     lastSelection.position.copyFrom(maximum.add(minimum).scale(0.5))
     lastSelection.scaling.copyFrom(maximum.subtract(minimum))
-  }, _ => {
+  }, (_, startTileId) => {
     const { minimum, maximum } = cursor, h = toolbar.state.tileHeight,
       pixel = { t: startTileId, h: h && maximum.y - 1 + parseInt(h) }
     for (let m = minimum.x; m < maximum.x; m ++) {
@@ -271,21 +303,20 @@ function playMapInNewWindow(map: EditorMap) {
   })
 
   // use ctrl key to draw pixels
-  let selectedPixel = { t: 0, h: 0 }
   attachDragable(evt => {
-    return evt.target === canvas && toolbar.state.panel === 'brushes' && keys.ctrlKey && !keys.shiftKey
+    if (evt.target === canvas && toolbar.state.panel === 'brushes' && keys.ctrlKey && !keys.shiftKey) {
+      const { x, z } = cursor.hover,
+        t = toolbar.state.tileId === TILE_AUTO ? map.activeTerrain.getPixel(x, z).t : toolbar.state.tileId,
+        h = toolbar.state.tileHeight && cursor.hover.y + parseInt(toolbar.state.tileHeight),
+        selectedPixel = { t, h }
+      editorHistory.push(new SetPixelAction(map.activeTerrain, x, z, selectedPixel))
+      return selectedPixel
+    }
   }, _ => {
-    const { x, z } = cursor.hover,
-      t = toolbar.state.tileId === TILE_AUTO ? map.activeTerrain.getPixel(x, z).t : toolbar.state.tileId,
-      h = toolbar.state.tileHeight && cursor.hover.y + parseInt(toolbar.state.tileHeight)
-    selectedPixel = { t, h }
-    editorHistory.push(new SetPixelAction(map.activeTerrain, x, z, selectedPixel))
-
     cursor.alpha = 0
-
     lastSelection.scaling.copyFromFloats(1, 1, 1)
     lastSelection.position.copyFrom(cursor.hover.add(new Vector3(0.5, 0.5, 0.5)))
-  }, _ => {
+  }, (_, selectedPixel) => {
     const { x, z } = cursor.hover
     editorHistory.push(new SetPixelAction(map.activeTerrain, x, z, selectedPixel))
 
@@ -344,18 +375,21 @@ function playMapInNewWindow(map: EditorMap) {
   // drag from class toolbar
   attachDragable(evt => {
     const elem = evt.target as HTMLImageElement
-    return !keys.showCursor && elem.tagName.toLowerCase() === 'img' && elem.classList.contains('cls-icon')
-  }, evt => {
-    const clsId = parseInt((evt.target as HTMLImageElement).parentElement.getAttribute('class-id'))
-    toolbar.setStatePartial({ clsId })
+    if (!keys.showCursor && elem.tagName.toLowerCase() === 'img') {
+      const clsId = parseInt(elem.parentElement.getAttribute('class-id'))
+      if (clsId > 0) {
+        toolbar.setStatePartial({ clsId })
+        return true
+      }
+    }
+  }, _ => {
     cursor.isVisible = false
   }, evt => {
-    if (evt.target === canvas || cursor.isVisible) {
-      cursor.updateFromPickTarget(evt)
-      if (!cursor.isVisible) {
-        cursor.isVisible = true
-        toolbar.setStatePartial({ panel: 'object', object: createObjectFromActiveClass() })
-      }
+    if (evt.target === canvas && !cursor.isVisible) {
+      cursor.isVisible = true
+      toolbar.setStatePartial({ panel: 'object', object: createObjectFromActiveClass() })
+    }
+    if (cursor.isVisible) {
       const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
       pos.y = map.activeTerrain.getPixel(pos.x, pos.z).h
       editorHistory.push(new MoveObjectAction(map.activeTerrain, toolbar.state.object.name, pos))
@@ -365,25 +399,37 @@ function playMapInNewWindow(map: EditorMap) {
     editorHistory.commit()
   })
 
-  function selectObjectFromCursor(evt: MouseEvent) {
-    const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
-      picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
+  // drag terrain cursor to move
+  attachDragable(evt => {
+    const ray = evt.target === canvas && scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
+      picked = ray && ray.intersectsMesh(terrainCursor),
+      { position } = getMousePickOnPlane(scene, evt.clientX, evt.clientY, 'y', terrainCursor.position.y)
+    return picked && picked.hit && terrainCursor.position.subtract(position)
+  }, _ => {
+    camera.detachControl(canvas)
+  }, (evt, start) => {
+    const delta = map.activeTerrain.position.subtract(terrainCursor.position),
+      { position } = getMousePickOnPlane(scene, evt.clientX, evt.clientY, 'y', terrainCursor.position.y)
+    terrainCursor.position.copyFrom(start.add(position))
+    editorHistory.push(new MoveLayerAction(map, terrainCursor.position.add(delta)))
+    toolbar.forceUpdate()
+  }, _ => {
+    editorHistory.commit()
+    camera.attachControl(canvas, true)
+  })
+
+  // drag object to move
+  attachDragable(evt => {
+    const ray = evt.target === canvas && scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
+      picked = ray && scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
     if (picked.hit) {
       const object = picked.pickedMesh as any as ObjectBase
       toolbar.setStatePartial({ panel: 'object', object })
-      checkSelectedObjectChange(object)
-      return object
+      return true
     }
-  }
-
-  // drag on object to move
-  attachDragable(evt => {
-    return evt.target === canvas && !!selectObjectFromCursor(evt)
-  }, evt => {
+  }, _ => {
     camera.detachControl(canvas)
-    cursor.updateFromPickTarget(evt)
-  }, evt => {
-    cursor.updateFromPickTarget(evt)
+  }, _ => {
     const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
     editorHistory.push(new MoveObjectAction(map.activeTerrain, toolbar.state.object.name, pos))
     objectHoverCursor.position.copyFrom(pos)
@@ -481,12 +527,12 @@ function playMapInNewWindow(map: EditorMap) {
   toolbarActions.on('layer-added', () => {
     const layerId = 'Terrain/' + randomBytes()
     editorHistory.commit(new AddLayerAction(map, layerId))
-    toolbar.setStatePartial({ layerId })
+    toolbar.setStatePartial({ terrain: map.terrains[layerId] })
   })
 
   toolbarActions.on('layer-selected', layerId => {
     editorHistory.commit(new SelectLayerAction(map, layerId))
-    toolbar.setStatePartial({ layerId })
+    toolbar.setStatePartial({ terrain: map.terrains[layerId] })
   })
 
   toolbarActions.on('layer-updated', ({ position }) => {
@@ -509,7 +555,7 @@ function playMapInNewWindow(map: EditorMap) {
           editorHistory.push(new RemoveObjectAction(map, scene.getMeshByName(id)))
         })
       editorHistory.commit(new RemoveLayerAction(map))
-      toolbar.setStatePartial({ layerId: map.activeTerrain.name })
+      toolbar.setStatePartial({ terrain: map.activeTerrain })
     }
   })
 
@@ -520,7 +566,7 @@ function playMapInNewWindow(map: EditorMap) {
   canvas.addEventListener('mousemove', evt => {
     if (!keys.showCursor) {
       const ray = scene.createPickingRay(evt.clientX, evt.clientY, null, scene.activeCamera),
-        picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
+        picked = scene.pickWithRay(ray, mesh => !!map.objects[mesh.name] || mesh === terrainCursor)
       if (objectHoverCursor.isVisible = picked.hit) {
         cursorHoverInfo.textContent = 'id: ' + picked.pickedMesh.name
         objectHoverCursor.position.copyFrom(picked.pickedMesh.position)
@@ -534,6 +580,7 @@ function playMapInNewWindow(map: EditorMap) {
   })
 
   const cvMouseDownPos = new Vector3(-1, -1, 0)
+  // click to select object or terrain
   canvas.addEventListener('mousedown', evt => {
     cvMouseDownPos.x = evt.clientX
     cvMouseDownPos.y = evt.clientY
@@ -553,7 +600,7 @@ function playMapInNewWindow(map: EditorMap) {
         const picked = scene.pickWithRay(ray, mesh => !!Terrain.getTerrainFromMesh(mesh))
         if (picked.hit) {
           map.activeTerrain = Terrain.getTerrainFromMesh(picked.pickedMesh)
-          toolbar.setStatePartial({ layerId: map.activeTerrain.name })
+          toolbar.setStatePartial({ terrain: map.activeTerrain })
         }
       }
     }
@@ -584,28 +631,9 @@ function playMapInNewWindow(map: EditorMap) {
   keyInput.down.on('undo',  () => editorHistory.undo())
   keyInput.down.on('redo',  () => editorHistory.redo())
 
-  const checkSelectedObjectChange = check<AbstractMesh>((newObject, oldObject) => {
-    if (oldObject) {
-      oldObject.showBoundingBox = false
-      oldObject.getChildMeshes().forEach(child => child.showBoundingBox = false)
-    }
-
-    if (newObject) {
-      newObject.showBoundingBox = true
-      newObject.getChildMeshes().forEach(child => child.showBoundingBox = true)
-      const terrain = map.terrains[ map.objects[newObject.name].terrainId ]
-      if (terrain !== map.activeTerrain) {
-        editorHistory.commit(new SelectLayerAction(map, terrain.name))
-        toolbar.setStatePartial({ layerId: terrain.name })
-      }
-    }
-  })
-
   const fpsCounterText = document.getElementById('fpsCounterText'),
     computeFps = fpsCounter()
   scene.registerBeforeRender(() => {
-    checkSelectedObjectChange(toolbar.state.object)
-
     fpsCounterText.textContent = computeFps().toFixed(1) + 'fps'
 
     if (keys.showCursor) {

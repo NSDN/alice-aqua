@@ -102,7 +102,7 @@ export default class Terrain extends EventEmitter<{
     return scene.getMeshesByTags(TERRAIN_SIDE_TAG)
   }
 
-  private readonly sideMesh: Mesh
+  readonly sideMesh: Mesh
 
   private readonly tilesDefine: { [id: number]: TileDefine }
   private readonly data: { [key: string]: Chunk } = { }

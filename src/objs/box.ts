@@ -80,7 +80,7 @@ export class BoxGenerator extends Sprite implements IPlayStartStopListener {
         u1 = (offsetX + width) / texSize,
         v1 = 1 - offsetY / texSize,
         faceUV = Array(6).fill(new Vector4(u0, v0, u1, v1)),
-        size = this.spriteHeight
+        size = this.spriteHeight * 0.95
       cache = MeshBuilder.CreateBox(cacheId, { size, faceUV }, this.getScene())
       cache.material = material
       cache.isVisible = false

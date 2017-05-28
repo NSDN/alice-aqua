@@ -187,6 +187,14 @@ export function getBoundingVertexData(sx: N, sy: N, sz: N, addCross: boolean) {
   return VertexData.CreateLineSystem({ lines })
 }
 
+export function getMousePickOnPlane(scene: Scene, px: number, py: number, axis: 'x' | 'y' | 'z', val: number) {
+  const ray = scene.createPickingRay(px, py, null, scene.activeCamera),
+    scale = (val - ray.origin[axis]) / ray.direction[axis],
+    position = ray.origin.add(ray.direction.scale(scale))
+  position.copyFromFloats(Math.floor(position.x + 0.001), Math.floor(position.y + 0.001), Math.floor(position.z + 0.001))
+  return { position }
+}
+
 export class StaticBoxImpostor extends PhysicsImpostor {
   constructor(opts: { position: Vector3, scaling: Vector3, rotation?: Vector3 }, scene: Scene) {
     // https://github.com/BabylonJS/Babylon.js/blob/master/src/Physics/babylon.physicsImpostor.ts#L174

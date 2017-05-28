@@ -117,30 +117,31 @@ export function requestUploadingText() {
   })
 }
 
-export function attachDragable(
-  elemOrFilter: HTMLElement | ((evt: MouseEvent) => boolean),
-  onDown:  (evt: MouseEvent) => void,
-  onMove?: (evt: MouseEvent) => void,
-  onUp?:   (evt: MouseEvent) => void) {
+export function attachDragable<T>(
+  elemOrFilter: HTMLElement | ((evt: MouseEvent) => T),
+  onDown:  (evt: MouseEvent, arg?: T) => void,
+  onMove?: (evt: MouseEvent, arg?: T) => void,
+  onUp?:   (evt: MouseEvent, arg?: T) => void) {
+  let arg: T
 
   function handleMouseDown(evt: MouseEvent) {
     window.removeEventListener('mousemove', handleMouseMove)
     window.removeEventListener('mouseup', handleMouseUp)
-    if (typeof elemOrFilter !== 'function' || elemOrFilter(evt)) {
-      onDown(evt)
+    if (typeof elemOrFilter !== 'function' || (arg = elemOrFilter(evt))) {
+      onDown(evt, arg)
       window.addEventListener('mousemove', handleMouseMove)
       window.addEventListener('mouseup', handleMouseUp)
     }
   }
 
   function handleMouseMove(evt: MouseEvent) {
-    onMove && onMove(evt)
+    onMove && onMove(evt, arg)
   }
 
   function handleMouseUp(evt: MouseEvent) {
     window.removeEventListener('mousemove', handleMouseMove)
     window.removeEventListener('mouseup', handleMouseUp)
-    onUp && onUp(evt)
+    onUp && onUp(evt, arg)
   }
 
   const elem = typeof elemOrFilter !== 'function' ? elemOrFilter : window
