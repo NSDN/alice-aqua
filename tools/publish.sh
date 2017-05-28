@@ -17,6 +17,8 @@ sed -i -r \
   -e "s/<([^>]+)(class=\"build-hash\"[^>]*)>[^<]*</<\1\2>$BUILD_HASH</" \
   *.html &&\
 
+git commit -am "publish $BUILD_HASH"
+
 cp package.json $TMP_DIR/ &&\
 cp *.html $TMP_DIR/ &&\
 cp -r assets $TMP_DIR/ &&\

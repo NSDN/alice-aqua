@@ -356,7 +356,7 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
       }
       return val
     },
-    displayQuality(val = 'low') {
+    effects(val = 'medium') {
       if (val === 'low') {
         game.enableShadows = false
         game.enableSSAO = false
@@ -383,19 +383,19 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
       return val
     },
     shadows(val = 'off') {
-      if (config.displayQuality === 'custom') {
+      if (config.effects === 'custom') {
         game.enableShadows = val === 'on'
       }
       return val
     },
     ssao(val = 'off') {
-      if (config.displayQuality === 'custom') {
+      if (config.effects === 'custom') {
         game.enableSSAO = val === 'on'
       }
       return val
     },
     lensRendering(val = 'off') {
-      if (config.displayQuality === 'custom') {
+      if (config.effects === 'custom') {
         game.enableLensRendering = val === 'on'
       }
       return val
