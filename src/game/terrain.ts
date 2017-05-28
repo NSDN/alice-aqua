@@ -468,8 +468,8 @@ export default class Terrain extends EventEmitter<{
     addNeighbourToUpdate(u, v)
     u === 0 && addNeighbourToUpdate(m - 1, n)
     v === 0 && addNeighbourToUpdate(m, n - 1)
-    u === this.chunkUnits && addNeighbourToUpdate(m + 1, n)
-    v === this.chunkUnits && addNeighbourToUpdate(m, n + 1)
+    u === this.chunkUnits - 1 && addNeighbourToUpdate(m + 1, n)
+    v === this.chunkUnits - 1 && addNeighbourToUpdate(m, n + 1)
     this.throttleUpdate()
   }
 
