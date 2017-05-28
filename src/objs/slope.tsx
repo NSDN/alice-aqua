@@ -204,6 +204,8 @@ export default class Slope extends Sprite implements IPlayStartStopListener {
       groundMeshes.receiveShadows = true
     }
     Object.assign(new VertexData(), gvd).applyToMesh(groundMeshes)
+    // FIXME: babylonjs
+    if (!gvd.indices.length) groundMeshes.releaseSubMeshes()
 
     let sideMeshes = scene.getMeshByName('slope-side') as Mesh
     if (!sideMeshes) {
@@ -212,6 +214,7 @@ export default class Slope extends Sprite implements IPlayStartStopListener {
       material.diffuseTexture = new BABYLON.Texture('assets/slope-side.png', scene)
     }
     Object.assign(new VertexData(), svd).applyToMesh(sideMeshes)
+    if (!svd.indices.length) sideMeshes.releaseSubMeshes()
   }, 50)
 
   constructor(name: string, opts: ObjectOptions) {
