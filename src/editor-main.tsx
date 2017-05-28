@@ -83,7 +83,7 @@ const pixelHeightNames: { [key: string]: string } = {
   '': 'none',
 }
 
-const iconClassFromCursorClass: { [key: string]: string } = {
+const iconClassFromCursorClass = {
   'cursor-up-ctrl' : 'fa fa-pencil/fa fa-arrow-up',
   'cursor-down-ctrl' : 'fa fa-pencil/fa fa-arrow-down',
   'cursor-flat-ctrl' : 'fa fa-pencil/fa fa-arrows-h',
@@ -96,11 +96,20 @@ const iconClassFromCursorClass: { [key: string]: string } = {
   'cursor-classes-shift': 'fa fa-object-group',
 }
 
-const appendCursorStyle = memo((cursorClass: string) => {
+const appendCursorStyle = memo((cursorClass: keyof typeof iconClassFromCursorClass) => {
   const [mainClass, subClass] = iconClassFromCursorClass[cursorClass].split('/'),
     dataUrl = createDataURLFromIconFontAndSub(mainClass, subClass)
   return appendElement('style', { innerHTML: `.${cursorClass} { cursor: url(${dataUrl}), auto }` }, 'head')
 })
+
+function setElementCursorIcon(elem: HTMLElement, cursorClass: keyof typeof iconClassFromCursorClass) {
+  const iconClass = iconClassFromCursorClass[cursorClass]
+  Object.keys(iconClassFromCursorClass).forEach(cursorClass => elem.classList.remove(cursorClass))
+  if (iconClass) {
+    appendCursorStyle(cursorClass)
+    elem.classList.add(cursorClass)
+  }
+}
 
 const KEY_MAP = {
   ctrlKey: 'CTRL',
@@ -612,13 +621,8 @@ function playMapInNewWindow(map: EditorMap) {
   })
 
   const checkCursorStateChange = check<string[]>(keyStates => {
-    const cursorClass = 'cursor-' + keyStates.join(''),
-      iconClass = iconClassFromCursorClass[cursorClass]
-    Object.keys(iconClassFromCursorClass).forEach(cursorClass => canvas.classList.remove(cursorClass))
-    if (iconClass) {
-      appendCursorStyle(cursorClass)
-      canvas.classList.add(cursorClass)
-    }
+    const cursorClass = 'cursor-' + keyStates.join('') as keyof typeof iconClassFromCursorClass
+    setElementCursorIcon(canvas, cursorClass)
   })
 
   keyInput.any.on('change', () => checkCursorStateChange([
