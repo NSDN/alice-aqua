@@ -1,4 +1,4 @@
-TMP_DIR=.depoly-temp
+TMP_DIR=.pub &&\
 mkdir -p $TMP_DIR &&\
 webpack > $TMP_DIR/webpack-output &&\
 
@@ -17,7 +17,7 @@ sed -i -r \
   -e "s/<([^>]+)(class=\"build-hash\"[^>]*)>[^<]*</<\1\2>$BUILD_HASH</" \
   *.html &&\
 
-git commit -am "publish $BUILD_HASH"
+git commit -am "publish $BUILD_HASH" &&\
 
 cp package.json $TMP_DIR/ &&\
 cp *.html $TMP_DIR/ &&\
