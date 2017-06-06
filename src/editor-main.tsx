@@ -173,7 +173,7 @@ function playMapInNewWindow(map: EditorMap) {
     grid = new GridPlane('grids', scene, 32),
 
     lastSelection = new SelectionBox('select', scene),
-    terrainCursor = new ObjectBoundary('terrain', scene),
+    terrainCursor = new ObjectBoundary('terrain', scene, new BABYLON.Color3(0.5, 0.5, 1)),
 
     editorHistory = new EditorHistory()
 
@@ -396,7 +396,7 @@ function playMapInNewWindow(map: EditorMap) {
   }, evt => {
     if (evt.target === canvas && !cursor.isVisible) {
       cursor.isVisible = true
-      toolbar.setStatePartial({ panel: 'object', object: createObjectFromActiveClass() })
+      toolbar.setStatePartial({ object: createObjectFromActiveClass() })
     }
     if (cursor.isVisible) {
       const pos = cursor.hover.add(new Vector3(0.5, 0, 0.5))
@@ -433,7 +433,7 @@ function playMapInNewWindow(map: EditorMap) {
       picked = ray && scene.pickWithRay(ray, mesh => !!map.objects[mesh.name])
     if (picked.hit) {
       const object = picked.pickedMesh as any as ObjectBase
-      toolbar.setStatePartial({ panel: 'object', object })
+      toolbar.setStatePartial({ object })
       return true
     }
   }, _ => {

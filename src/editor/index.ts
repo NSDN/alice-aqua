@@ -76,7 +76,7 @@ export class ArrowBoundary extends LinesMesh {
 }
 
 export class ObjectBoundary extends Mesh {
-  constructor(name: string, scene: Scene) {
+  constructor(name: string, scene: Scene, color = Color3.Red()) {
     super(name, scene)
 
     const positions = [
@@ -93,7 +93,7 @@ export class ObjectBoundary extends Mesh {
     ]
     Object.assign(new VertexData(), { positions, indices }).applyToMesh(this)
 
-    this.material = ColorWireframeNoLightingMaterial.getCached(scene, Color3.Red())
+    this.material = ColorWireframeNoLightingMaterial.getCached(scene, color)
     this.isVisible = false
   }
 }
