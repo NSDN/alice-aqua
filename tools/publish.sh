@@ -1,8 +1,10 @@
 TMP_DIR=.pub &&\
 mkdir -p $TMP_DIR &&\
-webpack > $TMP_DIR/webpack.txt &&\
+webpack > $TMP_DIR/webpack.log &&\
 
-BUILD_HASH=`cat $TMP_DIR/webpack.txt | grep Hash: | awk '{ print $2 }'` &&\
+BUILD_HASH=`cat $TMP_DIR/webpack.log | grep Hash: | awk '{ print $2 }'` &&\
+echo $BUILD_HASH > $TMP_DIR/version.txt
+
 DST_DIR=qcs.ofr.me:~/www/alice-aqua-$BUILD_HASH &&\
 SRC_DIRS=(
   "babylonjs/babylon.js"

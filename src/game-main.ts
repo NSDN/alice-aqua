@@ -345,6 +345,19 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
     throw err
   }
 
+  let version = 'dev'
+  try {
+    const resp = await fetch('version.txt')
+    if (!resp.ok) {
+      throw new Error(resp.statusText)
+    }
+    version = await resp.text()
+    console.log(`[game] running ${version}`)
+  }
+  catch (err) {
+    console.log('[game] no version info found, seems running in dev mode')
+  }
+
   const updateConfig = {
     lang(val = 'en') {
       updateGameLanguage(val)
