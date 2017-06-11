@@ -5,7 +5,7 @@ module.exports = {
   devtool: isDevServer && 'source-map',
   devServer: { inline: false },
   entry: {
-    screen: isDevServer ? './src/loading-screen' : ['babel-polyfill', './src/loading-screen'],
+    loader: isDevServer ? './src/loader' : ['babel-polyfill', './src/loader'],
     game: './src/game-main',
     editor: './src/editor-main',
   },

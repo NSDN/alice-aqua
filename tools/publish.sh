@@ -1,6 +1,6 @@
 TMP_DIR=.pub &&\
 mkdir -p $TMP_DIR &&\
-webpack > $TMP_DIR/webpack-output &&\
+webpack > $TMP_DIR/webpack.log &&\
 
 BUILD_HASH=`cat $TMP_DIR/webpack-output | grep Hash: | awk '{ print $2 }'` &&\
 DST_DIR=qcs.ofr.me:~/www/alice-aqua-$BUILD_HASH &&\
