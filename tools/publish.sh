@@ -1,8 +1,8 @@
 TMP_DIR=.pub &&\
 mkdir -p $TMP_DIR &&\
-webpack > $TMP_DIR/webpack.log &&\
+webpack > $TMP_DIR/webpack.txt &&\
 
-BUILD_HASH=`cat $TMP_DIR/webpack.log | grep Hash: | awk '{ print $2 }'` &&\
+BUILD_HASH=`cat $TMP_DIR/webpack.txt | grep Hash: | awk '{ print $2 }'` &&\
 DST_DIR=qcs.ofr.me:~/www/alice-aqua-$BUILD_HASH &&\
 SRC_DIRS=(
   "babylonjs/babylon.js"
@@ -11,11 +11,6 @@ SRC_DIRS=(
   "node_modules/font-awesome/css/*.css"
   "node_modules/font-awesome/fonts/*.*"
 ) &&\
-
-sed -i -r \
-  -e "s/\\{\\{BUILD_HASH\\}\\}/$BUILD_HASH/" \
-  -e "s/<([^>]+)(class=\"build-hash\"[^>]*)>[^<]*</<\1\2>$BUILD_HASH</" \
-  *.html &&\
 
 git add -A && \
 git commit -m "publish $BUILD_HASH" &&\
