@@ -347,15 +347,11 @@ async function showDialogText(input: GamepadInput<typeof KEY_MAP>, name: string,
 
   let version = 'dev'
   try {
-    const resp = await fetch('version.txt')
-    if (!resp.ok) {
-      throw new Error(resp.statusText)
-    }
-    version = await resp.text()
-    console.log(`[game] running ${version}`)
+    version = await loadWithXHR<string>('version.txt')
+    console.log(`[game] version ${version}`)
   }
   catch (err) {
-    console.log('[game] no version info found, seems running in dev mode')
+    console.log('[game] load version string failed, seems running in dev mode')
   }
 
   const updateConfig = {

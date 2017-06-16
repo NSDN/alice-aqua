@@ -324,7 +324,7 @@ export function loadWithXHR<T>(src: string, opts?: any, onProgress?: (progress: 
   return new Promise<T>((onload, onerror) => {
     const xhr = new XMLHttpRequest()
     xhr.addEventListener('error', onerror)
-    xhr.addEventListener('load', _ => onload(xhr.response))
+    xhr.addEventListener('load', _ => xhr.status === 200 ? onload(xhr.response) : onerror(xhr.statusText))
     xhr.addEventListener('progress', evt => onProgress && onProgress(evt.loaded / evt.total))
     Object.assign(xhr, opts)
     xhr.open('get', src)
